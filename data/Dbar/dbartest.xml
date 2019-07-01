@@ -1,0 +1,112 @@
+<mujoco model="dbar">
+    <!--  Copyright © 2018, Roboti LLC
+
+          This file is licensed under the MuJoCo Resource License (the "License").
+          You may not use this file except in compliance with the License.
+          You may obtain a copy of the License at
+
+            https://www.roboti.us/resourcelicense.txt
+    -->
+
+    <option timestep="0.01" iterations="50" solver="Newton" tolerance="1e-10" gravity = "0 0 0" collision="predefined" viscosity=".5"/>
+
+    <size njmax="5000" nconmax="1000" nstack="20000"/>
+
+    <visual>
+        <rgba haze=".3 .3 .3 1"/>
+    </visual>
+
+    <default>
+        <position ctrllimited="false" ctrlrange="-1 1" gear="1.0"/>
+		<tendon damping="2"/>
+		<geom size="0.02"/>
+		<site size="0.04"/>
+    </default>
+
+    <asset>
+        <texture type="skybox" builtin="gradient" rgb1="0.6 0.6 0.6" rgb2="0 0 0" width="512" height="512"/> 
+
+        <texture name="texplane" type="2d" builtin="checker" rgb1=".25 .25 .25" rgb2=".3 .3 .3" width="512" height="512" mark="cross" markrgb=".8 .8 .8"/>  
+
+        <material name="matplane" reflectance="0.3" texture="texplane" texrepeat="1 1" texuniform="true"/>
+    </asset>
+
+    <worldbody>
+		<body name="floor" pos="0 0 0">
+			<geom name="floor" pos="0 0 0" size="0 0 1" type="plane" material="matplane"/>
+			<site name="s4" pos="0 1.414 0"/>
+			<site name="s5" pos="0 -1.414 0"/>
+			<site name="target" pos="0 0 2.5" size="0.06" rgba="1 0 0 .3"/>
+		</body>
+        
+        <light directional="true" diffuse=".8 .8 .8" specular=".2 .2 .2" pos="0 0 5" dir="0 0 -1"/>
+
+		<body name="bar1" pos="0 0 0">
+			<geom name="bar1" type="capsule" fromto="0 0 0  0 -1 1" rgba=".5 .1 .1 1"/>
+			<joint type="free" pos="0 0 0"/>
+			<site name="s1s" pos="0 0 0"/>
+			<site name="s1e" pos="0 -1 1"/>
+		</body>
+		
+		<body name="bar2" pos="0 -1 1">
+			<geom name="bar2" type="capsule" fromto="0 0 0  0 1 1" rgba=".5 .1 .1 1"/>
+			<joint type="free" pos="0 0 0"/>
+			<site name="s2s" pos="0 0 0"/>
+			<site name="s2e" pos="0 1 1"/>
+		</body>
+		
+		<body name="bar3" pos="0 0 2">
+			<geom name="bar3" type="capsule" fromto="0 0 0  0 1 -1" rgba=".5 .1 .1 1"/>
+			<joint type="free" pos="0 0 0"/>
+			<site name="s3s" pos="0 0 0"/>
+			<site name="s3e" pos="0 1 -1"/>
+		</body>
+		
+		<body name="bar4" pos="0 1 1">
+			<geom name="bar4" type="capsule" fromto="0 0 0  0 -1 -1" rgba=".5 .1 .1 1"/>
+			<joint type="free" pos="0 0 0"/>
+			<site name="s4s" pos="0 0 0"/>
+			<site name="s4e" pos="0 -1 -1"/>
+		</body>
+    </worldbody>
+	
+	<equality>
+		<connect active="true" name='lbarf1' body1='floor' body2='bar1' anchor='-0.05 0 0'/>
+		<connect active="true" name='rbarf1' body1='floor' body2='bar1' anchor='0.05 0 0'/>
+		<connect active="true" name='lbar12' body1='bar1' body2='bar2' anchor='-0.05 -1 1'/>
+		<connect active="true" name='rbar12' body1='bar1' body2='bar2' anchor='0.05 -1 1'/>
+		<connect active="true" name='lbar23' body1='bar2' body2='bar3' anchor='-0.05 1 1'/>
+		<connect active="true" name='rbar23' body1='bar2' body2='bar3' anchor='0.05 1 1'/>
+		<connect active="true" name='lbar34' body1='bar3' body2='bar4' anchor='-0.05 1 -1'/>
+		<connect active="true" name='rbar34' body1='bar3' body2='bar4' anchor='0.05 1 -1'/>
+		<connect active="true" name='lbar41' body1='bar4' body2='bar1' anchor='-0.05 -1 -1'/>
+		<connect active="true" name='rbar41' body1='bar4' body2='bar1' anchor='0.05 -1 -1'/>
+	</equality>
+	
+	<tendon>
+        <spatial name="S1" width="0.02">
+            <site site="s1s"/>
+            <site site="s2e"/>
+        </spatial>
+		<spatial name="S2" width="0.02">
+            <site site="s1e"/>
+            <site site="s3e"/>
+        </spatial>
+		<spatial name="S3" width="0.02">
+            <site site="s3e"/>
+            <site site="s4"/>
+        </spatial>
+		<spatial name="S4" width="0.02">
+            <site site="s1e"/>
+            <site site="s5"/>
+        </spatial>
+    </tendon> 
+
+	<actuator>
+        <position tendon="S1" kp="1"/>
+        <position tendon="S2" kp="1"/>
+		<position tendon="S3" kp="1"/>
+        <position tendon="S4" kp="1"/>
+    </actuator>	
+
+</mujoco>
