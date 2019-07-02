@@ -659,7 +659,7 @@ void sensorshow(mjrRect rect)
 
 
 // prepare info text
-void infotext(char* title, char* content, double interval)
+void infotext(mjData* d, char* title, char* content, double interval)
 {
     char tmp[20];
 
@@ -1146,6 +1146,10 @@ void cleartimers(void)
     {
         d->timer[i].duration = 0;
         d->timer[i].number = 0;
+		//d_openloop->timer[i].duration = 0;
+		//d_openloop->timer[i].number = 0;
+		//d_closedloop->timer[i].duration = 0;
+		//d_closedloop->timer[i].number = 0;
     }
 }
 
@@ -1187,7 +1191,7 @@ void drop(GLFWwindow* window, int count, const char** paths)
     }
 }
 
-void loadmodel(void)
+void loadmodel(mjData **d)
 {
 	// clear request
 	settings.loadrequest = 0;
@@ -1223,11 +1227,11 @@ void loadmodel(void)
 	}
 
 	// delete old model, assign new
-	mj_deleteData(d);
+	mj_deleteData(*d);
 	mj_deleteModel(m);
 	m = mnew;
-	d = mj_makeData(m);
-	mj_forward(m, d);
+	*d = mj_makeData(m);
+	mj_forward(m, *d);
 
 	// re-create scene and context
 	mjv_makeScene(m, &scn, maxgeom);
@@ -1240,15 +1244,15 @@ void loadmodel(void)
 
 	// align and scale view, update scene
 	alignscale();
-	mjv_updateScene(m, d, &vopt, &pert, &cam, mjCAT_ALL, &scn);
+	mjv_updateScene(m, *d, &vopt, &pert, &cam, mjCAT_ALL, &scn);
 
-	//// set window title to model name
-	//if( window && m->names )
-	//{
-	//    char title[200] = "Simulate : ";
-	//    strcat(title, m->names);
-	//    glfwSetWindowTitle(window, title);
-	//}
+	// set window title to model name
+	/*if (window && m->names)
+	{
+		char title[200] = "Simulate : ";
+		strcat(title, m->names);
+		glfwSetWindowTitle(window, title);
+	}*/
 
 	// set keyframe range and divisions
 	ui0.sect[SECT_SIMULATION].item[6].slider.range[0] = 0;
@@ -1263,7 +1267,6 @@ void loadmodel(void)
 	uiModify(window, &ui1, &uistate, &con);
 	updatesettings();
 }
-
 
 //--------------------------------- UI hooks (for uitools.c) ----------------------------
 
@@ -1285,7 +1288,6 @@ int uiPredicate(int category, void* userdata)
         return 1;
     }
 }
-
 
 
 // set window layout
@@ -1426,6 +1428,10 @@ void uiEvent(mjuiState* state)
                 {
                     mj_resetData(m, d);
                     mj_forward(m, d);
+					mj_resetData(m, d_openloop);
+					mj_forward(m, d_openloop);
+					mj_resetData(m, d_closedloop);
+					mj_forward(m, d_closedloop);
                     profilerupdate();
                     sensorupdate();
                     updatesettings();
@@ -1554,6 +1560,8 @@ void uiEvent(mjuiState* state)
             if( it->itemid==0 )
             {
                 mju_zero(d->ctrl, m->nu);
+				mju_zero(d_openloop->ctrl, m->nu);
+				mju_zero(d_closedloop->ctrl, m->nu);
                 mjui_update(SECT_CONTROL, -1, &ui1, &uistate, &con);
             }
         }
@@ -1784,7 +1792,7 @@ void uiEvent(mjuiState* state)
 }
 
 //--------------------------- control and testing ---------------------------------------
-void stateNominal(mjModel* m, mjData* d)
+void stateNominal(void)
 {
 	static int step_index = 0;
 
@@ -1799,7 +1807,7 @@ void stateNominal(mjModel* m, mjData* d)
 	}
 }
 
-mjtNum stepCost(mjModel* m, mjData* d, int step_index)
+mjtNum stepCost(mjData* d, int step_index)
 {
 	mjtNum state[kStateNum], res0[kStateNum], res1[kStateNum], cost;
 
@@ -1831,7 +1839,7 @@ mjtNum stepCost(mjModel* m, mjData* d, int step_index)
 	return cost;
 }
 
-void simulateNominal(mjModel* m, mjData* d)
+void simulateNominal(void)
 {
 	static mjtNum state_error[kStateNum];
 	static int step_index = 0;
@@ -1860,79 +1868,79 @@ void simulateNominal(mjModel* m, mjData* d)
 	step_index++;
 }
 
-bool simulateClosedloop(mjModel* m, mjData* d)
+bool simulateClosedloop(void)
 {
 	static mjtNum state_error[kStateNum], ctrl_feedback[kActuatorNum];
 	static int step_index = 0;
 
 	if (step_index == 0) {
-		mju_copy(d->qpos, state_nominal[0], m->nq);
-		mju_copy(d->qvel, &state_nominal[0][m->nq], m->nv);
-		cost_closedloop = stepCost(m, d, step_index);
+		mju_copy(d_closedloop->qpos, state_nominal[0], m->nq);
+		mju_copy(d_closedloop->qvel, &state_nominal[0][m->nq], m->nv);
+		cost_closedloop = stepCost(d_closedloop, step_index);
 	}
 
 	if (step_index >= kStepNum)
 	{
 		if (POLICY_COMPARE == true) step_index = 0;
-		mju_sub(state_error, state_target, d->qpos, m->nq);
-		mju_sub(&state_error[m->nq], &state_target[m->nq], d->qvel, m->nv);
+		mju_sub(state_error, state_target, d_closedloop->qpos, m->nq);
+		mju_sub(&state_error[m->nq], &state_target[m->nq], d_closedloop->qvel, m->nv);
 #if defined (PENDULUM)
-		state_error[0] = -(PI - fabs(d->qpos[0] - PI))*((PI - d->qpos[0] > 0) - (PI - d->qpos[0] < 0));
+		state_error[0] = -(PI - fabs(d_closedloop->qpos[0] - PI))*((PI - d_closedloop->qpos[0] > 0) - (PI - d_closedloop->qpos[0] < 0));
 #endif
 #if defined (CARTPOLE)
-		state_error[2] = -(PI - fabs(d->qpos[1]))*((d->qpos[1] < 0) - (d->qpos[1] > 0));
+		state_error[2] = -(PI - fabs(d_closedloop->qpos[1]))*((d_closedloop->qpos[1] < 0) - (d_closedloop->qpos[1] > 0));
 #endif
 #if defined (CART2POLE)
-		state_error[2] = -(PI - fabs(d->qpos[1] - PI))*((PI - d->qpos[1] > 0) - (PI - d->qpos[1] < 0));
+		state_error[2] = -(PI - fabs(d_closedloop->qpos[1] - PI))*((PI - d_closedloop->qpos[1] > 0) - (PI - d_closedloop->qpos[1] < 0));
 #endif 
-		mju_mulMatVec(d->ctrl, kStabilizerFeedbackGain, state_error, m->nu, kStateNum);
+		mju_mulMatVec(d_closedloop->ctrl, kStabilizerFeedbackGain, state_error, m->nu, kStateNum);
 		return 1;
 	}
 	else {
-		mju_sub(state_error, state_nominal[step_index], d->qpos, m->nq);
-		mju_sub(&state_error[m->nq], &state_nominal[step_index][m->nq], d->qvel, m->nv);
+		mju_sub(state_error, state_nominal[step_index], d_closedloop->qpos, m->nq);
+		mju_sub(&state_error[m->nq], &state_nominal[step_index][m->nq], d_closedloop->qvel, m->nv);
 		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index], state_error, m->nu, kStateNum);
-		mju_add(d->ctrl, ctrl_openloop, ctrl_feedback, m->nu);
+		mju_add(d_closedloop->ctrl, ctrl_openloop, ctrl_feedback, m->nu);
 	}
 
-	for (int i = 0; i < kIterationPerStep; i++) mj_step(m, d);
+	for (int i = 0; i < kIterationPerStep; i++) mj_step(m, d_closedloop);
 	step_index++;
-	cost_closedloop += stepCost(m, d, step_index);
+	cost_closedloop += stepCost(d_closedloop, step_index);
 	return 0;
 }
 
-bool simulateOpenloop(mjModel* m, mjData* d)
+bool simulateOpenloop(void)
 {
 	static mjtNum state_error[kStateNum];
 	static int step_index = 0;
 
 	if (step_index == 0) {
-		mju_copy(d->qpos, state_nominal[0], m->nq);
-		mju_copy(d->qvel, &state_nominal[0][m->nq], m->nv);
-		cost_openloop = stepCost(m, d, step_index);
+		mju_copy(d_openloop->qpos, state_nominal[0], m->nq);
+		mju_copy(d_openloop->qvel, &state_nominal[0][m->nq], m->nv);
+		cost_openloop = stepCost(d_openloop, step_index);
 	}
 	if (step_index >= kStepNum)
 	{
 		if (POLICY_COMPARE == true) step_index = 0;
 
-		mju_sub(state_error, state_target, d->qpos, m->nq);
-		mju_sub(&state_error[m->nq], &state_target[m->nq], d->qvel, m->nv);
+		mju_sub(state_error, state_target, d_openloop->qpos, m->nq);
+		mju_sub(&state_error[m->nq], &state_target[m->nq], d_openloop->qvel, m->nv);
 #if defined (PENDULUM)
-		state_error[0] = -(PI - fabs(d->qpos[0] - PI))*((PI - d->qpos[0] > 0) - (PI - d->qpos[0] < 0));
+		state_error[0] = -(PI - fabs(d_openloop->qpos[0] - PI))*((PI - d_openloop->qpos[0] > 0) - (PI - d_openloop->qpos[0] < 0));
 #endif
 #if defined (CARTPOLE)
-		state_error[2] = -(PI - fabs(d->qpos[1]))*((d->qpos[1] < 0) - (d->qpos[1] > 0));
+		state_error[2] = -(PI - fabs(d_openloop->qpos[1]))*((d_openloop->qpos[1] < 0) - (d_openloop->qpos[1] > 0));
 #endif
 #if defined (CART2POLE)
-		state_error[2] = -(PI - fabs(d->qpos[1] - PI))*((PI - d->qpos[1] > 0) - (PI - d->qpos[1] < 0));
+		state_error[2] = -(PI - fabs(d_openloop->qpos[1] - PI))*((PI - d_openloop->qpos[1] > 0) - (PI - d_openloop->qpos[1] < 0));
 #endif 
-		mju_mulMatVec(d->ctrl, kStabilizerFeedbackGain, state_error, m->nu, kStateNum);
+		mju_mulMatVec(d_openloop->ctrl, kStabilizerFeedbackGain, state_error, m->nu, kStateNum);
 		return 1;
 	}
-	else mju_copy(d->ctrl, &ctrl_openloop[step_index * kActuatorNum], m->nu);
-	for (int i = 0; i < kIterationPerStep; i++) mj_step(m, d);
+	else mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index * kActuatorNum], m->nu);
+	for (int i = 0; i < kIterationPerStep; i++) mj_step(m, d_openloop);
 	step_index++;
-	cost_openloop += stepCost(m, d, step_index);
+	cost_openloop += stepCost(d_openloop, step_index);
 	return 0;
 }
 
@@ -1974,7 +1982,7 @@ void prepare(void)/////////////////////////////////////////
 
     // update info text
     if( settings.info )
-        infotext(info_title, info_content, interval);
+        infotext(d, info_title, info_content, interval);
 
     // update profiler
     if( settings.profiler && settings.run )
@@ -1988,51 +1996,22 @@ void prepare(void)/////////////////////////////////////////
     cleartimers();
 }
 
-void prepareop(void)/////////////////////////////////////////
-{
-	// data for FPS calculation
-	static double lastupdatetm = 0;
-
-	// update interval, save update time
-	double tmnow = glfwGetTime();
-	double interval = tmnow - lastupdatetm;
-	interval = mjMIN(1, mjMAX(0.0001, interval));
-	lastupdatetm = tmnow;
-
-	// no model: nothing to do
-	if (!m)
-		return;
-
-	// update scene
-	mjv_updateScene(m, d_openloop, &vopt, &pert, &cam, mjCAT_ALL, &scn);
-
-	// update watch 
-	if (settings.ui0 && ui0.sect[SECT_WATCH].state)
-	{
-		watch();
-		mjui_update(SECT_WATCH, -1, &ui0, &uistate, &con);
-	}
-
-	// update joint
-	if (settings.ui1 && ui1.sect[SECT_JOINT].state)
-		mjui_update(SECT_JOINT, -1, &ui1, &uistate, &con);
-
-	// update info text
-	if (settings.info)
-		infotext(info_title, info_content, interval);
-
-	// update profiler
-	if (settings.profiler && settings.run)
-		profilerupdate();
-
-	// update sensor
-	if (settings.sensor && settings.run)
-		sensorupdate();
-
-	// clear timers once profiler info has been copied
-	cleartimers();
-}
-
+//void prepare1(mjData* d)/////////////////////////////////////////
+//{
+//	// no model: nothing to do
+//	if (!m)
+//		return;
+//
+//	// update scene
+//	mjv_updateScene(m, d, &vopt, &pert, &cam, mjCAT_ALL, &scn);
+//
+//	// update info text
+//	if (settings.info)
+//		infotext(d, info_title, info_content, 0);
+//
+//	// clear timers once profiler info has been copied
+//	cleartimers();
+//}
 
 // render in main thread (while simulating in background thread)
 void render(GLFWwindow* window)
@@ -2106,11 +2085,17 @@ void render(GLFWwindow* window)
     glfwSwapBuffers(window);
 }
 
-void renderClosedloop(GLFWwindow* window)
+void render1(GLFWwindow* window)
 {
-	// get 3D rectangle and reduced for profiler
-	mjrRect rect = uistate.rect[3];
+	//// get 3D rectangle and reduced for profiler
+	//mjrRect rect = uistate.rect[3];
+	//mjrRect smallrect = rect;
+
+	// get current framebuffer rectangle
+	mjrRect rect = { 0, 0, 0, 0 };
+	glfwGetFramebufferSize(window, &rect.width, &rect.height);
 	mjrRect smallrect = rect;
+
 	if (settings.profiler)
 		smallrect.width = rect.width - rect.width / 4;
 
@@ -2156,22 +2141,10 @@ void renderClosedloop(GLFWwindow* window)
 	if (settings.ui1)
 		mjui_render(&ui1, &uistate, &con);
 
-	// show help
-	if (settings.help)
-		mjr_overlay(mjFONT_NORMAL, mjGRID_TOPLEFT, rect, help_title, help_content, &con);
-
 	// show info
 	if (settings.info)
 		mjr_overlay(mjFONT_NORMAL, mjGRID_BOTTOMLEFT, rect,
 			info_title, info_content, &con);
-
-	// show profiler
-	if (settings.profiler)
-		profilershow(rect);
-
-	// show sensor
-	if (settings.sensor)
-		sensorshow(smallrect);
 
 	// finalize
 	glfwSwapBuffers(window);
@@ -2241,9 +2214,9 @@ void simulate(void)
 
                         // run mj_step
                         mjtNum prevtm = d->time;
-						simulateNominal(m, d);
-						//simulateClosedloop(m, d_closedloop);
-						//simulateOpenloop(m, d_openloop);
+						simulateNominal();
+						/*	simulateClosedloop();
+						simulateOpenloop();*/
 
 						//d->ctrl[0] = 2;
 						//d->ctrl[1] = 2;
@@ -2268,8 +2241,8 @@ void simulate(void)
             {
                 // apply pose perturbation
                 mjv_applyPerturbPose(m, d, &pert, 1);      // move mocap and dynamic bodies
-				//mjv_applyPerturbPose(m, d_closedloop, &pert, 1);
-				//mjv_applyPerturbPose(m, d_openloop, &pert, 1);
+				/*mjv_applyPerturbPose(m, d_closedloop, &pert, 1);
+				mjv_applyPerturbPose(m, d_openloop, &pert, 1);*/
 
                 // run mj_forward, to update rendering and joint sliders
                 mj_forward(m, d);
@@ -2389,10 +2362,10 @@ void init(void)
     // create window
     window = glfwCreateWindow((2*vmode.width)/6, (2*vmode.height)/4, 
                               "Nominal", NULL, NULL);
-	/*window_openloop = glfwCreateWindow((2 * vmode.width) / 6, (2 * vmode.height) / 4,
+	window_openloop = glfwCreateWindow((2 * vmode.width) / 6, (2 * vmode.height) / 4,
 		"Openloop with noise", NULL, NULL);
 	window_closedloop = glfwCreateWindow((2 * vmode.width) / 6, (2 * vmode.height) / 4,
-		"Closedloop with noise", NULL, NULL);*/
+		"Closedloop with noise", NULL, NULL);
 
     if( !window )
     {
@@ -2401,9 +2374,9 @@ void init(void)
     }
 
 	glfwSetWindowPos(window, (2 * vmode.width) / 6, 100);
-	/*glfwSetWindowPos(window_openloop, 0, 100);
+	glfwSetWindowPos(window_openloop, 0, 100);
 	glfwSetWindowPos(window_closedloop, (4 * vmode.width) / 6, 100);
-*/
+
     // save window position and size
     glfwGetWindowPos(window, windowpos, windowpos+1);
     glfwGetWindowSize(window, windowsize, windowsize+1);
@@ -2438,18 +2411,32 @@ void init(void)
 	// switch window and do the same thing
 	//glfwMakeContextCurrent(window_openloop);
 	//glfwSwapInterval(settings.vsync);
-	//mjv_defaultScene(&scn);
-	//mjv_makeScene(NULL, &scn, maxgeom);
 	//mjv_defaultCamera(&cam);
 	//mjv_defaultOption(&vopt);
-	//mjr_defaultContext(&con);
-	//mjr_makeContext(NULL, &con, fontscale);
 	//profilerinit();
 	//sensorinit();
+	//mjv_defaultScene(&scn);
+	//mjv_makeScene(NULL, &scn, maxgeom);
+	//mjr_defaultContext(&con);
+	//mjr_makeContext(NULL, &con, fontscale);
 	//uiSetCallback(window_openloop, &uistate, uiEvent, uiLayout);
 	//glfwSetWindowRefreshCallback(window_openloop, render);////////////////////////////////
 	//glfwSetDropCallback(window_openloop, drop);
 
+	//glfwMakeContextCurrent(window_closedloop);
+	//glfwSwapInterval(settings.vsync);
+	//mjv_defaultCamera(&cam);
+	//mjv_defaultOption(&vopt);
+	//profilerinit();
+	//sensorinit();
+	//mjv_defaultScene(&scn);
+	//mjv_makeScene(NULL, &scn, maxgeom);
+	//mjr_defaultContext(&con);
+	//mjr_makeContext(NULL, &con, fontscale);
+	//uiSetCallback(window_closedloop, &uistate, uiEvent, uiLayout);
+	//glfwSetWindowRefreshCallback(window_closedloop, render);////////////////////////////////
+	//glfwSetDropCallback(window_closedloop, drop);
+	//glfwMakeContextCurrent(window);
     // init state and uis
     memset(&uistate, 0, sizeof(mjuiState));
     memset(&ui0, 0, sizeof(mjUI));
@@ -2509,10 +2496,10 @@ int main(int argc, const char** argv)
     {
         // start exclusive access (block simulation thread)
         mtx.lock();
-		////////glfwMakeContextCurrent(window);
+
         // load model (not on first pass, to show "loading" label)
         if( settings.loadrequest==1 )
-            loadmodel();////////////////
+            loadmodel(&d);
         else if( settings.loadrequest>1 )
             settings.loadrequest = 1;
 
@@ -2526,8 +2513,7 @@ int main(int argc, const char** argv)
         mtx.unlock();
 
         // render while simulation is running
-		
-        render(window);///////////////////////////////////////////////////////////
+        render(window);
 
 		//mtx.lock();
 		//glfwMakeContextCurrent(window_closedloop);
@@ -2557,8 +2543,8 @@ int main(int argc, const char** argv)
 
     // delete everything we allocated
     uiClearCallback(window);
-	//uiClearCallback(window_openloop);
-	//uiClearCallback(window_closedloop);
+	uiClearCallback(window_openloop);
+	uiClearCallback(window_closedloop);
     mj_deleteData(d); 
 	mj_deleteData(d_openloop);
 	mj_deleteData(d_closedloop);
