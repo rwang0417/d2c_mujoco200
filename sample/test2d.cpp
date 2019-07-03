@@ -132,7 +132,7 @@ mjtNum Q, QT, R;
 mjtNum Qm[kStateNum][kStateNum], QTm[kStateNum][kStateNum];
 
 // abstract visualization
-mjvScene scn;
+mjvScene scn, scn_openloop, scn_closedloop;
 mjvCamera cam;
 mjvOption vopt;
 mjvPerturb pert;
@@ -147,7 +147,7 @@ mjvFigure figsensor;
 GLFWvidmode vmode;
 int windowpos[2];
 int windowsize[2];
-mjrContext con;
+mjrContext con, con_openloop, con_closedloop;
 GLFWwindow *window = NULL, *window_openloop = NULL, *window_closedloop = NULL;
 mjuiState uistate;
 mjUI ui0, ui1;
@@ -1140,16 +1140,12 @@ mjtNum timer(void)
 
 
 // clear all times
-void cleartimers(void)
+void cleartimers(mjData* d)
 {
     for( int i=0; i<mjNTIMER; i++ )
     {
         d->timer[i].duration = 0;
         d->timer[i].number = 0;
-		//d_openloop->timer[i].duration = 0;
-		//d_openloop->timer[i].number = 0;
-		//d_closedloop->timer[i].duration = 0;
-		//d_closedloop->timer[i].number = 0;
     }
 }
 
@@ -1176,6 +1172,8 @@ void updatesettings(void)
 
     // update UI
     mjui_update(-1, -1, &ui0, &uistate, &con);
+	mjui_update(-1, -1, &ui0, &uistate, &con_openloop);
+	mjui_update(-1, -1, &ui0, &uistate, &con_closedloop);
 }
 
 
@@ -1191,7 +1189,7 @@ void drop(GLFWwindow* window, int count, const char** paths)
     }
 }
 
-void loadmodel(mjData **d)
+void loadmodel(void)
 {
 	// clear request
 	settings.loadrequest = 0;
@@ -1227,25 +1225,39 @@ void loadmodel(mjData **d)
 	}
 
 	// delete old model, assign new
-	mj_deleteData(*d);
+	mj_deleteData(d);
+	mj_deleteData(d_closedloop);
+	mj_deleteData(d_openloop);
 	mj_deleteModel(m);
 	m = mnew;
-	*d = mj_makeData(m);
-	mj_forward(m, *d);
-
+	d = mj_makeData(m);
+	d_closedloop = mj_makeData(m);
+	d_openloop = mj_makeData(m);
+	mj_forward(m, d);
+	mj_forward(m, d_closedloop);
+	mj_forward(m, d_openloop);
+	
 	// re-create scene and context
 	mjv_makeScene(m, &scn, maxgeom);
+	mjv_makeScene(m, &scn_openloop, maxgeom);
+	mjv_makeScene(m, &scn_closedloop, maxgeom);
+	glfwMakeContextCurrent(window);
 	mjr_makeContext(m, &con, 50 * (settings.font + 1));
-
+	glfwMakeContextCurrent(window_openloop);
+	mjr_makeContext(m, &con_openloop, 50 * (settings.font + 1));
+	glfwMakeContextCurrent(window_closedloop);
+	mjr_makeContext(m, &con_closedloop, 50 * (settings.font + 1));
+	
 	// clear perturbation state
 	pert.active = 0;
 	pert.select = 0;
 	pert.skinselect = -1;
-
+	
 	// align and scale view, update scene
 	alignscale();
-	mjv_updateScene(m, *d, &vopt, &pert, &cam, mjCAT_ALL, &scn);
-
+	mjv_updateScene(m, d, &vopt, &pert, &cam, mjCAT_ALL, &scn);
+	mjv_updateScene(m, d_openloop, &vopt, &pert, &cam, mjCAT_ALL, &scn_openloop);
+	mjv_updateScene(m, d_closedloop, &vopt, &pert, &cam, mjCAT_ALL, &scn_closedloop);
 	// set window title to model name
 	/*if (window && m->names)
 	{
@@ -1258,13 +1270,17 @@ void loadmodel(mjData **d)
 	ui0.sect[SECT_SIMULATION].item[6].slider.range[0] = 0;
 	ui0.sect[SECT_SIMULATION].item[6].slider.range[1] = mjMAX(0, m->nkey - 1);
 	ui0.sect[SECT_SIMULATION].item[6].slider.divisions = mjMAX(1, m->nkey - 1);
-
+	
 	// rebuild UI sections
 	makesections();
 
 	// full ui update
 	uiModify(window, &ui0, &uistate, &con);
 	uiModify(window, &ui1, &uistate, &con);
+	uiModify(window_openloop, &ui0, &uistate, &con_openloop);
+	uiModify(window_openloop, &ui1, &uistate, &con_openloop);
+	uiModify(window_openloop, &ui0, &uistate, &con_closedloop);
+	uiModify(window_openloop, &ui1, &uistate, &con_closedloop);
 	updatesettings();
 }
 
@@ -1382,7 +1398,9 @@ void uiEvent(mjuiState* state)
                 break;
 
             case 2:             // Font
-                mjr_changeFont(50*(settings.font+1), &con);
+				mjr_changeFont(50 * (settings.font + 1), &con);
+				mjr_changeFont(50 * (settings.font + 1), &con_openloop);
+				mjr_changeFont(50 * (settings.font + 1), &con_closedloop);
                 break;
 
             case 9:             // Full screen
@@ -1402,6 +1420,7 @@ void uiEvent(mjuiState* state)
                     // switch
                     glfwSetWindowMonitor(window, glfwGetPrimaryMonitor(), 0, 0, 
                                          vmode.width, vmode.height, vmode.refreshRate);
+
                 }
 
                 // reinstante vsync, just in case
@@ -1416,6 +1435,10 @@ void uiEvent(mjuiState* state)
             // modify UI
             uiModify(window, &ui0, state, &con);
             uiModify(window, &ui1, state, &con);
+			uiModify(window_openloop, &ui0, state, &con_openloop);
+			uiModify(window_openloop, &ui1, state, &con_openloop);
+			uiModify(window_closedloop, &ui0, state, &con_closedloop);
+			uiModify(window_closedloop, &ui1, state, &con_closedloop);
         }
 
         // simulation section
@@ -1509,6 +1532,8 @@ void uiEvent(mjuiState* state)
                     cam.type = mjCAMERA_FREE;
                     settings.camera = 0;
                     mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con);
+					mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con_openloop);
+					mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con_closedloop);
                 }
             }
             else
@@ -1528,6 +1553,8 @@ void uiEvent(mjuiState* state)
                 makejoint(ui1.sect[SECT_JOINT].state);
                 ui1.nsect = NSECT1;
                 uiModify(window, &ui1, state, &con);
+				uiModify(window_openloop, &ui1, state, &con_openloop);
+				uiModify(window_closedloop, &ui1, state, &con_closedloop);
             }
 
             // remake control section if actuator group changed
@@ -1537,6 +1564,8 @@ void uiEvent(mjuiState* state)
                 makecontrol(ui1.sect[SECT_CONTROL].state);
                 ui1.nsect = NSECT1;
                 uiModify(window, &ui1, state, &con);
+				uiModify(window_openloop, &ui1, state, &con_openloop);
+				uiModify(window_closedloop, &ui1, state, &con_closedloop);
             }
         }
 
@@ -1563,6 +1592,8 @@ void uiEvent(mjuiState* state)
 				mju_zero(d_openloop->ctrl, m->nu);
 				mju_zero(d_closedloop->ctrl, m->nu);
                 mjui_update(SECT_CONTROL, -1, &ui1, &uistate, &con);
+				mjui_update(SECT_CONTROL, -1, &ui1, &uistate, &con_openloop);
+				mjui_update(SECT_CONTROL, -1, &ui1, &uistate, &con_closedloop);
             }
         }
 
@@ -1582,13 +1613,15 @@ void uiEvent(mjuiState* state)
                 settings.run = 1 - settings.run;
                 pert.active = 0;
                 mjui_update(-1, -1, &ui0, state, &con);
+				mjui_update(-1, -1, &ui0, state, &con_openloop);
+				mjui_update(-1, -1, &ui0, state, &con_closedloop);
             }
             break;
 
         case mjKEY_RIGHT:           // step forward
             if( m && !settings.run )
             {
-                cleartimers();
+                cleartimers(d);
                 mj_step(m, d);
                 profilerupdate();
                 sensorupdate();
@@ -1600,7 +1633,7 @@ void uiEvent(mjuiState* state)
             if( m && !settings.run )
             {
                 m->opt.timestep = -m->opt.timestep;
-                cleartimers();
+                cleartimers(d);
                 mj_step(m, d);
                 m->opt.timestep = -m->opt.timestep;
                 profilerupdate();
@@ -1612,7 +1645,7 @@ void uiEvent(mjuiState* state)
         case mjKEY_DOWN:            // step forward 100
             if( m && !settings.run )
             {
-                cleartimers();
+                cleartimers(d);
                 for( i=0; i<100; i++ )
                     mj_step(m, d);
                 profilerupdate();
@@ -1625,7 +1658,7 @@ void uiEvent(mjuiState* state)
             if( m && !settings.run )
             {
                 m->opt.timestep = -m->opt.timestep;
-                cleartimers();
+                cleartimers(d);
                 for( i=0; i<100; i++ )
                     mj_step(m, d);
                 m->opt.timestep = -m->opt.timestep;
@@ -1652,6 +1685,8 @@ void uiEvent(mjuiState* state)
             cam.type = mjCAMERA_FREE;
             settings.camera = 0;
             mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con);
+			mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con_openloop);
+			mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con_closedloop);
             break;
         }
 
@@ -1663,6 +1698,8 @@ void uiEvent(mjuiState* state)
     {
         // emulate vertical mouse motion = 5% of window height
         mjv_moveCamera(m, mjMOUSE_ZOOM, 0, -0.05*state->sy, &scn, &cam);
+		mjv_moveCamera(m, mjMOUSE_ZOOM, 0, -0.05*state->sy, &scn_openloop, &cam);
+		mjv_moveCamera(m, mjMOUSE_ZOOM, 0, -0.05*state->sy, &scn_closedloop, &cam);
 
         return;
     }
@@ -1726,9 +1763,10 @@ void uiEvent(mjuiState* state)
                     // UI camera
                     settings.camera = 1;
                     mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con);
+					mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con_openloop);
+					mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con_closedloop);
                 }
             }
-
             // set body selection
             else
             {
@@ -1881,7 +1919,6 @@ bool simulateClosedloop(void)
 
 	if (step_index >= kStepNum)
 	{
-		if (POLICY_COMPARE == true) step_index = 0;
 		mju_sub(state_error, state_target, d_closedloop->qpos, m->nq);
 		mju_sub(&state_error[m->nq], &state_target[m->nq], d_closedloop->qvel, m->nv);
 #if defined (PENDULUM)
@@ -1894,15 +1931,17 @@ bool simulateClosedloop(void)
 		state_error[2] = -(PI - fabs(d_closedloop->qpos[1] - PI))*((PI - d_closedloop->qpos[1] > 0) - (PI - d_closedloop->qpos[1] < 0));
 #endif 
 		mju_mulMatVec(d_closedloop->ctrl, kStabilizerFeedbackGain, state_error, m->nu, kStateNum);
-		return 1;
+		if (POLICY_COMPARE == true) {
+			step_index = 0;
+			return 1;
+		}
 	}
 	else {
 		mju_sub(state_error, state_nominal[step_index], d_closedloop->qpos, m->nq);
 		mju_sub(&state_error[m->nq], &state_nominal[step_index][m->nq], d_closedloop->qvel, m->nv);
 		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index], state_error, m->nu, kStateNum);
-		mju_add(d_closedloop->ctrl, ctrl_openloop, ctrl_feedback, m->nu);
+		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index * kActuatorNum], ctrl_feedback, m->nu);
 	}
-
 	for (int i = 0; i < kIterationPerStep; i++) mj_step(m, d_closedloop);
 	step_index++;
 	cost_closedloop += stepCost(d_closedloop, step_index);
@@ -1921,8 +1960,6 @@ bool simulateOpenloop(void)
 	}
 	if (step_index >= kStepNum)
 	{
-		if (POLICY_COMPARE == true) step_index = 0;
-
 		mju_sub(state_error, state_target, d_openloop->qpos, m->nq);
 		mju_sub(&state_error[m->nq], &state_target[m->nq], d_openloop->qvel, m->nv);
 #if defined (PENDULUM)
@@ -1935,7 +1972,10 @@ bool simulateOpenloop(void)
 		state_error[2] = -(PI - fabs(d_openloop->qpos[1] - PI))*((PI - d_openloop->qpos[1] > 0) - (PI - d_openloop->qpos[1] < 0));
 #endif 
 		mju_mulMatVec(d_openloop->ctrl, kStabilizerFeedbackGain, state_error, m->nu, kStateNum);
-		return 1;
+		if (POLICY_COMPARE == true) {
+			step_index = 0;
+			return 1;
+		}
 	}
 	else mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index * kActuatorNum], m->nu);
 	for (int i = 0; i < kIterationPerStep; i++) mj_step(m, d_openloop);
@@ -1951,7 +1991,7 @@ std::mutex mtx;
 
 
 // prepare to render
-void prepare(void)/////////////////////////////////////////
+void prepareNominal(void)
 {
     // data for FPS calculation
     static double lastupdatetm = 0;
@@ -1974,11 +2014,16 @@ void prepare(void)/////////////////////////////////////////
     {
 		watch();
 		mjui_update(SECT_WATCH, -1, &ui0, &uistate, &con);
+		mjui_update(SECT_WATCH, -1, &ui0, &uistate, &con_openloop);
+		mjui_update(SECT_WATCH, -1, &ui0, &uistate, &con_closedloop);
     }
 
     // update joint
-    if( settings.ui1 && ui1.sect[SECT_JOINT].state )
-            mjui_update(SECT_JOINT, -1, &ui1, &uistate, &con);
+	if (settings.ui1 && ui1.sect[SECT_JOINT].state) {
+		mjui_update(SECT_JOINT, -1, &ui1, &uistate, &con);
+		mjui_update(SECT_JOINT, -1, &ui1, &uistate, &con_openloop);
+		mjui_update(SECT_JOINT, -1, &ui1, &uistate, &con_closedloop);
+	}
 
     // update info text
     if( settings.info )
@@ -1993,27 +2038,41 @@ void prepare(void)/////////////////////////////////////////
         sensorupdate();
 
     // clear timers once profiler info has been copied
-    cleartimers();
+    cleartimers(d);
 }
 
-//void prepare1(mjData* d)/////////////////////////////////////////
-//{
-//	// no model: nothing to do
-//	if (!m)
-//		return;
-//
-//	// update scene
-//	mjv_updateScene(m, d, &vopt, &pert, &cam, mjCAT_ALL, &scn);
-//
-//	// update info text
-//	if (settings.info)
-//		infotext(d, info_title, info_content, 0);
-//
-//	// clear timers once profiler info has been copied
-//	cleartimers();
-//}
+void prepareOpenloop()
+{
+	if (!m) return;
+
+	// update scene
+	mjv_updateScene(m, d_openloop, &vopt, &pert, &cam, mjCAT_ALL, &scn_openloop);
+
+	// update info text
+	if (settings.info)
+		infotext(d_openloop, info_title, info_content, 0);
+
+	// clear timers once profiler info has been copied
+	cleartimers(d_openloop);
+}
+
+void prepareClosedloop()
+{
+	if (!m) return;
+
+	// update scene
+	mjv_updateScene(m, d_closedloop, &vopt, &pert, &cam, mjCAT_ALL, &scn_closedloop);
+
+	// update info text
+	if (settings.info)
+		infotext(d_closedloop, info_title, info_content, 0);
+
+	// clear timers once profiler info has been copied
+	cleartimers(d_closedloop);
+}
 
 // render in main thread (while simulating in background thread)
+// parameter window is for callback
 void render(GLFWwindow* window)
 {
     // get 3D rectangle and reduced for profiler
@@ -2085,66 +2144,75 @@ void render(GLFWwindow* window)
     glfwSwapBuffers(window);
 }
 
-void render1(GLFWwindow* window)
+void renderOpenloop(GLFWwindow* window)
 {
-	//// get 3D rectangle and reduced for profiler
-	//mjrRect rect = uistate.rect[3];
-	//mjrRect smallrect = rect;
-
-	// get current framebuffer rectangle
-	mjrRect rect = { 0, 0, 0, 0 };
-	glfwGetFramebufferSize(window, &rect.width, &rect.height);
+	// get 3D rectangle and reduced for profiler
+	mjrRect rect = uistate.rect[3];
 	mjrRect smallrect = rect;
 
 	if (settings.profiler)
 		smallrect.width = rect.width - rect.width / 4;
 
 	// no model
-	if (!m)
-	{
-		// blank screen
-		mjr_rectangle(rect, 0.2f, 0.3f, 0.4f, 1);
-
-		// label
-		if (settings.loadrequest)
-			mjr_overlay(mjFONT_BIG, mjGRID_TOPRIGHT, smallrect,
-				"loading", NULL, &con);
-		else
-			mjr_overlay(mjFONT_NORMAL, mjGRID_TOPLEFT, rect,
-				"Drag-and-drop model file here", 0, &con);
-
-		// render uis
-		if (settings.ui0)
-			mjui_render(&ui0, &uistate, &con);
-		if (settings.ui1)
-			mjui_render(&ui1, &uistate, &con);
-
-		// finalize
-		glfwSwapBuffers(window);
-
-		return;
-	}
-
+	if (!m) return;
+	
 	// render scene
-	mjr_render(rect, &scn, &con);
+	mjr_render(rect, &scn_openloop, &con_openloop);
 
 	// show pause/loading label
 	if (!settings.run || settings.loadrequest)
 		mjr_overlay(mjFONT_BIG, mjGRID_TOPRIGHT, smallrect,
-			settings.loadrequest ? "loading" : "pause", NULL, &con);
+			settings.loadrequest ? "loading" : "pause", NULL, &con_openloop);
 
 	// show ui 0
 	if (settings.ui0)
-		mjui_render(&ui0, &uistate, &con);
+		mjui_render(&ui0, &uistate, &con_openloop);
 
 	// show ui 1
 	if (settings.ui1)
-		mjui_render(&ui1, &uistate, &con);
+		mjui_render(&ui1, &uistate, &con_openloop);
 
 	// show info
 	if (settings.info)
 		mjr_overlay(mjFONT_NORMAL, mjGRID_BOTTOMLEFT, rect,
-			info_title, info_content, &con);
+			info_title, info_content, &con_openloop);
+
+	// finalize
+	glfwSwapBuffers(window);
+}
+
+void renderClosedloop(GLFWwindow* window)
+{
+	// get 3D rectangle and reduced for profiler
+	mjrRect rect = uistate.rect[3];
+	mjrRect smallrect = rect;
+
+	if (settings.profiler)
+		smallrect.width = rect.width - rect.width / 4;
+
+	// no model
+	if (!m) return;
+
+	// render scene
+	mjr_render(rect, &scn_closedloop, &con_closedloop);
+
+	// show pause/loading label
+	if (!settings.run || settings.loadrequest)
+		mjr_overlay(mjFONT_BIG, mjGRID_TOPRIGHT, smallrect,
+			settings.loadrequest ? "loading" : "pause", NULL, &con_closedloop);
+
+	// show ui 0
+	if (settings.ui0)
+		mjui_render(&ui0, &uistate, &con_closedloop);
+
+	// show ui 1
+	if (settings.ui1)
+		mjui_render(&ui1, &uistate, &con_closedloop);
+
+	// show info
+	if (settings.info)
+		mjr_overlay(mjFONT_NORMAL, mjGRID_BOTTOMLEFT, rect,
+			info_title, info_content, &con_closedloop);
 
 	// finalize
 	glfwSwapBuffers(window);
@@ -2211,12 +2279,18 @@ void simulate(void)
 						mju_zero(d->xfrc_applied, 6 * m->nbody);
 						mjv_applyPerturbPose(m, d, &pert, 0);  // move mocap bodies only
 						mjv_applyPerturbForce(m, d, &pert);
+						mju_zero(d_closedloop->xfrc_applied, 6 * m->nbody);
+						mjv_applyPerturbPose(m, d_closedloop, &pert, 0);
+						mjv_applyPerturbForce(m, d_closedloop, &pert);
+						mju_zero(d_openloop->xfrc_applied, 6 * m->nbody);
+						mjv_applyPerturbPose(m, d_openloop, &pert, 0);
+						mjv_applyPerturbForce(m, d_openloop, &pert);
 
                         // run mj_step
                         mjtNum prevtm = d->time;
 						simulateNominal();
-						/*	simulateClosedloop();
-						simulateOpenloop();*/
+						simulateClosedloop();
+						simulateOpenloop();
 
 						//d->ctrl[0] = 2;
 						//d->ctrl[1] = 2;
@@ -2241,13 +2315,13 @@ void simulate(void)
             {
                 // apply pose perturbation
                 mjv_applyPerturbPose(m, d, &pert, 1);      // move mocap and dynamic bodies
-				/*mjv_applyPerturbPose(m, d_closedloop, &pert, 1);
-				mjv_applyPerturbPose(m, d_openloop, &pert, 1);*/
+				mjv_applyPerturbPose(m, d_closedloop, &pert, 1);
+				mjv_applyPerturbPose(m, d_openloop, &pert, 1);
 
                 // run mj_forward, to update rendering and joint sliders
                 mj_forward(m, d);
-				//mj_forward(m, d_closedloop);
-				//mj_forward(m, d_openloop);
+				mj_forward(m, d_closedloop);
+				mj_forward(m, d_openloop);
             }
         }
 
@@ -2409,34 +2483,34 @@ void init(void)
     glfwSetDropCallback(window, drop);
 
 	// switch window and do the same thing
-	//glfwMakeContextCurrent(window_openloop);
-	//glfwSwapInterval(settings.vsync);
-	//mjv_defaultCamera(&cam);
-	//mjv_defaultOption(&vopt);
-	//profilerinit();
-	//sensorinit();
-	//mjv_defaultScene(&scn);
-	//mjv_makeScene(NULL, &scn, maxgeom);
-	//mjr_defaultContext(&con);
-	//mjr_makeContext(NULL, &con, fontscale);
-	//uiSetCallback(window_openloop, &uistate, uiEvent, uiLayout);
-	//glfwSetWindowRefreshCallback(window_openloop, render);////////////////////////////////
-	//glfwSetDropCallback(window_openloop, drop);
+	glfwMakeContextCurrent(window_openloop);
+	glfwSwapInterval(settings.vsync);
+	mjv_defaultCamera(&cam);
+	mjv_defaultOption(&vopt);
+	profilerinit();
+	sensorinit();
+	mjv_defaultScene(&scn_openloop);
+	mjv_makeScene(NULL, &scn_openloop, maxgeom);
+	mjr_defaultContext(&con_openloop);
+	mjr_makeContext(NULL, &con_openloop, fontscale);
+	uiSetCallback(window_openloop, &uistate, uiEvent, uiLayout);
+	glfwSetWindowRefreshCallback(window_openloop, renderOpenloop);
+	glfwSetDropCallback(window_openloop, drop);
 
-	//glfwMakeContextCurrent(window_closedloop);
-	//glfwSwapInterval(settings.vsync);
-	//mjv_defaultCamera(&cam);
-	//mjv_defaultOption(&vopt);
-	//profilerinit();
-	//sensorinit();
-	//mjv_defaultScene(&scn);
-	//mjv_makeScene(NULL, &scn, maxgeom);
-	//mjr_defaultContext(&con);
-	//mjr_makeContext(NULL, &con, fontscale);
-	//uiSetCallback(window_closedloop, &uistate, uiEvent, uiLayout);
-	//glfwSetWindowRefreshCallback(window_closedloop, render);////////////////////////////////
-	//glfwSetDropCallback(window_closedloop, drop);
-	//glfwMakeContextCurrent(window);
+	glfwMakeContextCurrent(window_closedloop);
+	glfwSwapInterval(settings.vsync);
+	mjv_defaultCamera(&cam);
+	mjv_defaultOption(&vopt);
+	profilerinit();
+	sensorinit();
+	mjv_defaultScene(&scn_closedloop);
+	mjv_makeScene(NULL, &scn_closedloop, maxgeom);
+	mjr_defaultContext(&con_closedloop);
+	mjr_makeContext(NULL, &con_closedloop, fontscale);
+	uiSetCallback(window_closedloop, &uistate, uiEvent, uiLayout);
+	glfwSetWindowRefreshCallback(window_closedloop, renderClosedloop);
+	glfwSetDropCallback(window_closedloop, drop);
+	
     // init state and uis
     memset(&uistate, 0, sizeof(mjuiState));
     memset(&ui0, 0, sizeof(mjUI));
@@ -2459,6 +2533,10 @@ void init(void)
     mjui_add(&ui0, defWatch);
 	uiModify(window, &ui0, &uistate, &con);
 	uiModify(window, &ui1, &uistate, &con);
+	uiModify(window_openloop, &ui0, &uistate, &con_openloop);
+	uiModify(window_openloop, &ui1, &uistate, &con_openloop);
+	uiModify(window_closedloop, &ui0, &uistate, &con_closedloop);
+	uiModify(window_closedloop, &ui1, &uistate, &con_closedloop);
 }
 
 
@@ -2468,7 +2546,7 @@ int main(int argc, const char** argv)
 {
     // initialize everything
     init();
-
+	
     // request loadmodel if file given (otherwise drag-and-drop)
     if( argc>1 )
     {
@@ -2480,61 +2558,42 @@ int main(int argc, const char** argv)
 		strcat(modelfilename, kModelName);
 		settings.loadrequest = 1;
 	}
-
-	/*glfwMakeContextCurrent(window);
-	loadmodel(window, d);
-	glfwMakeContextCurrent(window_closedloop);
-	loadmodel(window_closedloop, d);
-	glfwMakeContextCurrent(window_openloop);
-	loadmodel(window_openloop, d);*/
-
+	
     // start simulation thread
     std::thread simthread(simulate);
 
     // event loop
-    while( !glfwWindowShouldClose(window) && !settings.exitrequest )
+    while( !glfwWindowShouldClose(window) && !glfwWindowShouldClose(window_closedloop) && !glfwWindowShouldClose(window_openloop) && !settings.exitrequest )
     {
         // start exclusive access (block simulation thread)
         mtx.lock();
-
+		
         // load model (not on first pass, to show "loading" label)
-        if( settings.loadrequest==1 )
-            loadmodel(&d);
+		if (settings.loadrequest == 1) {
+			loadmodel();
+		}
         else if( settings.loadrequest>1 )
             settings.loadrequest = 1;
 
         // handle events (calls all callbacks)
         glfwPollEvents();
-
+		
         // prepare to render
-        prepare();
+        prepareNominal();
+		prepareOpenloop();
+		prepareClosedloop();
 
         // end exclusive access (allow simulation thread to run)
         mtx.unlock();
-
-        // render while simulation is running
+		// render while simulation is running
+		glfwMakeContextCurrent(window);
         render(window);
 
-		//mtx.lock();
-		//glfwMakeContextCurrent(window_closedloop);
-		///*if (settings.loadrequest == 1)
-		//	loadmodel(window_closedloop, d);
-		//else if (settings.loadrequest>1)
-		//	settings.loadrequest = 1;*/
-		////mjv_updateScene(m, d_closedloop, &vopt, &pert, &cam, mjCAT_ALL, &scn);
-		//prepare();
-		//mtx.unlock();
-		//render(window_closedloop);
-		//mtx.lock();
-		//glfwMakeContextCurrent(window_openloop);
-		///*if (settings.loadrequest == 1)
-		//	loadmodel(window_openloop, d);
-		//else if (settings.loadrequest>1)
-		//	settings.loadrequest = 1;*/
-		////mjv_updateScene(m, d_openloop, &vopt, &pert, &cam, mjCAT_ALL, &scn);
-		//prepare();
-		//mtx.unlock();
-		//render(window_openloop);
+		glfwMakeContextCurrent(window_openloop);
+		renderOpenloop(window_openloop);
+
+		glfwMakeContextCurrent(window_closedloop);
+		renderClosedloop(window_closedloop);
     }
 
     // stop simulation thread
@@ -2549,8 +2608,12 @@ int main(int argc, const char** argv)
 	mj_deleteData(d_openloop);
 	mj_deleteData(d_closedloop);
     mj_deleteModel(m);
-    mjv_freeScene(&scn);
-    mjr_freeContext(&con);
+    mjv_freeScene(&scn); 
+	mjv_freeScene(&scn_openloop);
+	mjv_freeScene(&scn_closedloop);
+    mjr_freeContext(&con); 
+	mjr_freeContext(&con_openloop);
+	mjr_freeContext(&con_closedloop);
 
     // deactive MuJoCo
     mj_deactivate();
