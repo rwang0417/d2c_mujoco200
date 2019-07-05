@@ -610,3 +610,14 @@
 ## 06/25/2019
 ### Log:
 #### 1. 需要找到每个simulate和window的关联代码，暂时打算开3个thread，记得用库。
+## 07/02/2019
+### Log:
+#### 1. 三个窗口可以运行了，数据正常，关键在于makescene的scn变量和makecontext的con变量每个窗口需要一个对应的，然后在loadmodel函数里每个makecontext前面需要一个makecontextcurrent切换window,这里会覆盖，只有最后一个会显示。
+#### 2. 左右ui还不太正常。
+#### 3. 代码上传了github。
+## 07/05/2019
+### Log:
+#### 1. 太难了，整整改了一周多，与window相关的操作顺序很重要，ui只保留nominal窗口的，那这个窗口在各种处理中要是最后一个，init里面好像不用，但loadmodel，prepare和主循环里都需要是正确的顺序，否则ui各种错乱。
+#### 2. 按暂停之后时间不一样，control也乱掉，每按一次时间差多一个timestep，是因为simulate里处理out of sync情况有个mjstep，注释掉就好了。
+#### 3. info和label可以三个都有，数据也分别是各自的。
+#### 4. 自带的fullscreen功能安排好了三个窗口的位置大小，可是实际使用发现callback失效，所以还是直接点击nominal的右上角最大化按钮，然后点其他窗口就又放大了又有callback。放大后旋转点击有生效区域限制，懒得再折腾了，能用就这样吧。

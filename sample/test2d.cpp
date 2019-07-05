@@ -78,7 +78,7 @@ mjtNum state_target[kStateNum] = {
 #elif defined(PENDULUM)
 const mjtNum kControlTimeStep = 0.1;
 const mjtNum kSimulationTimeStep = 0.1;
-const mjtNum kPerturbCoefficient = 0.3;
+const mjtNum kPerturbCoefficient = 0.0;
 const int kStepNum = 30;
 const int kActuatorNum = 1;
 const int kStateNum = 2;
@@ -163,8 +163,8 @@ struct
     int spacing = 0;
     int color = 0;
     int font = 0;
-    int ui0 = 1;
-    int ui1 = 1;
+    int ui0 = 0;
+    int ui1 = 0;
     int help = 0;               
     int info = 0;               
     int profiler = 0;           
@@ -320,7 +320,8 @@ const char help_title[] =
 // info strings
 char info_title[1000];
 char info_content[1000];
-
+char info_content_openloop[1000];
+char info_content_closedloop[1000];
 
 
 //----------------------- profiler, sensor, info, watch ---------------------------------
@@ -900,7 +901,6 @@ void makerendering(int oldstate)
 }
 
 
-
 // make group section of UI
 void makegroup(int oldstate)
 {
@@ -1140,12 +1140,16 @@ mjtNum timer(void)
 
 
 // clear all times
-void cleartimers(mjData* d)
+void cleartimers()
 {
     for( int i=0; i<mjNTIMER; i++ )
     {
         d->timer[i].duration = 0;
         d->timer[i].number = 0;
+		d_closedloop->timer[i].duration = 0;
+		d_closedloop->timer[i].number = 0;
+		d_openloop->timer[i].duration = 0;
+		d_openloop->timer[i].number = 0;
     }
 }
 
@@ -1172,8 +1176,6 @@ void updatesettings(void)
 
     // update UI
     mjui_update(-1, -1, &ui0, &uistate, &con);
-	mjui_update(-1, -1, &ui0, &uistate, &con_openloop);
-	mjui_update(-1, -1, &ui0, &uistate, &con_closedloop);
 }
 
 
@@ -1238,15 +1240,15 @@ void loadmodel(void)
 	mj_forward(m, d_openloop);
 	
 	// re-create scene and context
-	mjv_makeScene(m, &scn, maxgeom);
 	mjv_makeScene(m, &scn_openloop, maxgeom);
 	mjv_makeScene(m, &scn_closedloop, maxgeom);
-	glfwMakeContextCurrent(window);
-	mjr_makeContext(m, &con, 50 * (settings.font + 1));
+	mjv_makeScene(m, &scn, maxgeom);
 	glfwMakeContextCurrent(window_openloop);
 	mjr_makeContext(m, &con_openloop, 50 * (settings.font + 1));
 	glfwMakeContextCurrent(window_closedloop);
 	mjr_makeContext(m, &con_closedloop, 50 * (settings.font + 1));
+	glfwMakeContextCurrent(window);
+	mjr_makeContext(m, &con, 50 * (settings.font + 1));
 	
 	// clear perturbation state
 	pert.active = 0;
@@ -1255,9 +1257,9 @@ void loadmodel(void)
 	
 	// align and scale view, update scene
 	alignscale();
-	mjv_updateScene(m, d, &vopt, &pert, &cam, mjCAT_ALL, &scn);
 	mjv_updateScene(m, d_openloop, &vopt, &pert, &cam, mjCAT_ALL, &scn_openloop);
 	mjv_updateScene(m, d_closedloop, &vopt, &pert, &cam, mjCAT_ALL, &scn_closedloop);
+	mjv_updateScene(m, d, &vopt, &pert, &cam, mjCAT_ALL, &scn);
 	// set window title to model name
 	/*if (window && m->names)
 	{
@@ -1277,10 +1279,6 @@ void loadmodel(void)
 	// full ui update
 	uiModify(window, &ui0, &uistate, &con);
 	uiModify(window, &ui1, &uistate, &con);
-	uiModify(window_openloop, &ui0, &uistate, &con_openloop);
-	uiModify(window_openloop, &ui1, &uistate, &con_openloop);
-	uiModify(window_openloop, &ui0, &uistate, &con_closedloop);
-	uiModify(window_openloop, &ui1, &uistate, &con_closedloop);
 	updatesettings();
 }
 
@@ -1312,7 +1310,7 @@ void uiLayout(mjuiState* state)
     mjrRect* rect = state->rect;
 
     // set number of rectangles
-    state->nrect = 4;
+    state->nrect = 6;
 
     // rect 0: entire framebuffer
     rect[0].left = 0;
@@ -1336,6 +1334,16 @@ void uiLayout(mjuiState* state)
     rect[3].width = mjMAX(0, rect[0].width - rect[1].width - rect[2].width);
     rect[3].bottom = 0;
     rect[3].height = rect[0].height;
+
+	// rect 4: entire framebuffer
+	rect[4].left = 0;
+	rect[4].bottom = 0;
+	glfwGetFramebufferSize(window_openloop, &rect[4].width, &rect[4].height);
+
+	// rect 5 entire framebuffer
+	rect[5].left = 0;
+	rect[5].bottom = 0;
+	glfwGetFramebufferSize(window_closedloop, &rect[5].width, &rect[5].height);
 }
 
 
@@ -1403,29 +1411,37 @@ void uiEvent(mjuiState* state)
 				mjr_changeFont(50 * (settings.font + 1), &con_closedloop);
                 break;
 
-            case 9:             // Full screen
-                if( glfwGetWindowMonitor(window) )
-                {
-                    // restore window from saved data
-                    glfwSetWindowMonitor(window, NULL, windowpos[0], windowpos[1], 
-                                         windowsize[0], windowsize[1], 0);
-                }
-                // currently windowed: switch to full screen
-                else
-                {
-                    // save window data
-                    glfwGetWindowPos(window, windowpos, windowpos+1);
-                    glfwGetWindowSize(window, windowsize, windowsize+1);
+			case 9:             // Full screen
+				if (glfwGetWindowMonitor(window))
+				{
+					// restore window from saved data
+					glfwSetWindowMonitor(window, NULL, windowpos[0], windowpos[1],
+						windowsize[0], windowsize[1], 0);
+					glfwSetWindowMonitor(window_closedloop, NULL, windowpos[0] + (2 * vmode.width) / 6, windowpos[1],
+						windowsize[0], windowsize[1], 0);
+					glfwSetWindowMonitor(window_openloop, NULL, windowpos[0] - (2 * vmode.width) / 6, windowpos[1],
+						windowsize[0], windowsize[1], 0);
+				}
 
-                    // switch
-                    glfwSetWindowMonitor(window, glfwGetPrimaryMonitor(), 0, 0, 
-                                         vmode.width, vmode.height, vmode.refreshRate);
+				// currently windowed: switch to full screen
+				else
+				{
+					// save window data
+					glfwGetWindowPos(window, windowpos, windowpos + 1);
+					glfwGetWindowSize(window, windowsize, windowsize + 1);
 
-                }
+					// switch
+					glfwSetWindowMonitor(window_closedloop, glfwGetPrimaryMonitor(), 0, 0,
+						vmode.width, vmode.height, vmode.refreshRate);
+					glfwSetWindowMonitor(window_openloop, glfwGetPrimaryMonitor(), 0, 0,
+						vmode.width, vmode.height, vmode.refreshRate);
+					glfwSetWindowMonitor(window, glfwGetPrimaryMonitor(), 0, 0,
+						vmode.width, vmode.height, vmode.refreshRate);
+				}
 
-                // reinstante vsync, just in case
-                glfwSwapInterval(settings.vsync);
-                break;
+				// reinstante vsync, just in case
+				glfwSwapInterval(settings.vsync);
+				break;
 
             case 10:            // Vertical sync
                 glfwSwapInterval(settings.vsync);
@@ -1433,12 +1449,8 @@ void uiEvent(mjuiState* state)
             }
 
             // modify UI
-            uiModify(window, &ui0, state, &con);
+			uiModify(window, &ui0, state, &con);
             uiModify(window, &ui1, state, &con);
-			uiModify(window_openloop, &ui0, state, &con_openloop);
-			uiModify(window_openloop, &ui1, state, &con_openloop);
-			uiModify(window_closedloop, &ui0, state, &con_closedloop);
-			uiModify(window_closedloop, &ui1, state, &con_closedloop);
         }
 
         // simulation section
@@ -1532,8 +1544,6 @@ void uiEvent(mjuiState* state)
                     cam.type = mjCAMERA_FREE;
                     settings.camera = 0;
                     mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con);
-					mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con_openloop);
-					mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con_closedloop);
                 }
             }
             else
@@ -1552,9 +1562,7 @@ void uiEvent(mjuiState* state)
                 ui1.nsect = SECT_JOINT;
                 makejoint(ui1.sect[SECT_JOINT].state);
                 ui1.nsect = NSECT1;
-                uiModify(window, &ui1, state, &con);
-				uiModify(window_openloop, &ui1, state, &con_openloop);
-				uiModify(window_closedloop, &ui1, state, &con_closedloop);
+				uiModify(window, &ui1, state, &con);
             }
 
             // remake control section if actuator group changed
@@ -1564,8 +1572,6 @@ void uiEvent(mjuiState* state)
                 makecontrol(ui1.sect[SECT_CONTROL].state);
                 ui1.nsect = NSECT1;
                 uiModify(window, &ui1, state, &con);
-				uiModify(window_openloop, &ui1, state, &con_openloop);
-				uiModify(window_closedloop, &ui1, state, &con_closedloop);
             }
         }
 
@@ -1592,8 +1598,6 @@ void uiEvent(mjuiState* state)
 				mju_zero(d_openloop->ctrl, m->nu);
 				mju_zero(d_closedloop->ctrl, m->nu);
                 mjui_update(SECT_CONTROL, -1, &ui1, &uistate, &con);
-				mjui_update(SECT_CONTROL, -1, &ui1, &uistate, &con_openloop);
-				mjui_update(SECT_CONTROL, -1, &ui1, &uistate, &con_closedloop);
             }
         }
 
@@ -1613,15 +1617,13 @@ void uiEvent(mjuiState* state)
                 settings.run = 1 - settings.run;
                 pert.active = 0;
                 mjui_update(-1, -1, &ui0, state, &con);
-				mjui_update(-1, -1, &ui0, state, &con_openloop);
-				mjui_update(-1, -1, &ui0, state, &con_closedloop);
             }
             break;
 
         case mjKEY_RIGHT:           // step forward
             if( m && !settings.run )
             {
-                cleartimers(d);
+                cleartimers();
                 mj_step(m, d);
                 profilerupdate();
                 sensorupdate();
@@ -1633,7 +1635,7 @@ void uiEvent(mjuiState* state)
             if( m && !settings.run )
             {
                 m->opt.timestep = -m->opt.timestep;
-                cleartimers(d);
+                cleartimers();
                 mj_step(m, d);
                 m->opt.timestep = -m->opt.timestep;
                 profilerupdate();
@@ -1645,7 +1647,7 @@ void uiEvent(mjuiState* state)
         case mjKEY_DOWN:            // step forward 100
             if( m && !settings.run )
             {
-                cleartimers(d);
+                cleartimers();
                 for( i=0; i<100; i++ )
                     mj_step(m, d);
                 profilerupdate();
@@ -1658,7 +1660,7 @@ void uiEvent(mjuiState* state)
             if( m && !settings.run )
             {
                 m->opt.timestep = -m->opt.timestep;
-                cleartimers(d);
+                cleartimers();
                 for( i=0; i<100; i++ )
                     mj_step(m, d);
                 m->opt.timestep = -m->opt.timestep;
@@ -1685,8 +1687,6 @@ void uiEvent(mjuiState* state)
             cam.type = mjCAMERA_FREE;
             settings.camera = 0;
             mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con);
-			mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con_openloop);
-			mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con_closedloop);
             break;
         }
 
@@ -1718,8 +1718,11 @@ void uiEvent(mjuiState* state)
                 newperturb = mjPERT_ROTATE;
 
             // perturbation onset: reset reference
-            if( newperturb && !pert.active )
-                mjv_initPerturb(m, d, &scn, &pert);
+			if (newperturb && !pert.active) {
+				mjv_initPerturb(m, d, &scn, &pert);
+				mjv_initPerturb(m, d_openloop, &scn_openloop, &pert);
+				mjv_initPerturb(m, d_closedloop, &scn_closedloop, &pert);
+			}
         }
         pert.active = newperturb;
 
@@ -1763,8 +1766,6 @@ void uiEvent(mjuiState* state)
                     // UI camera
                     settings.camera = 1;
                     mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con);
-					mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con_openloop);
-					mjui_update(SECT_RENDERING, -1, &ui0, &uistate, &con_closedloop);
                 }
             }
             // set body selection
@@ -1843,6 +1844,8 @@ void stateNominal(void)
 		mju_copy(state_nominal[step_index], d->qpos, m->nq);
 		mju_copy(&state_nominal[step_index][m->nq], d->qvel, m->nv);
 	}
+	mj_resetData(m, d);
+	mj_forward(m, d);
 }
 
 mjtNum stepCost(mjData* d, int step_index)
@@ -1991,7 +1994,7 @@ std::mutex mtx;
 
 
 // prepare to render
-void prepareNominal(void)
+void prepare(void)
 {
     // data for FPS calculation
     static double lastupdatetm = 0;
@@ -2008,26 +2011,27 @@ void prepareNominal(void)
 
     // update scene
     mjv_updateScene(m, d, &vopt, &pert, &cam, mjCAT_ALL, &scn);
-
-    // update watch 
+	mjv_updateScene(m, d_openloop, &vopt, &pert, &cam, mjCAT_ALL, &scn_openloop);
+	mjv_updateScene(m, d_closedloop, &vopt, &pert, &cam, mjCAT_ALL, &scn_closedloop);
+	
+	// update watch 
     if( settings.ui0 && ui0.sect[SECT_WATCH].state )
     {
 		watch();
 		mjui_update(SECT_WATCH, -1, &ui0, &uistate, &con);
-		mjui_update(SECT_WATCH, -1, &ui0, &uistate, &con_openloop);
-		mjui_update(SECT_WATCH, -1, &ui0, &uistate, &con_closedloop);
     }
 
     // update joint
 	if (settings.ui1 && ui1.sect[SECT_JOINT].state) {
 		mjui_update(SECT_JOINT, -1, &ui1, &uistate, &con);
-		mjui_update(SECT_JOINT, -1, &ui1, &uistate, &con_openloop);
-		mjui_update(SECT_JOINT, -1, &ui1, &uistate, &con_closedloop);
 	}
 
     // update info text
-    if( settings.info )
-        infotext(d, info_title, info_content, interval);
+	if (settings.info) {
+		infotext(d, info_title, info_content, interval);
+		infotext(d_openloop, info_title, info_content_openloop, interval);
+		infotext(d_closedloop, info_title, info_content_closedloop, interval);
+	}
 
     // update profiler
     if( settings.profiler && settings.run )
@@ -2038,37 +2042,7 @@ void prepareNominal(void)
         sensorupdate();
 
     // clear timers once profiler info has been copied
-    cleartimers(d);
-}
-
-void prepareOpenloop()
-{
-	if (!m) return;
-
-	// update scene
-	mjv_updateScene(m, d_openloop, &vopt, &pert, &cam, mjCAT_ALL, &scn_openloop);
-
-	// update info text
-	if (settings.info)
-		infotext(d_openloop, info_title, info_content, 0);
-
-	// clear timers once profiler info has been copied
-	cleartimers(d_openloop);
-}
-
-void prepareClosedloop()
-{
-	if (!m) return;
-
-	// update scene
-	mjv_updateScene(m, d_closedloop, &vopt, &pert, &cam, mjCAT_ALL, &scn_closedloop);
-
-	// update info text
-	if (settings.info)
-		infotext(d_closedloop, info_title, info_content, 0);
-
-	// clear timers once profiler info has been copied
-	cleartimers(d_closedloop);
+    cleartimers();
 }
 
 // render in main thread (while simulating in background thread)
@@ -2107,6 +2081,7 @@ void render(GLFWwindow* window)
         return;
     }
 
+
     // render scene
     mjr_render(rect, &scn, &con);
 
@@ -2115,13 +2090,13 @@ void render(GLFWwindow* window)
         mjr_overlay(mjFONT_BIG, mjGRID_TOPRIGHT, smallrect, 
                     settings.loadrequest ? "loading" : "pause", NULL, &con);
 
-    // show ui 0
-    if( settings.ui0 )
-        mjui_render(&ui0, &uistate, &con);
+	// show ui 0
+	if (settings.ui0)
+		mjui_render(&ui0, &uistate, &con);
 
-    // show ui 1
-    if( settings.ui1 )
-        mjui_render(&ui1, &uistate, &con);
+	// show ui 1
+	if (settings.ui1)
+		mjui_render(&ui1, &uistate, &con);
 
     // show help
     if( settings.help )
@@ -2147,11 +2122,8 @@ void render(GLFWwindow* window)
 void renderOpenloop(GLFWwindow* window)
 {
 	// get 3D rectangle and reduced for profiler
-	mjrRect rect = uistate.rect[3];
-	mjrRect smallrect = rect;
-
-	if (settings.profiler)
-		smallrect.width = rect.width - rect.width / 4;
+	mjrRect rect = uistate.rect[4];
+	mjrRect smallrect = uistate.rect[3];
 
 	// no model
 	if (!m) return;
@@ -2164,18 +2136,10 @@ void renderOpenloop(GLFWwindow* window)
 		mjr_overlay(mjFONT_BIG, mjGRID_TOPRIGHT, smallrect,
 			settings.loadrequest ? "loading" : "pause", NULL, &con_openloop);
 
-	// show ui 0
-	if (settings.ui0)
-		mjui_render(&ui0, &uistate, &con_openloop);
-
-	// show ui 1
-	if (settings.ui1)
-		mjui_render(&ui1, &uistate, &con_openloop);
-
 	// show info
 	if (settings.info)
 		mjr_overlay(mjFONT_NORMAL, mjGRID_BOTTOMLEFT, rect,
-			info_title, info_content, &con_openloop);
+			info_title, info_content_openloop, &con_openloop);
 
 	// finalize
 	glfwSwapBuffers(window);
@@ -2184,11 +2148,8 @@ void renderOpenloop(GLFWwindow* window)
 void renderClosedloop(GLFWwindow* window)
 {
 	// get 3D rectangle and reduced for profiler
-	mjrRect rect = uistate.rect[3];
-	mjrRect smallrect = rect;
-
-	if (settings.profiler)
-		smallrect.width = rect.width - rect.width / 4;
+	mjrRect rect = uistate.rect[5];
+	mjrRect smallrect = uistate.rect[3];
 
 	// no model
 	if (!m) return;
@@ -2201,18 +2162,10 @@ void renderClosedloop(GLFWwindow* window)
 		mjr_overlay(mjFONT_BIG, mjGRID_TOPRIGHT, smallrect,
 			settings.loadrequest ? "loading" : "pause", NULL, &con_closedloop);
 
-	// show ui 0
-	if (settings.ui0)
-		mjui_render(&ui0, &uistate, &con_closedloop);
-
-	// show ui 1
-	if (settings.ui1)
-		mjui_render(&ui1, &uistate, &con_closedloop);
-
 	// show info
 	if (settings.info)
 		mjr_overlay(mjFONT_NORMAL, mjGRID_BOTTOMLEFT, rect,
-			info_title, info_content, &con_closedloop);
+			info_title, info_content_closedloop, &con_closedloop);
 
 	// finalize
 	glfwSwapBuffers(window);
@@ -2233,7 +2186,7 @@ void simulate(void)
         //  yield results in busy wait - which has better timing but kills battery life
         if( settings.run && settings.busywait )
             std::this_thread::yield();
-        else
+		else
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
         // start exclusive access
@@ -2265,14 +2218,14 @@ void simulate(void)
 					mjv_applyPerturbForce(m, d, &pert);
 
                     // run single step, let next iteration deal with timing
-                    mj_step(m, d);
+                    //mj_step(m, d);
                 }
 
                 // in-sync
                 else
                 {
                     // step while simtime lags behind cputime, and within safefactor
-                    while( (d->time-simsync)<(glfwGetTime()-cpusync) &&
+                    while((d_openloop->time - simsync)<(glfwGetTime() - cpusync) && (d_closedloop->time - simsync)<(glfwGetTime() - cpusync) && (d->time-simsync)<(glfwGetTime()-cpusync) &&
                            (glfwGetTime()-tmstart)<refreshfactor/vmode.refreshRate )
                     {
                         // clear old perturbations, apply new
@@ -2289,8 +2242,8 @@ void simulate(void)
                         // run mj_step
                         mjtNum prevtm = d->time;
 						simulateNominal();
-						simulateClosedloop();
 						simulateOpenloop();
+						simulateClosedloop();
 
 						//d->ctrl[0] = 2;
 						//d->ctrl[1] = 2;
@@ -2371,7 +2324,7 @@ void init(void)
 	}
 
 	strcpy(datafilename, datafilepre);
-	strcat(datafilename, "kTrackerFeedbackGain.txt");
+	strcat(datafilename, "TK.txt");
 	if ((filestream1 = fopen(datafilename, "r")) != NULL)
 	{
 		for (int i1 = 0; i1 < kStepNum; i1++) {
@@ -2478,39 +2431,18 @@ void init(void)
     mjr_makeContext(NULL, &con, fontscale);
 
     // set GLFW callbacks
-    uiSetCallback(window, &uistate, uiEvent, uiLayout);
+    uiSetCallback(window, &uistate, uiEvent, uiLayout); 
     glfwSetWindowRefreshCallback(window, render);
     glfwSetDropCallback(window, drop);
 
 	// switch window and do the same thing
-	glfwMakeContextCurrent(window_openloop);
-	glfwSwapInterval(settings.vsync);
-	mjv_defaultCamera(&cam);
-	mjv_defaultOption(&vopt);
-	profilerinit();
-	sensorinit();
-	mjv_defaultScene(&scn_openloop);
-	mjv_makeScene(NULL, &scn_openloop, maxgeom);
-	mjr_defaultContext(&con_openloop);
-	mjr_makeContext(NULL, &con_openloop, fontscale);
+	uiSetCallback(window_closedloop, &uistate, uiEvent, uiLayout);
+	glfwSetWindowRefreshCallback(window_closedloop, renderClosedloop);
+	glfwSetDropCallback(window_closedloop, drop);
 	uiSetCallback(window_openloop, &uistate, uiEvent, uiLayout);
 	glfwSetWindowRefreshCallback(window_openloop, renderOpenloop);
 	glfwSetDropCallback(window_openloop, drop);
 
-	glfwMakeContextCurrent(window_closedloop);
-	glfwSwapInterval(settings.vsync);
-	mjv_defaultCamera(&cam);
-	mjv_defaultOption(&vopt);
-	profilerinit();
-	sensorinit();
-	mjv_defaultScene(&scn_closedloop);
-	mjv_makeScene(NULL, &scn_closedloop, maxgeom);
-	mjr_defaultContext(&con_closedloop);
-	mjr_makeContext(NULL, &con_closedloop, fontscale);
-	uiSetCallback(window_closedloop, &uistate, uiEvent, uiLayout);
-	glfwSetWindowRefreshCallback(window_closedloop, renderClosedloop);
-	glfwSetDropCallback(window_closedloop, drop);
-	
     // init state and uis
     memset(&uistate, 0, sizeof(mjuiState));
     memset(&ui0, 0, sizeof(mjUI));
@@ -2533,12 +2465,7 @@ void init(void)
     mjui_add(&ui0, defWatch);
 	uiModify(window, &ui0, &uistate, &con);
 	uiModify(window, &ui1, &uistate, &con);
-	uiModify(window_openloop, &ui0, &uistate, &con_openloop);
-	uiModify(window_openloop, &ui1, &uistate, &con_openloop);
-	uiModify(window_closedloop, &ui0, &uistate, &con_closedloop);
-	uiModify(window_closedloop, &ui1, &uistate, &con_closedloop);
 }
-
 
 
 // run event loop
@@ -2547,7 +2474,7 @@ int main(int argc, const char** argv)
     // initialize everything
     init();
 	
-    // request loadmodel if file given (otherwise drag-and-drop)
+    // request loadmodel if file given 
     if( argc>1 )
     {
         mju_strncpy(modelfilename, argv[1], 100);
@@ -2558,6 +2485,9 @@ int main(int argc, const char** argv)
 		strcat(modelfilename, kModelName);
 		settings.loadrequest = 1;
 	}
+
+	loadmodel();
+	stateNominal();
 	
     // start simulation thread
     std::thread simthread(simulate);
@@ -2579,21 +2509,19 @@ int main(int argc, const char** argv)
         glfwPollEvents();
 		
         // prepare to render
-        prepareNominal();
-		prepareOpenloop();
-		prepareClosedloop();
+        prepare();
 
         // end exclusive access (allow simulation thread to run)
         mtx.unlock();
 		// render while simulation is running
-		glfwMakeContextCurrent(window);
-        render(window);
-
 		glfwMakeContextCurrent(window_openloop);
 		renderOpenloop(window_openloop);
 
 		glfwMakeContextCurrent(window_closedloop);
 		renderClosedloop(window_closedloop);
+
+		glfwMakeContextCurrent(window);
+		render(window);
     }
 
     // stop simulation thread
@@ -2602,8 +2530,8 @@ int main(int argc, const char** argv)
 
     // delete everything we allocated
     uiClearCallback(window);
-	uiClearCallback(window_openloop);
 	uiClearCallback(window_closedloop);
+	uiClearCallback(window_openloop);
     mj_deleteData(d); 
 	mj_deleteData(d_openloop);
 	mj_deleteData(d_closedloop);
@@ -2615,7 +2543,7 @@ int main(int argc, const char** argv)
 	mjr_freeContext(&con_openloop);
 	mjr_freeContext(&con_closedloop);
 
-    // deactive MuJoCo
+    // deactivate MuJoCo
     mj_deactivate();
 
     // terminate GLFW (crashes with Linux NVidia drivers)
