@@ -24,112 +24,48 @@
 
 using namespace Eigen;
 
-//-------------------------------- user macros ------------------------------------------
-// model selection: PENDULUM ACROBOT SWIMMER3 CHEETAH
-#define PENDULUM
-#define PERFORMANCE_TEST false
-#define FINAL_COST false
-#define POLICY_COMPARE false
-#define ERROR_COMPARE false
-#define LOCAL true
-#define PI 3.141592653
-
 //-------------------------------- global -----------------------------------------------
-// model parameters
-#if defined(CHEETAH)
-const mjtNum kControlTimeStep = 0.1;
-const mjtNum kSimulationTimeStep = 0.05;
-const mjtNum kPerturbCoefficient = 0.1;
-const int kStepNum = 50;
-const int kActuatorNum = 6;
-const int kStateNum = 18;
-const char* kModelName = "cheetah.xml";
-const mjtNum kStabilizerFeedbackGain[kStateNum] = { 0 };
-mjtNum state_nominal[kStepNum + 1][kStateNum + 1] = { 0.0 };
-mjtNum state_target[kStateNum] = { 0 };
-#elif defined(SWIMMER3)
-const mjtNum kControlTimeStep = 0.01;//0.005
-const mjtNum kSimulationTimeStep = 0.01;
-const mjtNum kPerturbCoefficient = 0.05;
-const int kStepNum = 800;
-const int kActuatorNum = 2;
-const int kStateNum = 10;
-const char* kModelName = "swimmer3.xml";
-const mjtNum kStabilizerFeedbackGain[kStateNum] = { 0 };
-mjtNum state_nominal[kStepNum + 1][kStateNum + 1] = { 0 };
-mjtNum state_target[kStateNum] = { 0 };
-#elif defined(ACROBOT)
-const mjtNum kControlTimeStep = 0.01;
-const mjtNum kSimulationTimeStep = 0.01;
-const mjtNum kPerturbCoefficient = 0.;
-const int kStepNum = 800;
-const int kActuatorNum = 1;
-const int kStateNum = 4;
-const mjtNum kStabilizerFeedbackGain[kStateNum] = { -428.9630, -108.7071, -158.2817, -45.5430 };
-const char* kModelName = "acrobot.xml";
-mjtNum state_nominal[kStepNum + 1][kStateNum] = { PI, 0.0, 0, 0 };
-// top is 0
-mjtNum state_target[kStateNum] = {
-	(mjtNum)(0),
-	(mjtNum)(0),
-	(mjtNum)(0),
-	(mjtNum)(0),
-};
-#elif defined(PENDULUM)
-const mjtNum kControlTimeStep = 0.1;
-const mjtNum kSimulationTimeStep = 0.1;
-const mjtNum kPerturbCoefficient = 0.0;
-const int kStepNum = 30;
-const int kActuatorNum = 1;
-const int kStateNum = 2;
-const mjtNum kStabilizerFeedbackGain[kStateNum] = { 11.0396, 3.0658 };// { 5.4995, 1.2227 };
-const char* kModelName = "pendulum.xml";
-mjtNum state_nominal[kStepNum + 1][kStateNum] = { PI, 0.0 };
-// top is 0
-mjtNum state_target[kStateNum] = {
-	(mjtNum)(2 * PI),
-	(mjtNum)(0),
-};
-#endif
-
 // constants
-const int maxgeom = 5000;           // preallocated geom array in mjvScene
+const int kTestNum = 500;			// number of monte-carlo runs
+const int kMaxStep = 5000;           // max step number for one rollout
+const int kMaxState = 100;			// max state dimension
+const int kMaxGeom = 5000;           // preallocated geom array in mjvScene
 const double syncmisalign = 0.1;    // maximum time mis-alignment before re-sync
 const double refreshfactor = 0.7;   // fraction of refresh available for simulation
-
 
 // model and data
 mjModel* m = NULL;
 mjData* d = NULL;
 mjData* d_closedloop = NULL;
 mjData* d_openloop = NULL;
-const int kTestNum = 500;
-const int kIterationPerStep = (int)(kControlTimeStep / kSimulationTimeStep);
+int integration_per_step = 1;
+int stepnum;
+int actuatornum;
+int statenum;
+mjtNum control_timestep;
+mjtNum simulation_timestep;
+mjtNum perturb_coefficient;
+mjtNum state_nominal[kMaxStep][kMaxState];
+mjtNum state_target[kMaxState];
 mjtNum ctrl_max = 0;
-mjtNum ctrl_nominal[kStepNum * kActuatorNum] = { 0 };
-mjtNum ctrl_openloop[kStepNum * kActuatorNum] = { 0 };
-mjtNum tracker_feedback_gain[kStepNum][kActuatorNum][kStateNum] = { 0 };
+mjtNum ctrl_nominal[kMaxStep*kMaxState] = { 0 };
+mjtNum ctrl_openloop[kMaxStep*kMaxState] = { 0 };
+mjtNum stabilizer_feedback_gain[kMaxState][kMaxState] = { 0 };
+mjtNum tracker_feedback_gain[kMaxStep][kMaxState][kMaxState] = { 0 };
 mjtNum cost_closedloop = 0, cost_openloop = 0;
 FILE *filestream1;
-char para_buff[30], ctrl_buff[30];
-char str3[30];
+char data_buff[30], ctrl_buff[30];
 char modelfilename[100];
 char keyfilename[100];
 char datafilename[100];
 char username[30];
-#if LOCAL == false
-char modelfilepre[20] = "../../../model/";
-char keyfilepre[20]   = "../../../doc/";
-char datafilepre[20]  = "../../../data/";
-#else 
-char modelfilepre[20] = "";
-char keyfilepre[100]  = "";
+char testmode[30];
+char keyfilepre[20]  = "";
 char datafilepre[20]  = "";
-#endif
 
-/* hyperparameters */
+// hyperparameters 
 mjtNum Q, QT, R;
-mjtNum Qm[kStateNum][kStateNum], QTm[kStateNum][kStateNum];
+mjtNum Qm[kMaxState][kMaxState], QTm[kMaxState][kMaxState];
 
 // abstract visualization
 mjvScene scn, scn_openloop, scn_closedloop;
@@ -1240,9 +1176,9 @@ void loadmodel(void)
 	mj_forward(m, d_openloop);
 	
 	// re-create scene and context
-	mjv_makeScene(m, &scn_openloop, maxgeom);
-	mjv_makeScene(m, &scn_closedloop, maxgeom);
-	mjv_makeScene(m, &scn, maxgeom);
+	mjv_makeScene(m, &scn_openloop, kMaxGeom);
+	mjv_makeScene(m, &scn_closedloop, kMaxGeom);
+	mjv_makeScene(m, &scn, kMaxGeom);
 	glfwMakeContextCurrent(window_openloop);
 	mjr_makeContext(m, &con_openloop, 50 * (settings.font + 1));
 	glfwMakeContextCurrent(window_closedloop);
@@ -1830,16 +1766,82 @@ void uiEvent(mjuiState* state)
     }
 }
 
+//--------------------------- environment selection -------------------------------------
+void modelSelection(const char* model)
+{
+	strcpy(modelfilename, model);
+	if(_strcmpi(modelfilename,"pendulum.xml") == 0) {
+		control_timestep = 0.1;
+		simulation_timestep = 0.1;
+		perturb_coefficient = 0.4;
+		stepnum = 30;
+		statenum = 2;
+		actuatornum = 1;
+		mjtNum temp[kMaxState][kMaxState] = { 11.0396, 3.0658 };// { 5.4995, 1.2227 };
+		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], statenum);
+		mjtNum temp1[kMaxState] = { PI, 0.0 };
+		mju_copy(state_nominal[0], temp1, statenum);
+		mjtNum temp2[kMaxState] = { 2 * PI, 0.0 };
+		mju_copy(state_target, temp2, statenum);
+		integration_per_step = (int)(control_timestep / simulation_timestep);
+	}
+	else if (_strcmpi(modelfilename, "cheetah.xml") == 0) {
+		control_timestep = 0.1;
+		simulation_timestep = 0.05;
+		perturb_coefficient = 0.1;
+		stepnum = 50;
+		statenum = 18;
+		actuatornum = 6;
+		mjtNum temp[kMaxState][kMaxState] = { 0 };// { 5.4995, 1.2227 };
+		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], statenum);
+		mjtNum temp1[kMaxState] = { 0 };
+		mju_copy(state_nominal[0], temp1, statenum);
+		mjtNum temp2[kMaxState] = { 0 };
+		mju_copy(state_target, temp2, statenum);
+		integration_per_step = (int)(control_timestep / simulation_timestep);
+	}
+	else if (_strcmpi(modelfilename, "swimmer3.xml") == 0) {
+		control_timestep = 0.005;
+		simulation_timestep = 0.005;
+		perturb_coefficient = 0.05;
+		stepnum = 1600;
+		statenum = 10;
+		actuatornum = 2;
+		mjtNum temp[kMaxState][kMaxState] = { 0 };// { 5.4995, 1.2227 };
+		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], statenum);
+		mjtNum temp1[kMaxState] = { 0 };
+		mju_copy(state_nominal[0], temp1, statenum);
+		mjtNum temp2[kMaxState] = { 0 };
+		mju_copy(state_target, temp2, statenum);
+		integration_per_step = (int)(control_timestep / simulation_timestep);
+	}
+	else if (_strcmpi(modelfilename, "acrobot.xml") == 0) {
+		control_timestep = 0.01;
+		simulation_timestep = 0.01;
+		perturb_coefficient = 0.0;
+		stepnum = 800;
+		statenum = 4;
+		actuatornum = 1;
+		mjtNum temp[kMaxState][kMaxState] = { -428.9630, -108.7071, -158.2817, -45.5430 };
+		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], statenum);
+		mjtNum temp1[kMaxState] = { PI, 0.0, 0, 0 };
+		mju_copy(state_nominal[0], temp1, statenum);
+		mjtNum temp2[kMaxState] = { 0 };
+		mju_copy(state_target, temp2, statenum);
+		integration_per_step = (int)(control_timestep / simulation_timestep);
+	}
+}
+
 //--------------------------- control and testing ---------------------------------------
 void stateNominal(void)
 {
-	static int step_index = 0;
+	int step_index = 0;
 
 	mju_copy(d->qpos, state_nominal[step_index], m->nq);
 	mju_copy(d->qvel, &state_nominal[step_index][m->nq], m->nv);
-	while (step_index < kStepNum) {
-		mju_copy(d->ctrl, &ctrl_nominal[step_index * kActuatorNum], m->nu);
-		for (int i = 0; i < kIterationPerStep; i++) mj_step(m, d);
+	while (step_index < stepnum) {
+		mju_copy(d->ctrl, &ctrl_nominal[step_index * actuatornum], m->nu);
+		for (int i = 0; i < integration_per_step; i++) mj_step(m, d);
 		step_index++;
 		mju_copy(state_nominal[step_index], d->qpos, m->nq);
 		mju_copy(&state_nominal[step_index][m->nq], d->qvel, m->nv);
@@ -1850,91 +1852,83 @@ void stateNominal(void)
 
 mjtNum stepCost(mjData* d, int step_index)
 {
-	mjtNum state[kStateNum], res0[kStateNum], res1[kStateNum], cost;
+	mjtNum state[kMaxState], res0[kMaxState], res1[kMaxState], cost;
 
 	mju_copy(state, d->qpos, m->nq);
 	mju_copy(&state[m->nq], d->qvel, m->nv);
-
-#if defined(PENDULUM)
-	if (state[0] < PI) state_target[0] = 0; else state_target[0] = 2 * PI;
-	mju_sub(res0, state, state_target, kStateNum);
-	if (step_index >= kStepNum) mju_mulMatVec(res1, *QTm, res0, kStateNum, kStateNum);
-	else mju_mulMatVec(res1, *Qm, res0, kStateNum, kStateNum);
-	cost = (mju_dot(res0, res1, kStateNum) + R * mju_dot(d->ctrl, d->ctrl, kActuatorNum));
-#endif
-#if defined(ACROBOT)
-	if (state[0] < PI) state_target[0] = 0; else state_target[0] = 2 * PI;
-	mju_sub(res0, state, state_target, kStateNum);
-	if (step_index >= kStepNum) mju_mulMatVec(res1, *QTm, res0, kStateNum, kStateNum);
-	else mju_mulMatVec(res1, *Qm, res0, kStateNum, kStateNum);
-	cost = (mju_dot(res0, res1, kStateNum) + R * mju_dot(d->ctrl, d->ctrl, kActuatorNum));
-#endif
-#if defined(SWIMMER3)
-	if (step_index >= kStepNum) cost = (QT * (1 * (d->qpos[0] - 0.6) * (d->qpos[0] - 0.6) + (d->qpos[1] + 0.6) * (d->qpos[1] + 0.6) + 3 * d->qvel[0] * d->qvel[0] + 3 * d->qvel[1] * d->qvel[1]) + R * mju_dot(d->ctrl, d->ctrl, kActuatorNum));
-	else cost = (Q * ((1.5 * (d->qpos[0] - 0.6) * (d->qpos[0] - 0.6) + 1.5*(d->qpos[1] + 0.6) * (d->qpos[1] + 0.6)) + R * mju_dot(d->ctrl, d->ctrl, kActuatorNum)));
-#endif
-#if defined(CHEETAH)
-	if (step_index >= kStepNum) cost = (QT*(d->qvel[0] - 3)*(d->qvel[0] - 3) + R * mju_dot(d->ctrl, d->ctrl, kActuatorNum));
-	else cost = (Q*(d->qvel[0] - 3) * (d->qvel[0] - 3) + R * mju_dot(d->ctrl, d->ctrl, kActuatorNum));
-#endif
+	if (_strcmpi(modelfilename, "pendulum.xml") == 0) {
+		if (state[0] < PI) state_target[0] = 0; else state_target[0] = 2 * PI;
+		mju_sub(res0, state, state_target, statenum);
+		if (step_index >= stepnum) mju_mulMatVec(res1, *QTm, res0, kMaxState, kMaxState);
+		else mju_mulMatVec(res1, *Qm, res0, kMaxState, kMaxState);
+		cost = (mju_dot(res0, res1, statenum) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+	}
+	else if (_strcmpi(modelfilename, "acrobot.xml") == 0) {
+		if (state[0] < PI) state_target[0] = 0; else state_target[0] = 2 * PI;
+		mju_sub(res0, state, state_target, statenum);
+		if (step_index >= stepnum) mju_mulMatVec(res1, *QTm, res0, statenum, statenum);
+		else mju_mulMatVec(res1, *Qm, res0, statenum, statenum);
+		cost = (mju_dot(res0, res1, statenum) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+	}
+	else if (_strcmpi(modelfilename, "swimmer3.xml") == 0) {
+		if (step_index >= stepnum) cost = (QT * (1 * (d->qpos[0] - 0.6) * (d->qpos[0] - 0.6) + (d->qpos[1] + 0.6) * (d->qpos[1] + 0.6) + 3 * d->qvel[0] * d->qvel[0] + 3 * d->qvel[1] * d->qvel[1]) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+		else cost = (Q * ((1.5 * (d->qpos[0] - 0.6) * (d->qpos[0] - 0.6) + 1.5*(d->qpos[1] + 0.6) * (d->qpos[1] + 0.6)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum)));
+	}
+	else if (_strcmpi(modelfilename, "cheetah.xml") == 0) {
+		if (step_index >= stepnum) cost = (QT*(d->qvel[0] - 3)*(d->qvel[0] - 3) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+		else cost = (Q*(d->qvel[0] - 3) * (d->qvel[0] - 3) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+	}
 	return cost;
 }
 
 void simulateNominal(void)
 {
-	static mjtNum state_error[kStateNum];
+	static mjtNum state_error[kMaxState];
 	static int step_index = 0;
 
 	if (step_index == 0) {
 		mju_copy(d->qpos, state_nominal[0], m->nq);
 		mju_copy(d->qvel, &state_nominal[0][m->nq], m->nv);
 	}
-	if (step_index >= kStepNum) 
+	if (step_index >= stepnum) 
 	{
 		mju_sub(state_error,  state_target, d->qpos, m->nq);
 		mju_sub(&state_error[m->nq], &state_target[m->nq], d->qvel, m->nv);
-#if defined (PENDULUM)
-		state_error[0] = -(PI - fabs(d->qpos[0] - PI))*((PI - d->qpos[0] > 0) - (PI - d->qpos[0] < 0));
-#endif
-#if defined (CARTPOLE)
-		state_error[2] = -(PI - fabs(d->qpos[1]))*((d->qpos[1] < 0) - (d->qpos[1] > 0));
-#endif
-#if defined (CART2POLE)
-		state_error[2] = -(PI - fabs(d->qpos[1] - PI))*((PI - d->qpos[1] > 0) - (PI - d->qpos[1] < 0));
-#endif 
-		mju_mulMatVec(d->ctrl, kStabilizerFeedbackGain, state_error, m->nu, kStateNum);
+		if (_strcmpi(modelfilename, "pendulum.xml") == 0) {
+			state_error[0] = -(PI - fabs(d->qpos[0] - PI))*((PI - d->qpos[0] > 0) - (PI - d->qpos[0] < 0));
+		}
+		mju_mulMatVec(d->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 	}
-	else mju_copy(d->ctrl, &ctrl_nominal[step_index * kActuatorNum], m->nu);
-	for (int i = 0; i < kIterationPerStep; i++) mj_step(m, d);
+	else mju_copy(d->ctrl, &ctrl_nominal[step_index * actuatornum], m->nu);
+	for (int i = 0; i < integration_per_step; i++) mj_step(m, d);
 	step_index++;
 }
 
 bool simulateClosedloop(void)
 {
-	static mjtNum state_error[kStateNum], ctrl_feedback[kActuatorNum];
+	static mjtNum state_error[kMaxState], ctrl_feedback[kMaxState];
 	static int step_index = 0;
 
 	if (step_index == 0) {
+		mj_resetData(m, d_closedloop);
 		mju_copy(d_closedloop->qpos, state_nominal[0], m->nq);
 		mju_copy(d_closedloop->qvel, &state_nominal[0][m->nq], m->nv);
+		mj_forward(m, d_closedloop);
 		cost_closedloop = stepCost(d_closedloop, step_index);
 	}
 
-	if (step_index >= kStepNum)
+	if (step_index >= stepnum)
 	{
 		mju_sub(state_error, state_target, d_closedloop->qpos, m->nq);
 		mju_sub(&state_error[m->nq], &state_target[m->nq], d_closedloop->qvel, m->nv);
-#if defined (PENDULUM)
-		state_error[0] = -(PI - fabs(d_closedloop->qpos[0] - PI))*((PI - d_closedloop->qpos[0] > 0) - (PI - d_closedloop->qpos[0] < 0));
-#endif
-#if defined (CARTPOLE)
-		state_error[2] = -(PI - fabs(d_closedloop->qpos[1]))*((d_closedloop->qpos[1] < 0) - (d_closedloop->qpos[1] > 0));
-#endif
-#if defined (CART2POLE)
-		state_error[2] = -(PI - fabs(d_closedloop->qpos[1] - PI))*((PI - d_closedloop->qpos[1] > 0) - (PI - d_closedloop->qpos[1] < 0));
-#endif 
-		mju_mulMatVec(d_closedloop->ctrl, kStabilizerFeedbackGain, state_error, m->nu, kStateNum);
-		if (POLICY_COMPARE == true) {
+		if (_strcmpi(modelfilename, "pendulum.xml") == 0) {
+			state_error[0] = -(PI - fabs(d_closedloop->qpos[0] - PI))*((PI - d_closedloop->qpos[0] > 0) - (PI - d_closedloop->qpos[0] < 0));
+		}
+		if (_strcmpi(modelfilename, "cartpole.xml") == 0) {
+			state_error[2] = -(PI - fabs(d_closedloop->qpos[1]))*((d_closedloop->qpos[1] < 0) - (d_closedloop->qpos[1] > 0));
+		}
+		mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
+		if (_strcmpi(testmode, "policy_compare") == 0) {
 			step_index = 0;
 			return 1;
 		}
@@ -1942,10 +1936,10 @@ bool simulateClosedloop(void)
 	else {
 		mju_sub(state_error, state_nominal[step_index], d_closedloop->qpos, m->nq);
 		mju_sub(&state_error[m->nq], &state_nominal[step_index][m->nq], d_closedloop->qvel, m->nv);
-		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index], state_error, m->nu, kStateNum);
-		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index * kActuatorNum], ctrl_feedback, m->nu);
+		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index], state_error, m->nu, kMaxState);
+		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index * actuatornum], ctrl_feedback, m->nu);
 	}
-	for (int i = 0; i < kIterationPerStep; i++) mj_step(m, d_closedloop);
+	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
 	step_index++;
 	cost_closedloop += stepCost(d_closedloop, step_index);
 	return 0;
@@ -1953,38 +1947,122 @@ bool simulateClosedloop(void)
 
 bool simulateOpenloop(void)
 {
-	static mjtNum state_error[kStateNum];
+	static mjtNum state_error[kMaxState];
 	static int step_index = 0;
 
 	if (step_index == 0) {
+		mj_resetData(m, d_openloop);
 		mju_copy(d_openloop->qpos, state_nominal[0], m->nq);
 		mju_copy(d_openloop->qvel, &state_nominal[0][m->nq], m->nv);
+		mj_forward(m, d_closedloop);
 		cost_openloop = stepCost(d_openloop, step_index);
 	}
-	if (step_index >= kStepNum)
+	if (step_index >= stepnum)
 	{
 		mju_sub(state_error, state_target, d_openloop->qpos, m->nq);
 		mju_sub(&state_error[m->nq], &state_target[m->nq], d_openloop->qvel, m->nv);
-#if defined (PENDULUM)
-		state_error[0] = -(PI - fabs(d_openloop->qpos[0] - PI))*((PI - d_openloop->qpos[0] > 0) - (PI - d_openloop->qpos[0] < 0));
-#endif
-#if defined (CARTPOLE)
-		state_error[2] = -(PI - fabs(d_openloop->qpos[1]))*((d_openloop->qpos[1] < 0) - (d_openloop->qpos[1] > 0));
-#endif
-#if defined (CART2POLE)
-		state_error[2] = -(PI - fabs(d_openloop->qpos[1] - PI))*((PI - d_openloop->qpos[1] > 0) - (PI - d_openloop->qpos[1] < 0));
-#endif 
-		mju_mulMatVec(d_openloop->ctrl, kStabilizerFeedbackGain, state_error, m->nu, kStateNum);
-		if (POLICY_COMPARE == true) {
+		if (_strcmpi(modelfilename, "pendulum.xml") == 0) {
+			state_error[0] = -(PI - fabs(d_openloop->qpos[0] - PI))*((PI - d_openloop->qpos[0] > 0) - (PI - d_openloop->qpos[0] < 0));
+		}
+		if (_strcmpi(modelfilename, "cartpole.xml") == 0) {
+			state_error[2] = -(PI - fabs(d_openloop->qpos[1]))*((d_openloop->qpos[1] < 0) - (d_openloop->qpos[1] > 0));
+		}
+		mju_mulMatVec(d_openloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
+		if (_strcmpi(testmode, "policy_compare") == 0) {
 			step_index = 0;
 			return 1;
 		}
 	}
-	else mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index * kActuatorNum], m->nu);
-	for (int i = 0; i < kIterationPerStep; i++) mj_step(m, d_openloop);
+	else mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index * actuatornum], m->nu);
+	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_openloop);
 	step_index++;
-	cost_openloop += stepCost(d_openloop, step_index);
+	cost_openloop += stepCost(d_openloop, step_index); 
 	return 0;
+}
+
+mjtNum terminalError(mjtNum ptb)
+{
+	int step_index = 0;
+	mjtNum state_error[kMaxState], ctrl_feedback[kMaxState];
+
+	mj_resetData(m, d_closedloop);
+	mju_copy(d_closedloop->qpos, state_nominal[step_index], m->nq);
+	mju_copy(d_closedloop->qvel, &state_nominal[step_index][m->nq], m->nv);
+	mj_forward(m, d_closedloop);
+	for (int e = 0; e < stepnum * actuatornum; e++)
+	{
+		ctrl_openloop[e] = ctrl_nominal[e] + ptb * ctrl_max * randGauss(0, 1);
+	}
+	while (step_index < stepnum) {
+		mju_sub(state_error, state_nominal[step_index], d_closedloop->qpos, m->nq);
+		mju_sub(&state_error[m->nq], &state_nominal[step_index][m->nq], d_closedloop->qvel, m->nv);
+		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index], state_error, m->nu, statenum);
+		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index * actuatornum], ctrl_feedback, m->nu);
+		for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
+		step_index++;
+	}
+	if (_strcmpi(modelfilename, "pendulum.xml") == 0)
+		return sqrt(angleModify(0, d_closedloop->qpos[0])*angleModify(0, d_closedloop->qpos[0]) + d_closedloop->qvel[0] * d_closedloop->qvel[0]);
+	else if (_strcmpi(modelfilename, "swimmer3.xml") == 0)
+		return sqrt((d_closedloop->geom_xpos[6] - 0.6) * (d_closedloop->geom_xpos[6] - 0.6) + (d_closedloop->geom_xpos[7] + 0.6) * (d_closedloop->geom_xpos[7] + 0.6));
+	return 0;
+}
+
+void performanceTest(void)
+{
+	strcpy(datafilename, "perfcheck.txt");
+	if ((filestream1 = fopen(datafilename, "wt+")) != NULL)
+	{
+		for (mjtNum ptb = 0; ptb < 1.0001; ptb += 0.05)
+		{
+			for (int i = 0; i < kTestNum; i++)
+			{
+				// data output for checking
+				sprintf(data_buff, "%4.8f", terminalError(ptb));
+				fwrite(data_buff, 10, 1, filestream1);
+				fputs(" ", filestream1);
+			}
+			fputs("\n", filestream1);
+		}
+		fclose(filestream1);
+	}
+}
+
+void policyCompare()
+{
+	strcpy(datafilename, "clopdata.txt");
+	if ((filestream1 = fopen(datafilename, "wt+")) != NULL)
+	{
+		for (double ptb = 0; ptb <= 1.00001; ptb += 0.05)
+		{
+			for (int i = 0; i < kTestNum; i++)
+			{
+				for (int e = 0; e < stepnum * actuatornum; e++)
+				{
+					ctrl_openloop[e] = ctrl_nominal[e] + ptb * ctrl_max * randGauss(0, 1);
+				}
+				while (simulateOpenloop() != 1);
+				while (simulateClosedloop() != 1);
+
+				sprintf(data_buff, "%4.8f", cost_closedloop);
+				fwrite(data_buff, 10, 1, filestream1);
+				fputs("\n", filestream1);
+				sprintf(data_buff, "%4.8f", cost_openloop);
+				fwrite(data_buff, 10, 1, filestream1);
+				fputs("\n", filestream1);
+			}
+		}
+		fclose(filestream1);
+	}
+}
+
+void modeSelection(const char* mode)
+{
+	mju_strncpy(testmode, mode, 100);
+	if (_strcmpi(testmode, "policy_compare") == 0)
+		policyCompare();
+	else if (_strcmpi(testmode, "performance_test") == 0)
+		performanceTest();
 }
 
 //--------------------------- rendering and simulation ----------------------------------
@@ -2287,15 +2365,15 @@ void simulate(void)
 
 //-------------------------------- init and main ----------------------------------------
 
-// initalize everything
+// initalize
 void init(void)
 {
-    // print version, check compatibility
-    printf("MuJoCo Pro version %.2lf\n", 0.01*mj_version());
-    if( mjVERSION_HEADER!=mj_version() )
-        mju_error("Headers and library have different versions");
+	// print version, check compatibility
+	printf("MuJoCo Pro version %.2lf\n", 0.01*mj_version());
+	if (mjVERSION_HEADER != mj_version())
+		mju_error("Headers and library have different versions");
 
-    // activate MuJoCo license
+	// activate MuJoCo license
 	DWORD usernamesize = 30;
 	GetUserName(username, &usernamesize);
 	if (username[0] == 'R') {
@@ -2310,11 +2388,10 @@ void init(void)
 	}
 
 	// read data from file
-	strcpy(datafilename, datafilepre);
-	strcat(datafilename, "result0.txt");
+	strcpy(datafilename, "result0.txt");
 	if ((filestream1 = fopen(datafilename, "r")) != NULL)
 	{
-		for (int i = 0; i < kActuatorNum * kStepNum; i++)
+		for (int i = 0; i < actuatornum * stepnum; i++)
 		{
 			fscanf(filestream1, "%s", ctrl_buff);
 			ctrl_nominal[i] = atof(ctrl_buff);
@@ -2323,13 +2400,12 @@ void init(void)
 		fclose(filestream1);
 	}
 
-	strcpy(datafilename, datafilepre);
-	strcat(datafilename, "TK.txt");
+	strcpy(datafilename, "TK.txt");
 	if ((filestream1 = fopen(datafilename, "r")) != NULL)
 	{
-		for (int i1 = 0; i1 < kStepNum; i1++) {
-			for (int i2 = 0; i2 < kActuatorNum; i2++) {
-				for (int i = 0; i < kStateNum; i++) {
+		for (int i1 = 0; i1 < stepnum; i1++) {
+			for (int i2 = 0; i2 < actuatornum; i2++) {
+				for (int i = 0; i < statenum; i++) {
 					fscanf(filestream1, "%s", ctrl_buff);
 					tracker_feedback_gain[i1][i2][i] = atof(ctrl_buff);
 				}
@@ -2338,102 +2414,101 @@ void init(void)
 		fclose(filestream1);
 	}
 
-	strcpy(datafilename, datafilepre);
-	strcat(datafilename, "parameters.txt");
+	strcpy(datafilename, "parameters.txt");
 	if ((filestream1 = fopen(datafilename, "r")) != NULL) {
 		while (!feof(filestream1))
 		{
-			fscanf(filestream1, "%s", para_buff);
-			if (para_buff[1] == '_')
+			fscanf(filestream1, "%s", data_buff);
+			if (data_buff[1] == '_')
 			{
-				fscanf(filestream1, "%s", para_buff);
-				Q = atof(para_buff);
+				fscanf(filestream1, "%s", data_buff);
+				Q = atof(data_buff);
 			}
-			if (para_buff[0] == 'R')
+			if (data_buff[0] == 'R')
 			{
-				fscanf(filestream1, "%s", para_buff);
-				R = atof(para_buff);
+				fscanf(filestream1, "%s", data_buff);
+				R = atof(data_buff);
 			}
-			if (para_buff[1] == 'T')
+			if (data_buff[1] == 'T')
 			{
-				fscanf(filestream1, "%s", para_buff);
-				QT = atof(para_buff);
+				fscanf(filestream1, "%s", data_buff);
+				QT = atof(data_buff);
 			}
 		}
-		for (int kStateNum = 0; kStateNum < kStateNum; kStateNum++)
+		for (int i = 0; i < statenum; i++)
 		{
-			QTm[kStateNum][kStateNum] = 1 * QT;
-			Qm[kStateNum][kStateNum] = 1 * Q;
+			QTm[i][i] = 1 * QT;
+			Qm[i][i] = 1 * Q;
 		}
 		fclose(filestream1);
 	}
 
 	srand((unsigned)time(NULL));
-	for (int e = 0; e < kStepNum * kActuatorNum; e++)
+	for (int e = 0; e < stepnum * actuatornum; e++)
 	{
-		ctrl_openloop[e] = ctrl_nominal[e] + kPerturbCoefficient * ctrl_max * rand_gauss(0, 1);
+		ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient * ctrl_max * randGauss(0, 1);
 	}
 
-    // init GLFW, set timer callback (milliseconds)
-    if (!glfwInit())
-        mju_error("could not initialize GLFW");
-    mjcb_time = timer;
+	// init GLFW, set timer callback (milliseconds)
+	if (!glfwInit())
+		mju_error("could not initialize GLFW");
+	mjcb_time = timer;
 
-    // multisampling
-    glfwWindowHint(GLFW_SAMPLES, 4);
-    glfwWindowHint(GLFW_VISIBLE, 1);
+	// multisampling
+	glfwWindowHint(GLFW_SAMPLES, 4);
+	glfwWindowHint(GLFW_VISIBLE, 1);
 
-    // get videomode and save
-    vmode = *glfwGetVideoMode(glfwGetPrimaryMonitor());
+	// get videomode and save
+	vmode = *glfwGetVideoMode(glfwGetPrimaryMonitor());
 
-    // create window
-    window = glfwCreateWindow((2*vmode.width)/6, (2*vmode.height)/4, 
-                              "Nominal", NULL, NULL);
+	// create window
+	window = glfwCreateWindow((2 * vmode.width) / 6, (2 * vmode.height) / 4,
+		"Nominal", NULL, NULL);
 	window_openloop = glfwCreateWindow((2 * vmode.width) / 6, (2 * vmode.height) / 4,
 		"Openloop with noise", NULL, NULL);
 	window_closedloop = glfwCreateWindow((2 * vmode.width) / 6, (2 * vmode.height) / 4,
 		"Closedloop with noise", NULL, NULL);
 
-    if( !window )
-    {
-        glfwTerminate();
-        mju_error("could not create window");
-    }
+	if (!window)
+	{
+		glfwTerminate();
+		mju_error("could not create window");
+	}
 
 	glfwSetWindowPos(window, (2 * vmode.width) / 6, 100);
 	glfwSetWindowPos(window_openloop, 0, 100);
 	glfwSetWindowPos(window_closedloop, (4 * vmode.width) / 6, 100);
 
-    // save window position and size
-    glfwGetWindowPos(window, windowpos, windowpos+1);
-    glfwGetWindowSize(window, windowsize, windowsize+1);
+	// save window position and size
+	glfwGetWindowPos(window, windowpos, windowpos + 1);
+	glfwGetWindowSize(window, windowsize, windowsize + 1);
 
-    // make context current, set v-sync
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(settings.vsync);
+	// make context current, set v-sync
+	glfwMakeContextCurrent(window);
+	glfwSwapInterval(settings.vsync);
 
-    // init abstract visualization
-    mjv_defaultCamera(&cam);
-    mjv_defaultOption(&vopt);
-    profilerinit();
-    sensorinit();
+	// init abstract visualization
+	mjv_defaultCamera(&cam);
+	mjv_defaultOption(&vopt);
+	profilerinit();
+	sensorinit();
 
-    // make empty scene
-    mjv_defaultScene(&scn);
-    mjv_makeScene(NULL, &scn, maxgeom);
+	// make empty scene
+	mjv_defaultScene(&scn);
+	mjv_makeScene(NULL, &scn, kMaxGeom);
 
-    // select default font
-    int fontscale = uiFontScale(window);
-    settings.font = fontscale/50 - 1;
-    
-    // make empty context
-    mjr_defaultContext(&con);
-    mjr_makeContext(NULL, &con, fontscale);
+	// select default font
+	int fontscale = uiFontScale(window);
+	settings.font = fontscale / 50 - 1;
 
-    // set GLFW callbacks
-    uiSetCallback(window, &uistate, uiEvent, uiLayout); 
-    glfwSetWindowRefreshCallback(window, render);
-    glfwSetDropCallback(window, drop);
+	// make empty context
+	mjr_defaultContext(&con);
+	mjr_makeContext(NULL, &con, fontscale);
+
+	// set GLFW callbacks
+	uiSetCallback(window, &uistate, uiEvent, uiLayout);
+	glfwSetWindowRefreshCallback(window, render);
+	glfwSetDropCallback(window, drop);
 
 	// switch window and do the same thing
 	uiSetCallback(window_closedloop, &uistate, uiEvent, uiLayout);
@@ -2443,26 +2518,26 @@ void init(void)
 	glfwSetWindowRefreshCallback(window_openloop, renderOpenloop);
 	glfwSetDropCallback(window_openloop, drop);
 
-    // init state and uis
-    memset(&uistate, 0, sizeof(mjuiState));
-    memset(&ui0, 0, sizeof(mjUI));
-    memset(&ui1, 0, sizeof(mjUI));
-    ui0.spacing = mjui_themeSpacing(settings.spacing);
-    ui0.color = mjui_themeColor(settings.color);
-    ui0.predicate = uiPredicate;
-    ui0.rectid = 1;
-    ui0.auxid = 0;
-    ui1.spacing = mjui_themeSpacing(settings.spacing);
-    ui1.color = mjui_themeColor(settings.color);
-    ui1.predicate = uiPredicate;
-    ui1.rectid = 2;
-    ui1.auxid = 1;
+	// init state and uis
+	memset(&uistate, 0, sizeof(mjuiState));
+	memset(&ui0, 0, sizeof(mjUI));
+	memset(&ui1, 0, sizeof(mjUI));
+	ui0.spacing = mjui_themeSpacing(settings.spacing);
+	ui0.color = mjui_themeColor(settings.color);
+	ui0.predicate = uiPredicate;
+	ui0.rectid = 1;
+	ui0.auxid = 0;
+	ui1.spacing = mjui_themeSpacing(settings.spacing);
+	ui1.color = mjui_themeColor(settings.color);
+	ui1.predicate = uiPredicate;
+	ui1.rectid = 2;
+	ui1.auxid = 1;
 
-    // populate uis with standard sections
-    mjui_add(&ui0, defFile);
-    mjui_add(&ui0, defOption);
-    mjui_add(&ui0, defSimulation);
-    mjui_add(&ui0, defWatch);
+	// populate uis with standard sections
+	mjui_add(&ui0, defFile);
+	mjui_add(&ui0, defOption);
+	mjui_add(&ui0, defSimulation);
+	mjui_add(&ui0, defWatch);
 	uiModify(window, &ui0, &uistate, &con);
 	uiModify(window, &ui1, &uistate, &con);
 }
@@ -2471,24 +2546,25 @@ void init(void)
 // run event loop
 int main(int argc, const char** argv)
 {
-    // initialize everything
-    init();
-	
-    // request loadmodel if file given 
-    if( argc>1 )
-    {
-        mju_strncpy(modelfilename, argv[1], 100);
-        settings.loadrequest = 2;
-	}
-	else {
-		strcpy(modelfilename, modelfilepre);
-		strcat(modelfilename, kModelName);
+	// process input from command window
+	if (argc <= 1) return 0;
+	if (argc > 1)
+	{
+		modelSelection(argv[1]);
 		settings.loadrequest = 1;
 	}
 
+	// initialize
+	init();
 	loadmodel();
-	stateNominal();
+	stateNominal(); 
 	
+	if (argc > 2)
+	{
+		modeSelection(argv[2]);
+		return 0;
+	}
+
     // start simulation thread
     std::thread simthread(simulate);
 
@@ -2513,6 +2589,7 @@ int main(int argc, const char** argv)
 
         // end exclusive access (allow simulation thread to run)
         mtx.unlock();
+
 		// render while simulation is running
 		glfwMakeContextCurrent(window_openloop);
 		renderOpenloop(window_openloop);

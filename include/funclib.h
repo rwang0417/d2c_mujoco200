@@ -40,7 +40,8 @@ const mjtNum PI = 3.141592653;
 mjtNum mjc_costFunction(mjModel* m, mjData* d, mjtNum *ctrl, mjtNum nu, mjtNum *Q, mjtNum R);
 void mjc_modelInit(mjModel* m, mjData* d);
 
-mjtNum rand_gauss(mjtNum mean, mjtNum var);
+mjtNum randGauss(mjtNum mean, mjtNum var);
+mjtNum angleModify(int model, mjtNum angle);
 
 mjtNum determinant(mjtNum *fh, mjtNum r);
 void transpose(mjtNum *res, mjtNum *mat, mjtNum rmat, mjtNum cmat = 0);

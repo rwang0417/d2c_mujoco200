@@ -21,6 +21,31 @@
 /* Mujoco function prototypes------------------------------------------------*/
 
 /**
+* @brief  Angle modification for pendulum, cartpole and acrobot to clamp angle value
+* @note   different modification different model
+* @param  mjModel* m: model
+*         mjData* d: data
+*         mjtNum *ctrl: control value
+*         mjtNum nu: number of control
+*         mjtNum *Q: state error penalty
+*         mjtNum R: control penalty
+* @retval mjtNum: cost value
+* @author rwang0417@tamu.edu
+*/
+mjtNum angleModify(int model, mjtNum angle)
+{
+	switch (model) {
+	case 0: 
+		return (PI - fabs(angle - PI))*((PI - angle > 0) - (PI - angle < 0));
+	case 1:
+		return (PI - fabs(angle))*((angle < 0) - (angle > 0));
+	case 2:
+		return (PI - fabs(angle - PI))*((PI - angle > 0) - (PI - angle < 0));
+	default: return 0;
+	}
+}
+
+/**
 * @brief  Cost function
 * @note   needs to be modified according to different tasks
 * @param  mjModel* m: model
@@ -74,7 +99,7 @@ void mjc_modelInit(mjModel* m, mjData* d)
 * @retval mjtNum: Gaussian random value
 * @author rwang0417@tamu.edu
 */
-mjtNum rand_gauss(mjtNum mean, mjtNum var)
+mjtNum randGauss(mjtNum mean, mjtNum var)
 {
 	mjtNum U, V, Z;
 
