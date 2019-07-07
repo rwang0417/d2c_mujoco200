@@ -14,7 +14,6 @@
 # Compiled Dynamic libraries
 *.so
 *.dylib
-*.dll
 
 # Fortran module files
 *.mod
@@ -30,5 +29,8 @@
 *.out
 *.app
 
+MUJOCO_LOG.TXT
+*.ilk
+*.pdb
 openloop/
 test2d/
