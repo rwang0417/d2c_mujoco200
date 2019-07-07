@@ -40,8 +40,45 @@ const mjtNum PI = 3.141592653;
 mjtNum mjc_costFunction(mjModel* m, mjData* d, mjtNum *ctrl, mjtNum nu, mjtNum *Q, mjtNum R);
 void mjc_modelInit(mjModel* m, mjData* d);
 
+/**
+* @brief  Generate Gaussian random value
+* @note   none
+* @param  mjtNum mean: mean
+*         mjtNum var: variance
+* @retval mjtNum: Gaussian random value
+* @author rwang0417@tamu.edu
+*/
 mjtNum randGauss(mjtNum mean, mjtNum var);
-mjtNum angleModify(int model, mjtNum angle);
+
+/**
+* @brief  Angle modification for pendulum, cartpole and acrobot to clamp angle value
+* @note   different modification different model
+* @param  const char* model: name of the model
+*         mjtNum angle: current angle value read from mujoco
+* @retval mjtNum: modified angle value
+* @author rwang0417@tamu.edu
+*/
+mjtNum angleModify(const char* model, mjtNum angle);
+
+/**
+* @brief  Select model parameters set
+* @note   none
+* @param  const char* model: name of the model whose parameters to select
+* @retval none
+* @author rwang0417@tamu.edu
+*/
+void modelSelection(const char* model);
+
+/**
+* @brief  calculate the cost at a step
+* @note   none
+* @param  mjData* d: mujoco simulation data at the specific step
+		  mjModel* m: mujoco model
+		  int step_index: the step number whose cost needs calculation
+* @retval mjtNum: cost value at the specific step
+* @author rwang0417@tamu.edu
+*/
+mjtNum stepCost(mjModel* m, mjData* d, int step_index);
 
 mjtNum determinant(mjtNum *fh, mjtNum r);
 void transpose(mjtNum *res, mjtNum *mat, mjtNum rmat, mjtNum cmat = 0);

@@ -628,3 +628,8 @@
 ### Log:
 #### 1. test2d pendulum.xml performance_test，或者是policy_compare，只加文件名就是出动画。
 #### 2. 做成dll别人不好改代码了，还是别了，省点事。
+## 07/07/2019
+### Log:
+#### 1. 外部变量在main里写extern声明但不定义（初始化），在lib.cpp里不加extern再声明一遍，可以初始化。如果是用来声明数组的size的常量需要在两个文件都初始化，但只有main里的会起作用。
+#### 2. 凉了555maxstep不能设大，否则training不能跑，直接在train前面退出了。。。感觉是d[64]这个太坑了，每个d都是一个大的数据结构，64个就很多，所以如果需要改就把64改小吧。
+#### 3. openloop cheetah.xml 100， 100是迭代数也就是gradient更新的次数，后面还可以加thread数，不加默认1个thread，现在多个thread就更之前开多个cmd窗口一起运行check reproducibility一样。

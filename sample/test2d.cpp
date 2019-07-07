@@ -8,64 +8,56 @@
 */
 
 #include "windows.h"
-#include "mjxmacro.h"
 #include "uitools.h"
-#include "stdio.h"
-#include "string.h"
-
 #include <thread>
 #include <mutex>
-#include <chrono>
-
-#include "math.h" 
-#include "time.h"
-#include "Eigen/Geometry"
 #include "funclib.h"
-
-using namespace Eigen;
 
 //-------------------------------- global -----------------------------------------------
 // constants
-const int kTestNum = 500;			// number of monte-carlo runs
-const int kMaxStep = 5000;           // max step number for one rollout
-const int kMaxState = 100;			// max state dimension
-const int kMaxGeom = 5000;           // preallocated geom array in mjvScene
+extern const int kTestNum = 500;	// number of monte-carlo runs
+extern const int kMaxStep = 1000;   // max step number for one rollout
+extern const int kMaxState = 100;	// max state dimension
+
+const int kMaxGeom = 5000;          // preallocated geom array in mjvScene
 const double syncmisalign = 0.1;    // maximum time mis-alignment before re-sync
 const double refreshfactor = 0.7;   // fraction of refresh available for simulation
 
-// model and data
+// extern model specific parameters
+extern int integration_per_step;
+extern int stepnum;
+extern int actuatornum;
+extern int statenum;
+extern mjtNum control_timestep;
+extern mjtNum simulation_timestep;
+extern mjtNum perturb_coefficient_test;
+extern mjtNum state_nominal[kMaxStep][kMaxState];
+extern mjtNum state_target[kMaxState];
+extern mjtNum stabilizer_feedback_gain[kMaxState][kMaxState];
+extern mjtNum tracker_feedback_gain[kMaxStep][kMaxState][kMaxState];
+extern char testmode[30];
+extern char modelname[30];
+extern char modelfilename[100];
+
+// hyperparameters 
+extern mjtNum Q, QT, R;
+extern mjtNum Qm[kMaxState][kMaxState], QTm[kMaxState][kMaxState];
+
+// user data
 mjModel* m = NULL;
 mjData* d = NULL;
 mjData* d_closedloop = NULL;
 mjData* d_openloop = NULL;
-int integration_per_step = 1;
-int stepnum;
-int actuatornum;
-int statenum;
-mjtNum control_timestep;
-mjtNum simulation_timestep;
-mjtNum perturb_coefficient;
-mjtNum state_nominal[kMaxStep][kMaxState];
-mjtNum state_target[kMaxState];
 mjtNum ctrl_max = 0;
 mjtNum ctrl_nominal[kMaxStep*kMaxState] = { 0 };
 mjtNum ctrl_openloop[kMaxStep*kMaxState] = { 0 };
-mjtNum stabilizer_feedback_gain[kMaxState][kMaxState] = { 0 };
-mjtNum tracker_feedback_gain[kMaxStep][kMaxState][kMaxState] = { 0 };
 mjtNum cost_closedloop = 0, cost_openloop = 0;
 FILE *filestream1;
 char data_buff[30], ctrl_buff[30];
-char modelfilename[100];
 char keyfilename[100];
 char datafilename[100];
 char username[30];
-char testmode[30];
 char keyfilepre[20]  = "";
-char datafilepre[20]  = "";
-
-// hyperparameters 
-mjtNum Q, QT, R;
-mjtNum Qm[kMaxState][kMaxState], QTm[kMaxState][kMaxState];
 
 // abstract visualization
 mjvScene scn, scn_openloop, scn_closedloop;
@@ -1766,72 +1758,6 @@ void uiEvent(mjuiState* state)
     }
 }
 
-//--------------------------- environment selection -------------------------------------
-void modelSelection(const char* model)
-{
-	strcpy(modelfilename, model);
-	if(_strcmpi(modelfilename,"pendulum.xml") == 0) {
-		control_timestep = 0.1;
-		simulation_timestep = 0.1;
-		perturb_coefficient = 0.4;
-		stepnum = 30;
-		statenum = 2;
-		actuatornum = 1;
-		mjtNum temp[kMaxState][kMaxState] = { 11.0396, 3.0658 };// { 5.4995, 1.2227 };
-		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], statenum);
-		mjtNum temp1[kMaxState] = { PI, 0.0 };
-		mju_copy(state_nominal[0], temp1, statenum);
-		mjtNum temp2[kMaxState] = { 2 * PI, 0.0 };
-		mju_copy(state_target, temp2, statenum);
-		integration_per_step = (int)(control_timestep / simulation_timestep);
-	}
-	else if (_strcmpi(modelfilename, "cheetah.xml") == 0) {
-		control_timestep = 0.1;
-		simulation_timestep = 0.05;
-		perturb_coefficient = 0.1;
-		stepnum = 50;
-		statenum = 18;
-		actuatornum = 6;
-		mjtNum temp[kMaxState][kMaxState] = { 0 };// { 5.4995, 1.2227 };
-		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], statenum);
-		mjtNum temp1[kMaxState] = { 0 };
-		mju_copy(state_nominal[0], temp1, statenum);
-		mjtNum temp2[kMaxState] = { 0 };
-		mju_copy(state_target, temp2, statenum);
-		integration_per_step = (int)(control_timestep / simulation_timestep);
-	}
-	else if (_strcmpi(modelfilename, "swimmer3.xml") == 0) {
-		control_timestep = 0.005;
-		simulation_timestep = 0.005;
-		perturb_coefficient = 0.05;
-		stepnum = 1600;
-		statenum = 10;
-		actuatornum = 2;
-		mjtNum temp[kMaxState][kMaxState] = { 0 };// { 5.4995, 1.2227 };
-		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], statenum);
-		mjtNum temp1[kMaxState] = { 0 };
-		mju_copy(state_nominal[0], temp1, statenum);
-		mjtNum temp2[kMaxState] = { 0 };
-		mju_copy(state_target, temp2, statenum);
-		integration_per_step = (int)(control_timestep / simulation_timestep);
-	}
-	else if (_strcmpi(modelfilename, "acrobot.xml") == 0) {
-		control_timestep = 0.01;
-		simulation_timestep = 0.01;
-		perturb_coefficient = 0.0;
-		stepnum = 800;
-		statenum = 4;
-		actuatornum = 1;
-		mjtNum temp[kMaxState][kMaxState] = { -428.9630, -108.7071, -158.2817, -45.5430 };
-		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], statenum);
-		mjtNum temp1[kMaxState] = { PI, 0.0, 0, 0 };
-		mju_copy(state_nominal[0], temp1, statenum);
-		mjtNum temp2[kMaxState] = { 0 };
-		mju_copy(state_target, temp2, statenum);
-		integration_per_step = (int)(control_timestep / simulation_timestep);
-	}
-}
-
 //--------------------------- control and testing ---------------------------------------
 void stateNominal(void)
 {
@@ -1850,37 +1776,6 @@ void stateNominal(void)
 	mj_forward(m, d);
 }
 
-mjtNum stepCost(mjData* d, int step_index)
-{
-	mjtNum state[kMaxState], res0[kMaxState], res1[kMaxState], cost;
-
-	mju_copy(state, d->qpos, m->nq);
-	mju_copy(&state[m->nq], d->qvel, m->nv);
-	if (_strcmpi(modelfilename, "pendulum.xml") == 0) {
-		if (state[0] < PI) state_target[0] = 0; else state_target[0] = 2 * PI;
-		mju_sub(res0, state, state_target, statenum);
-		if (step_index >= stepnum) mju_mulMatVec(res1, *QTm, res0, kMaxState, kMaxState);
-		else mju_mulMatVec(res1, *Qm, res0, kMaxState, kMaxState);
-		cost = (mju_dot(res0, res1, statenum) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
-	}
-	else if (_strcmpi(modelfilename, "acrobot.xml") == 0) {
-		if (state[0] < PI) state_target[0] = 0; else state_target[0] = 2 * PI;
-		mju_sub(res0, state, state_target, statenum);
-		if (step_index >= stepnum) mju_mulMatVec(res1, *QTm, res0, statenum, statenum);
-		else mju_mulMatVec(res1, *Qm, res0, statenum, statenum);
-		cost = (mju_dot(res0, res1, statenum) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
-	}
-	else if (_strcmpi(modelfilename, "swimmer3.xml") == 0) {
-		if (step_index >= stepnum) cost = (QT * (1 * (d->qpos[0] - 0.6) * (d->qpos[0] - 0.6) + (d->qpos[1] + 0.6) * (d->qpos[1] + 0.6) + 3 * d->qvel[0] * d->qvel[0] + 3 * d->qvel[1] * d->qvel[1]) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
-		else cost = (Q * ((1.5 * (d->qpos[0] - 0.6) * (d->qpos[0] - 0.6) + 1.5*(d->qpos[1] + 0.6) * (d->qpos[1] + 0.6)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum)));
-	}
-	else if (_strcmpi(modelfilename, "cheetah.xml") == 0) {
-		if (step_index >= stepnum) cost = (QT*(d->qvel[0] - 3)*(d->qvel[0] - 3) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
-		else cost = (Q*(d->qvel[0] - 3) * (d->qvel[0] - 3) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
-	}
-	return cost;
-}
-
 void simulateNominal(void)
 {
 	static mjtNum state_error[kMaxState];
@@ -1894,7 +1789,7 @@ void simulateNominal(void)
 	{
 		mju_sub(state_error,  state_target, d->qpos, m->nq);
 		mju_sub(&state_error[m->nq], &state_target[m->nq], d->qvel, m->nv);
-		if (_strcmpi(modelfilename, "pendulum.xml") == 0) {
+		if (_strcmpi(modelname, "pendulum") == 0) {
 			state_error[0] = -(PI - fabs(d->qpos[0] - PI))*((PI - d->qpos[0] > 0) - (PI - d->qpos[0] < 0));
 		}
 		mju_mulMatVec(d->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
@@ -1914,17 +1809,17 @@ bool simulateClosedloop(void)
 		mju_copy(d_closedloop->qpos, state_nominal[0], m->nq);
 		mju_copy(d_closedloop->qvel, &state_nominal[0][m->nq], m->nv);
 		mj_forward(m, d_closedloop);
-		cost_closedloop = stepCost(d_closedloop, step_index);
+		cost_closedloop = stepCost(m, d_closedloop, step_index);
 	}
 
 	if (step_index >= stepnum)
 	{
 		mju_sub(state_error, state_target, d_closedloop->qpos, m->nq);
 		mju_sub(&state_error[m->nq], &state_target[m->nq], d_closedloop->qvel, m->nv);
-		if (_strcmpi(modelfilename, "pendulum.xml") == 0) {
+		if (_strcmpi(modelname, "pendulum") == 0) {
 			state_error[0] = -(PI - fabs(d_closedloop->qpos[0] - PI))*((PI - d_closedloop->qpos[0] > 0) - (PI - d_closedloop->qpos[0] < 0));
 		}
-		if (_strcmpi(modelfilename, "cartpole.xml") == 0) {
+		if (_strcmpi(modelname, "cartpole") == 0) {
 			state_error[2] = -(PI - fabs(d_closedloop->qpos[1]))*((d_closedloop->qpos[1] < 0) - (d_closedloop->qpos[1] > 0));
 		}
 		mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
@@ -1941,7 +1836,7 @@ bool simulateClosedloop(void)
 	}
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
 	step_index++;
-	cost_closedloop += stepCost(d_closedloop, step_index);
+	cost_closedloop += stepCost(m, d_closedloop, step_index);
 	return 0;
 }
 
@@ -1955,16 +1850,16 @@ bool simulateOpenloop(void)
 		mju_copy(d_openloop->qpos, state_nominal[0], m->nq);
 		mju_copy(d_openloop->qvel, &state_nominal[0][m->nq], m->nv);
 		mj_forward(m, d_closedloop);
-		cost_openloop = stepCost(d_openloop, step_index);
+		cost_openloop = stepCost(m, d_openloop, step_index);
 	}
 	if (step_index >= stepnum)
 	{
 		mju_sub(state_error, state_target, d_openloop->qpos, m->nq);
 		mju_sub(&state_error[m->nq], &state_target[m->nq], d_openloop->qvel, m->nv);
-		if (_strcmpi(modelfilename, "pendulum.xml") == 0) {
+		if (_strcmpi(modelname, "pendulum") == 0) {
 			state_error[0] = -(PI - fabs(d_openloop->qpos[0] - PI))*((PI - d_openloop->qpos[0] > 0) - (PI - d_openloop->qpos[0] < 0));
 		}
-		if (_strcmpi(modelfilename, "cartpole.xml") == 0) {
+		if (_strcmpi(modelname, "cartpole") == 0) {
 			state_error[2] = -(PI - fabs(d_openloop->qpos[1]))*((d_openloop->qpos[1] < 0) - (d_openloop->qpos[1] > 0));
 		}
 		mju_mulMatVec(d_openloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
@@ -1976,7 +1871,7 @@ bool simulateOpenloop(void)
 	else mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index * actuatornum], m->nu);
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_openloop);
 	step_index++;
-	cost_openloop += stepCost(d_openloop, step_index); 
+	cost_openloop += stepCost(m, d_openloop, step_index); 
 	return 0;
 }
 
@@ -2001,9 +1896,9 @@ mjtNum terminalError(mjtNum ptb)
 		for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
 		step_index++;
 	}
-	if (_strcmpi(modelfilename, "pendulum.xml") == 0)
-		return sqrt(angleModify(0, d_closedloop->qpos[0])*angleModify(0, d_closedloop->qpos[0]) + d_closedloop->qvel[0] * d_closedloop->qvel[0]);
-	else if (_strcmpi(modelfilename, "swimmer3.xml") == 0)
+	if (_strcmpi(modelname, "pendulum") == 0)
+		return sqrt(angleModify(modelname, d_closedloop->qpos[0])*angleModify(modelfilename, d_closedloop->qpos[0]) + d_closedloop->qvel[0] * d_closedloop->qvel[0]);
+	else if (_strcmpi(modelname, "swimmer3") == 0)
 		return sqrt((d_closedloop->geom_xpos[6] - 0.6) * (d_closedloop->geom_xpos[6] - 0.6) + (d_closedloop->geom_xpos[7] + 0.6) * (d_closedloop->geom_xpos[7] + 0.6));
 	return 0;
 }
@@ -2446,7 +2341,7 @@ void init(void)
 	srand((unsigned)time(NULL));
 	for (int e = 0; e < stepnum * actuatornum; e++)
 	{
-		ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient * ctrl_max * randGauss(0, 1);
+		ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_test * ctrl_max * randGauss(0, 1);
 	}
 
 	// init GLFW, set timer callback (milliseconds)
