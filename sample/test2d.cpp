@@ -15,13 +15,13 @@
 
 //-------------------------------- global -----------------------------------------------
 // constants
-extern const int kTestNum = 500;	// number of monte-carlo runs
 extern const int kMaxStep = 1000;   // max step number for one rollout
 extern const int kMaxState = 100;	// max state dimension
 
+const int kTestNum = 500;	// number of monte-carlo runs
 const int kMaxGeom = 5000;          // preallocated geom array in mjvScene
 const double syncmisalign = 0.1;    // maximum time mis-alignment before re-sync
-const double refreshfactor = 0.7;   // fraction of refresh available for simulation
+const double refreshfactor = 0.5;   // fraction of refresh available for simulation
 
 // extern model specific parameters
 extern int integration_per_step;
@@ -32,6 +32,7 @@ extern mjtNum control_timestep;
 extern mjtNum simulation_timestep;
 extern mjtNum perturb_coefficient_test;
 extern mjtNum state_nominal[kMaxStep][kMaxState];
+extern mjtNum ctrl_nominal[kMaxStep * kMaxState];
 extern mjtNum state_target[kMaxState];
 extern mjtNum stabilizer_feedback_gain[kMaxState][kMaxState];
 extern mjtNum tracker_feedback_gain[kMaxStep][kMaxState][kMaxState];
@@ -49,11 +50,10 @@ mjData* d = NULL;
 mjData* d_closedloop = NULL;
 mjData* d_openloop = NULL;
 mjtNum ctrl_max = 0;
-mjtNum ctrl_nominal[kMaxStep*kMaxState] = { 0 };
 mjtNum ctrl_openloop[kMaxStep*kMaxState] = { 0 };
 mjtNum cost_closedloop = 0, cost_openloop = 0;
 FILE *filestream1;
-char data_buff[30], ctrl_buff[30];
+char data_buff[30];
 char keyfilename[100];
 char datafilename[100];
 char username[30];
@@ -94,7 +94,7 @@ struct
     int ui0 = 0;
     int ui1 = 0;
     int help = 0;               
-    int info = 0;               
+    int info = 1;               
     int profiler = 0;           
     int sensor = 0;
     int fullscreen = 0;
@@ -1166,7 +1166,8 @@ void loadmodel(void)
 	mj_forward(m, d);
 	mj_forward(m, d_closedloop);
 	mj_forward(m, d_openloop);
-	
+	mju_add(state_nominal[0], state_nominal[0], d->qpos, m->nq);
+
 	// re-create scene and context
 	mjv_makeScene(m, &scn_openloop, kMaxGeom);
 	mjv_makeScene(m, &scn_closedloop, kMaxGeom);
@@ -1759,29 +1760,13 @@ void uiEvent(mjuiState* state)
 }
 
 //--------------------------- control and testing ---------------------------------------
-void stateNominal(void)
-{
-	int step_index = 0;
-
-	mju_copy(d->qpos, state_nominal[step_index], m->nq);
-	mju_copy(d->qvel, &state_nominal[step_index][m->nq], m->nv);
-	while (step_index < stepnum) {
-		mju_copy(d->ctrl, &ctrl_nominal[step_index * actuatornum], m->nu);
-		for (int i = 0; i < integration_per_step; i++) mj_step(m, d);
-		step_index++;
-		mju_copy(state_nominal[step_index], d->qpos, m->nq);
-		mju_copy(&state_nominal[step_index][m->nq], d->qvel, m->nv);
-	}
-	mj_resetData(m, d);
-	mj_forward(m, d);
-}
-
 void simulateNominal(void)
 {
 	static mjtNum state_error[kMaxState];
 	static int step_index = 0;
 
 	if (step_index == 0) {
+		mj_resetData(m, d);
 		mju_copy(d->qpos, state_nominal[0], m->nq);
 		mju_copy(d->qvel, &state_nominal[0][m->nq], m->nv);
 	}
@@ -1792,7 +1777,8 @@ void simulateNominal(void)
 		if (_strcmpi(modelname, "pendulum") == 0) {
 			state_error[0] = -(PI - fabs(d->qpos[0] - PI))*((PI - d->qpos[0] > 0) - (PI - d->qpos[0] < 0));
 		}
-		mju_mulMatVec(d->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
+		if (_strcmpi(modelname, "dbar") != 0)////////////////////////
+			mju_mulMatVec(d->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 	}
 	else mju_copy(d->ctrl, &ctrl_nominal[step_index * actuatornum], m->nu);
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d);
@@ -1822,7 +1808,8 @@ bool simulateClosedloop(void)
 		if (_strcmpi(modelname, "cartpole") == 0) {
 			state_error[2] = -(PI - fabs(d_closedloop->qpos[1]))*((d_closedloop->qpos[1] < 0) - (d_closedloop->qpos[1] > 0));
 		}
-		mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
+		//if (_strcmpi(modelname, "dbar") != 0)////////////////////////////////
+			//mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 		if (_strcmpi(testmode, "policy_compare") == 0) {
 			step_index = 0;
 			return 1;
@@ -1862,7 +1849,8 @@ bool simulateOpenloop(void)
 		if (_strcmpi(modelname, "cartpole") == 0) {
 			state_error[2] = -(PI - fabs(d_openloop->qpos[1]))*((d_openloop->qpos[1] < 0) - (d_openloop->qpos[1] > 0));
 		}
-		mju_mulMatVec(d_openloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
+		//if (_strcmpi(modelname, "dbar") != 0)///////////////////////////
+			//mju_mulMatVec(d_openloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 		if (_strcmpi(testmode, "policy_compare") == 0) {
 			step_index = 0;
 			return 1;
@@ -1877,24 +1865,22 @@ bool simulateOpenloop(void)
 
 mjtNum terminalError(mjtNum ptb)
 {
-	int step_index = 0;
 	mjtNum state_error[kMaxState], ctrl_feedback[kMaxState];
 
 	mj_resetData(m, d_closedloop);
-	mju_copy(d_closedloop->qpos, state_nominal[step_index], m->nq);
-	mju_copy(d_closedloop->qvel, &state_nominal[step_index][m->nq], m->nv);
+	mju_copy(d_closedloop->qpos, state_nominal[0], m->nq);
+	mju_copy(d_closedloop->qvel, &state_nominal[0][m->nq], m->nv);
 	mj_forward(m, d_closedloop);
 	for (int e = 0; e < stepnum * actuatornum; e++)
 	{
 		ctrl_openloop[e] = ctrl_nominal[e] + ptb * ctrl_max * randGauss(0, 1);
 	}
-	while (step_index < stepnum) {
+	for (int step_index = 0; step_index < stepnum; step_index++) {
 		mju_sub(state_error, state_nominal[step_index], d_closedloop->qpos, m->nq);
 		mju_sub(&state_error[m->nq], &state_nominal[step_index][m->nq], d_closedloop->qvel, m->nv);
 		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index], state_error, m->nu, statenum);
 		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index * actuatornum], ctrl_feedback, m->nu);
 		for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
-		step_index++;
 	}
 	if (_strcmpi(modelname, "pendulum") == 0)
 		return sqrt(angleModify(modelname, d_closedloop->qpos[0])*angleModify(modelfilename, d_closedloop->qpos[0]) + d_closedloop->qvel[0] * d_closedloop->qvel[0]);
@@ -1951,13 +1937,31 @@ void policyCompare()
 	}
 }
 
+void modelTest(void)
+{
+	mju_zero(ctrl_openloop, actuatornum);
+	mj_resetData(m, d);
+	mj_forward(m, d);
+	printf("\n Model file name : %s\n", modelfilename);
+	printf(" m->nq             : %d\n", m->nq);
+	printf(" m->nv             : %d\n", m->nv);
+	printf(" m->nu             : %d\n", m->nu);
+	for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.2f\n", i, d->qpos[i]);
+}
+
 void modeSelection(const char* mode)
 {
 	mju_strncpy(testmode, mode, 100);
-	if (_strcmpi(testmode, "policy_compare") == 0)
+	if (_strcmpi(testmode, "policy_compare") == 0) {
 		policyCompare();
-	else if (_strcmpi(testmode, "performance_test") == 0)
+		exit(0);
+	}
+	else if (_strcmpi(testmode, "performance_test") == 0) {
 		performanceTest();
+		exit(0);
+	}
+	else if (_strcmpi(testmode, "model_test") == 0)
+		modelTest();
 }
 
 //--------------------------- rendering and simulation ----------------------------------
@@ -2153,6 +2157,7 @@ void simulate(void)
     mjtNum simsync = 0;
 
     // run until asked to exit
+	srand((unsigned)time(NULL));
     while( !settings.exitrequest )
     {
         // sleep for 1 ms or yield, to let main thread run
@@ -2218,17 +2223,6 @@ void simulate(void)
 						simulateOpenloop();
 						simulateClosedloop();
 
-						//d->ctrl[0] = 2;
-						//d->ctrl[1] = 2;
-						//d->ctrl[2] = 1.08;
-						//d->ctrl[3] = 1.08;
-
-						//d->ctrl[0] = 2.5;
-						//d->ctrl[1] = 1.32;
-						//d->ctrl[2] = 1.46;
-						//d->ctrl[3] = 1.46;
-						//mj_step(m, d);
-
                         // break on reset
                         if( d->time<prevtm )
                             break;
@@ -2288,12 +2282,13 @@ void init(void)
 	{
 		for (int i = 0; i < actuatornum * stepnum; i++)
 		{
-			fscanf(filestream1, "%s", ctrl_buff);
-			ctrl_nominal[i] = atof(ctrl_buff);
+			fscanf(filestream1, "%s", data_buff);
+			ctrl_nominal[i] = atof(data_buff);
 			if (fabs(ctrl_nominal[i]) > ctrl_max) ctrl_max = fabs(ctrl_nominal[i]); // find umax
 		}
 		fclose(filestream1);
 	}
+	else printf("Could not open file: result.txt");
 
 	strcpy(datafilename, "TK.txt");
 	if ((filestream1 = fopen(datafilename, "r")) != NULL)
@@ -2301,13 +2296,14 @@ void init(void)
 		for (int i1 = 0; i1 < stepnum; i1++) {
 			for (int i2 = 0; i2 < actuatornum; i2++) {
 				for (int i = 0; i < statenum; i++) {
-					fscanf(filestream1, "%s", ctrl_buff);
-					tracker_feedback_gain[i1][i2][i] = atof(ctrl_buff);
+					fscanf(filestream1, "%s", data_buff);
+					tracker_feedback_gain[i1][i2][i] = atof(data_buff);
 				}
 			}
 		}
 		fclose(filestream1);
 	}
+	else printf("Could not open file: TK.txt");
 
 	strcpy(datafilename, "parameters.txt");
 	if ((filestream1 = fopen(datafilename, "r")) != NULL) {
@@ -2337,6 +2333,7 @@ void init(void)
 		}
 		fclose(filestream1);
 	}
+	else printf("Could not open file: parameters.txt");
 
 	srand((unsigned)time(NULL));
 	for (int e = 0; e < stepnum * actuatornum; e++)
@@ -2452,12 +2449,11 @@ int main(int argc, const char** argv)
 	// initialize
 	init();
 	loadmodel();
-	stateNominal(); 
+	stateNominal(m, d); 
 	
 	if (argc > 2)
 	{
 		modeSelection(argv[2]);
-		return 0;
 	}
 
     // start simulation thread

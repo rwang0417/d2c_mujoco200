@@ -80,6 +80,16 @@ void modelSelection(const char* model);
 */
 mjtNum stepCost(mjModel* m, mjData* d, int step_index);
 
+/**
+* @brief  simulate one rollout with nominal control to calculate the nominal states
+* @note   none
+* @param  mjData* d: mujoco simulation data at the specific step
+		  mjModel* m: mujoco model
+* @retval none
+* @author rwang0417@tamu.edu
+*/
+void stateNominal(mjModel* m, mjData* d);
+
 mjtNum determinant(mjtNum *fh, mjtNum r);
 void transpose(mjtNum *res, mjtNum *mat, mjtNum rmat, mjtNum cmat = 0);
 void cofactor(mjtNum *res, mjtNum *arg, mjtNum r);

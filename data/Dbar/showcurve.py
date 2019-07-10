@@ -73,7 +73,7 @@ def multicost(timefactor=4.01):
     plt.xlabel('Training time (seconds)', fontsize=18)
     plt.ylabel('Averaged cumulative cost', fontsize=18)
     
-def showcurve(filename='cost.txt'):
+def showcurve(filename='cost0.txt'):
     with open(filename) as f:
         r=f.readlines()
     y=np.array(r[0].strip().split()).astype(np.float)

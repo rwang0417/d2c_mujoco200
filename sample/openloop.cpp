@@ -12,16 +12,15 @@
 #include <funclib.h>
 
 //-------------------------------- user macros --------------------------------------
-#define CTRL_LIMITTED true
-#define PI 3.141592653
+#define CTRL_LIMITTED false
 #define TRAINING_NUM 1
 
 //-------------------------------- global variables -------------------------------------
 // constants
-extern const int kTestNum = 500;	// number of monte-carlo runs
 extern const int kMaxStep = 1000;   // max step number for one rollout
 extern const int kMaxState = 100;	// max state dimension
 const int kMaxThread = 64;
+const mjtNum kMaxUpdate = 0.1;
 
 // extern model specific parameters
 extern int rolloutnum_train;
@@ -34,6 +33,7 @@ extern mjtNum simulation_timestep;
 extern mjtNum ctrl_limit_train;
 extern mjtNum state_nominal[kMaxStep][kMaxState];
 extern mjtNum state_target[kMaxState];
+extern mjtNum strlen_origin[kMaxState];
 extern char testmode[30];
 extern char modelname[30];
 extern char modelfilename[100];
@@ -42,8 +42,8 @@ extern char modelfilename[100];
 mjtNum ctrl_current[kMaxThread][kMaxStep * kMaxState] = { 0 };
 mjtNum ctrl_init[kMaxStep * kMaxState] = { 0 };
 FILE *filestream1[kMaxThread], *filestream2, *filestream3;
-static int iterationnum[kMaxThread] = { 0 };
-char para_buff[30], ctrl_buff[30], idstr[10];
+static int iteration_index[kMaxThread] = { 0 };
+char data_buff[30], idstr[10];
 char keyfilename[100];
 char datafilename[100];
 char costfilename[kMaxThread][100];
@@ -95,16 +95,16 @@ void train(mjData* d, int id)
 {
 	static mjtNum gradient[kMaxStep * kMaxState] = { 0 };
 	static mjtNum rollout_cost = 0, sum_cost = 0, nominal_cost = 0;
-	static int step_index = 0, rollout_index = 0;
+	static char str1[30];
+	static int rollout_index = 0;
 	mjtNum delta_u[kMaxStep*kMaxState] = { 0 };
-	mjtNum average_cost;
-	char str1[10];
+	mjtNum average_cost = 0;
 
 	mj_resetData(m, d);
-	mju_copy(d->qpos, state_nominal[0], m->nq);
-	mju_copy(d->qvel, &state_nominal[0][m->nq], m->nv);
+	//mju_copy(d->qpos, state_nominal[0], m->nq);
+	//mju_copy(d->qvel, &state_nominal[0][m->nq], m->nv);
 	mj_forward(m, d); 
-	while (step_index <= stepnum) {
+	for (int step_index = 0; step_index <= stepnum; step_index++) {
 		rollout_cost += stepCost(m, d, step_index);
 		for (int i = 0; i < actuatornum; i++)
 		{
@@ -112,10 +112,7 @@ void train(mjData* d, int id)
 			d->ctrl[i] = ctrl_current[id][step_index * actuatornum + i] + delta_u[step_index * actuatornum + i];
 		}
 		for (int i = 0; i < integration_per_step; i++) mj_step(m, d);
-		step_index++;
 	}
-	
-	step_index = 0;
 	nominal_cost = rollout_cost / (rollout_index + 1.0) + (1 - 1 / (rollout_index + 1.0)) * nominal_cost;
 	for (int i = 0; i < actuatornum * stepnum; i++)
 	{
@@ -143,8 +140,8 @@ void train(mjData* d, int id)
 		nominal_cost = 0;
 		for (int i = 0; i < actuatornum * stepnum; i++)
 		{
-			if (update_coefficient[id] * gradient[i] > 0.1) ctrl_current[id][i] -= 0.1;
-			else if (update_coefficient[id] * gradient[i] < -0.1) ctrl_current[id][i] -= -0.1;
+			if (update_coefficient[id] * gradient[i] > kMaxUpdate) ctrl_current[id][i] -= kMaxUpdate;
+			else if (update_coefficient[id] * gradient[i] < -kMaxUpdate) ctrl_current[id][i] -= -kMaxUpdate;
 			else ctrl_current[id][i] -= update_coefficient[id] * gradient[i];
 #if(CTRL_LIMITTED == true)
 			if (ctrl_current[id][i] > ctrl_limit_train) ctrl_current[id][i] = ctrl_limit_train;
@@ -152,9 +149,9 @@ void train(mjData* d, int id)
 #endif
 			gradient[i] = 0;
 		}
-		iterationnum[id]++;
-		//if (iterationnum > 150) { update_coefficient = 0.00001; perturb_coefficient_train = 0.01; }
-		//if (iterationnum > 600) { update_coefficient = 0.00001; perturb_coefficient_train = 0.01; }
+		iteration_index[id]++;
+		//if (iteration_index > 150) { update_coefficient = 0.00001; perturb_coefficient_train = 0.01; }
+		//if (iteration_index > 600) { update_coefficient = 0.00001; perturb_coefficient_train = 0.01; }
 	}
 }
 
@@ -165,24 +162,23 @@ void simulate(int id, int niteration)
     contacts[id] = 0;
     constraints[id] = 0;
 	
-	srand((unsigned)time(NULL));
 	sprintf(idstr, "%d", id);
 	snprintf(costfilename[id], sizeof(costfilename[id]), "%s%s%s", "cost", idstr, ".txt");
 	if ((filestream1[id] = fopen(costfilename[id], "wt+")) == NULL) {
 		printf("Could not open file: cost.txt");
 	}
-	
+	srand((unsigned)time(NULL));////////////////////////////////////// doesn't work with multi-thread
 	for (int i = 0; i < TRAINING_NUM; i++) {
 		// task initialization
-		for (int i = 0; i < actuatornum * stepnum; i++) ctrl_current[id][i] = ctrl_init[i];
-		iterationnum[id] = 0;
+		mju_copy(ctrl_current[id], ctrl_init, actuatornum*stepnum);
+		iteration_index[id] = 0;
 		perturb_coefficient_train[id] = perturb_coefficient_train_init;
 		update_coefficient[id] = update_coefficient_init;
 		printfraction = 0.1;
 
 		// run and time
 		double start = gettm();
-		while (iterationnum[id] < niteration)
+		while (iteration_index[id] < niteration)
 		{
 			train(d[id], id);
 			
@@ -191,7 +187,7 @@ void simulate(int id, int niteration)
 			constraints[id] += d[id]->nefc;
 
 			// print '.' every printfraction of niteration for thread 0
-			if (iterationnum[id] >= niteration * printfraction && id == 0)
+			if (iteration_index[id] >= niteration * printfraction && id == 0)
 			{
 				printf(".");
 				printfraction += 0.1;
@@ -207,10 +203,11 @@ void simulate(int id, int niteration)
 int main(int argc, const char** argv)
 {
 	char str2[30];
+	
     // print help if arguments are missing
     if( argc<3 || argc>5 )
         return finish("\n Usage:  testspeed modelfile niteration [nthread [profile]]\n");
-
+	
     // activate MuJoCo Pro license (this must be *your* activation key)
 	DWORD usernamesize = 30;
 	GetUserName(username, &usernamesize);
@@ -269,7 +266,8 @@ int main(int argc, const char** argv)
             mju_copy(d[id]->act,  m->key_act  + testkey*m->na, m->na);
         }
     }
-
+	mju_add(state_nominal[0], state_nominal[0], d[0]->qpos, m->nq);
+	
 	strcpy(datafilename, "converge.txt");
 	if ((filestream2 = fopen(datafilename, "wt+")) == NULL) {
 		printf("Could not open file: converge.txt");
@@ -278,31 +276,31 @@ int main(int argc, const char** argv)
 	if ((filestream3 = fopen(datafilename, "r")) != NULL) {
 		while (!feof(filestream3))
 		{
-			fscanf(filestream3, "%s", para_buff);
-			if (para_buff[1] == '_')
+			fscanf(filestream3, "%s", data_buff);
+			if (data_buff[1] == '_')
 			{
-				fscanf(filestream3, "%s", para_buff);
-				Q = atof(para_buff);
+				fscanf(filestream3, "%s", data_buff);
+				Q = atof(data_buff);
 			}
-			if (para_buff[0] == 'R')
+			if (data_buff[0] == 'R')
 			{
-				fscanf(filestream3, "%s", para_buff);
-				R = atof(para_buff);
+				fscanf(filestream3, "%s", data_buff);
+				R = atof(data_buff);
 			}
-			if (para_buff[1] == 'T')
+			if (data_buff[1] == 'T')
 			{
-				fscanf(filestream3, "%s", para_buff);
-				QT = atof(para_buff);
+				fscanf(filestream3, "%s", data_buff);
+				QT = atof(data_buff);
 			}
-			if (para_buff[0] == 'p')
+			if (data_buff[0] == 'p')
 			{
-				fscanf(filestream3, "%s", para_buff);
-				perturb_coefficient_train_init = atof(para_buff);
+				fscanf(filestream3, "%s", data_buff);
+				perturb_coefficient_train_init = atof(data_buff);
 			}
-			if (para_buff[0] == 's')
+			if (data_buff[0] == 's')
 			{
-				fscanf(filestream3, "%s", para_buff);
-				update_coefficient_init = atof(para_buff);
+				fscanf(filestream3, "%s", data_buff);
+				update_coefficient_init = atof(data_buff);
 			}
 		}
 		for (int i = 0; i < statenum; i++)
@@ -313,17 +311,26 @@ int main(int argc, const char** argv)
 		//QTm[0][0] = 200; QTm[1][1] = 100; QTm[2][2] = 500; QTm[3][3] = 100;
 		fclose(filestream3);
 	}
+	else printf("Could not open file: parameters.txt");
+
+	if (_strcmpi(modelname, "dbar") == 0) {
+		for (int i = 0; i < stepnum; i++)
+		{
+			mju_copy(&ctrl_init[actuatornum*i], strlen_origin, actuatornum);
+		}
+	}
 
 	strcpy(datafilename, "init.txt");
 	if ((filestream3 = fopen(datafilename, "r")) != NULL)
 	{
 		for (int i = 0; i < actuatornum * stepnum; i++)
 		{
-			fscanf(filestream3, "%s", ctrl_buff);
-			ctrl_init[i] = atof(ctrl_buff);
+			fscanf(filestream3, "%s", data_buff);
+			ctrl_init[i] = atof(data_buff);
 		}
 		fclose(filestream3);
 	}
+	else printf("Could not open file: init.txt");
 
     // install timer callback for profiling if requested
     tm_start = chrono::system_clock::now();
@@ -332,10 +339,10 @@ int main(int argc, const char** argv)
 
     // print start
     if( nthread>1 )
-        printf("\nRunning %d iterations per thread at dt_c = %g, dt_s = %g ...\n\n", niteration, control_timestep, m->opt.timestep);
+        printf("\nRunning %d iterations per thread at dt_c = %g, dt_s = %g, %d rollouts per iteration\n\n", niteration, control_timestep, m->opt.timestep, rolloutnum_train);
     else
-        printf("\nRunning %d iterations at dt_c = %g, dt_s = %g...\n\n", niteration, control_timestep, m->opt.timestep);
-
+        printf("\nRunning %d iterations at dt_c = %g, dt_s = %g, %d rollouts per iteration\n\n", niteration, control_timestep, m->opt.timestep, rolloutnum_train);
+	
     // run simulation, record total time
     thread th[kMaxThread];
     double starttime = gettm();
@@ -366,7 +373,7 @@ int main(int argc, const char** argv)
 	printf(" Contacts per step    : %d\n", contacts[0] / (niteration*rolloutnum_train*stepnum*integration_per_step));
 	printf(" Constraints per step : %d\n", constraints[0] / (niteration*rolloutnum_train*stepnum*integration_per_step));
     printf(" Degrees of freedom   : %d\n\n", m->nv);
-
+	
     // profiler results for thread 0
     if( profile )
     {
