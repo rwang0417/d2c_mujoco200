@@ -1,12 +1,12 @@
 clear all;
 % mex mexstep.c mujoco150.lib
 %% Param
-NUM_SYS             = 18;    %System state number
-NUM_IN              = 6;    %Number of inputs
-STEP_MAX            = 1000; %Total timestep
+NUM_SYS             = 2;    %System state number
+NUM_IN              = 1;    %Number of inputs
+STEP_MAX            = 30; %Total timestep
 %% Var
-sig_q = 10^4;
-sig_f = 10^3;
+sig_q = 10^3;
+sig_f = 10^4;
 Ri = 10^0 * eye(NUM_IN);
 Qi = sig_q * eye(NUM_SYS);
 OS = zeros(NUM_SYS, NUM_SYS, STEP_MAX+1);

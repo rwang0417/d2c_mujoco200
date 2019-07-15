@@ -10,27 +10,27 @@ import brewer2mpl
 import matplotlib as mpl
 from scipy import signal
 
-def latexplot(timefactor=8.805,filtered=False):
-    #plot preprocessing
-    bmap = brewer2mpl.get_map('Set2','qualitative', 7)
-    colors = bmap.mpl_colors
-    
-    params = {
-    'axes.labelsize': 10,
-    'font.size': 8,
+#plot preprocessing
+bmap = brewer2mpl.get_map('Set2','qualitative', 7)
+colors = bmap.mpl_colors
+params = {
+    'axes.labelsize': 15,
+    'font.size': 20,
     'legend.fontsize': 15,
     'xtick.labelsize': 15,
     'ytick.labelsize': 15,
-    'text.usetex': True,
-    'figure.figsize': [8, 6], # instead of 4.5, 4.5
+    'text.usetex': True ,
+    'figure.figsize': [7, 5], # instead of 4.5, 4.5
     'font.weight': 'bold',
     'axes.labelweight': 'bold',
     'ps.useafm' : True,
-    'pdf.use14corefonts':True
-    #'pdf.fonttype': 42,
-    #'ps.fonttype': 42
-     }
-    mpl.rcParams.update(params)
+    'pdf.use14corefonts':True,
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42
+}
+mpl.rcParams.update(params)
+
+def latexplot(timefactor=8.805,filtered=False):
     #plot
     if filtered == True:
         b, a = signal.butter(8  , 0.025)
@@ -58,7 +58,6 @@ def latexplot(timefactor=8.805,filtered=False):
         plt.xlabel('Training time (seconds)', fontsize=16)
         plt.ylabel('Episodic cost fraction', fontsize=16)
         plt.legend(['Original'])
-    
     plt.tight_layout()    
 
 def multicost(timefactor=4.01):
@@ -66,12 +65,13 @@ def multicost(timefactor=4.01):
     cm = np.mean(y,axis=0)
     cs = np.std(y,axis=0)
     x=np.linspace(1,y.shape[1],y.shape[1])*timefactor
-    plt.plot(x, cm, color='dodgerblue', linewidth=1)
-    plt.fill_between(x,cm-cs,cm+cs,alpha=0.5,color='orange')
-    plt.grid(axis='y', color='.910', linestyle='-', linewidth=.5)
-    plt.grid(axis='x', color='.910', linestyle='-', linewidth=.5)
-    plt.xlabel('Training time (seconds)', fontsize=18)
-    plt.ylabel('Averaged cumulative cost', fontsize=18)
+    plt.plot(x, cm/cm[-1], color='dodgerblue', linewidth=1)
+    plt.fill_between(x,(cm-cs)/cm[-1],(cm+cs)/cm[-1],alpha=0.5,color='orange')
+    plt.xlabel('Training time (seconds)', fontsize=20)
+    plt.ylabel('Averaged episodic cost fraction', fontsize=20)
+    plt.legend(['Mean', 'Standard deviation'])
+    plt.tight_layout()
+    plt.grid(color='.910', linewidth=1.5)
     
 def showcurve(filename='cost0.txt'):
     with open(filename) as f:

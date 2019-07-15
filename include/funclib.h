@@ -53,21 +53,21 @@ mjtNum randGauss(mjtNum mean, mjtNum var);
 /**
 * @brief  Angle modification for pendulum, cartpole and acrobot to clamp angle value
 * @note   different modification different model
-* @param  const char* model: name of the model
+* @param  int model: id of the model
 *         mjtNum angle: current angle value read from mujoco
 * @retval mjtNum: modified angle value
 * @author rwang0417@tamu.edu
 */
-mjtNum angleModify(const char* model, mjtNum angle);
+mjtNum angleModify(int model, mjtNum angle);
 
 /**
 * @brief  Select model parameters set
 * @note   none
 * @param  const char* model: name of the model whose parameters to select
-* @retval none
+* @retval int: 1 is succeed, 0 is fail to set the parameters
 * @author rwang0417@tamu.edu
 */
-void modelSelection(const char* model);
+int modelSelection(const char* model);
 
 /**
 * @brief  calculate the cost at a step

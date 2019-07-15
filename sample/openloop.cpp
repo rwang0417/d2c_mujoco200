@@ -28,6 +28,7 @@ extern int integration_per_step;
 extern int stepnum;
 extern int actuatornum;
 extern int statenum;
+extern int modelid;
 extern mjtNum control_timestep;
 extern mjtNum simulation_timestep;
 extern mjtNum ctrl_limit_train;
@@ -35,8 +36,7 @@ extern mjtNum state_nominal[kMaxStep][kMaxState];
 extern mjtNum state_target[kMaxState];
 extern mjtNum strlen_origin[kMaxState];
 extern char testmode[30];
-extern char modelname[30];
-extern char modelfilename[100];
+
 
 // user data and other training settings
 mjtNum ctrl_current[kMaxThread][kMaxStep * kMaxState] = { 0 };
@@ -46,8 +46,10 @@ static int iteration_index[kMaxThread] = { 0 };
 char data_buff[30], idstr[10];
 char keyfilename[100];
 char datafilename[100];
+char modelfilename[100];
 char costfilename[kMaxThread][100];
 char username[30];
+char modelname[30];
 char keyfilepre[20] = "";
 
 /* hyperparameters */
@@ -222,24 +224,34 @@ int main(int argc, const char** argv)
 		mj_activate(keyfilename);
 	}
 
+	// get filename, determine file type
+	std::string filename(argv[1]);
+	bool binary = (filename.find(".mjb") != std::string::npos);
+	strcpy(modelfilename, argv[1]);
+	strncpy(modelname, modelfilename, strlen(modelfilename) - 4);
+	modelSelection(modelname);
+
     // read niteration and nthread
     int niteration = 0, nthread = 0, profile = 0;
     if( sscanf(argv[2], "%d", &niteration)!=1 || niteration<=0 )
         return finish("Invalid niteration argument");
-    if( argc>3 )
-        if( sscanf(argv[3], "%d", &nthread)!=1 )
-            return finish("Invalid nthread argument");
-    if( argc>4 )
-        if( sscanf(argv[4], "%d", &profile)!=1 )
-            return finish("Invalid profile argument");
+	if (argc > 3 && modelSelection(argv[3]) != 1) {
+		if (sscanf(argv[3], "%d", &nthread) != 1)
+			return finish("Invalid nthread argument");
+		if (argc > 4)
+			if (sscanf(argv[4], "%d", &profile) != 1)
+				return finish("Invalid profile argument");
+	}
+	else if (argc > 4) {
+		if (sscanf(argv[4], "%d", &nthread) != 1)
+			return finish("Invalid nthread argument");
+		if (argc > 5)
+			if (sscanf(argv[5], "%d", &profile) != 1)
+				return finish("Invalid profile argument");
+	}
 
     // clamp nthread to [1, kMaxThread]
     nthread = mjMAX(1, mjMIN(kMaxThread, nthread));
-
-    // get filename, determine file type
-    std::string filename(argv[1]);
-    bool binary = (filename.find(".mjb")!=std::string::npos);
-	modelSelection(argv[1]);
 
     // load model
     char error[500] = "Could not load binary model";
@@ -313,7 +325,7 @@ int main(int argc, const char** argv)
 	}
 	else printf("Could not open file: parameters.txt");
 
-	if (_strcmpi(modelname, "dbar") == 0) {
+	if (modelid == 4) {
 		for (int i = 0; i < stepnum; i++)
 		{
 			mju_copy(&ctrl_init[actuatornum*i], strlen_origin, actuatornum);

@@ -28,6 +28,7 @@ extern int integration_per_step;
 extern int stepnum;
 extern int actuatornum;
 extern int statenum;
+extern int modelid;
 extern mjtNum control_timestep;
 extern mjtNum simulation_timestep;
 extern mjtNum perturb_coefficient_test;
@@ -37,8 +38,6 @@ extern mjtNum state_target[kMaxState];
 extern mjtNum stabilizer_feedback_gain[kMaxState][kMaxState];
 extern mjtNum tracker_feedback_gain[kMaxStep][kMaxState][kMaxState];
 extern char testmode[30];
-extern char modelname[30];
-extern char modelfilename[100];
 
 // hyperparameters 
 extern mjtNum Q, QT, R;
@@ -56,8 +55,13 @@ FILE *filestream1;
 char data_buff[30];
 char keyfilename[100];
 char datafilename[100];
+char modelfilename[100];
 char username[30];
+char modelname[30];
 char keyfilepre[20]  = "";
+int step_index_nominal = 0;
+int step_index_openloop = 0;
+int step_index_closedloop = 0;
 
 // abstract visualization
 mjvScene scn, scn_openloop, scn_closedloop;
@@ -1390,6 +1394,9 @@ void uiEvent(mjuiState* state)
             case 1:             // Reset
                 if( m )
                 {
+					step_index_nominal = 0;
+					step_index_closedloop = 0;
+					step_index_openloop = 0;
                     mj_resetData(m, d);
                     mj_forward(m, d);
 					mj_resetData(m, d_openloop);
@@ -1763,103 +1770,95 @@ void uiEvent(mjuiState* state)
 void simulateNominal(void)
 {
 	static mjtNum state_error[kMaxState];
-	static int step_index = 0;
+	
 
-	if (step_index == 0) {
+	if (step_index_nominal == 0) {
 		mj_resetData(m, d);
 		mju_copy(d->qpos, state_nominal[0], m->nq);
 		mju_copy(d->qvel, &state_nominal[0][m->nq], m->nv);
 	}
-	if (step_index >= stepnum) 
+	if (step_index_nominal >= stepnum)
 	{
 		mju_sub(state_error,  state_target, d->qpos, m->nq);
 		mju_sub(&state_error[m->nq], &state_target[m->nq], d->qvel, m->nv);
-		if (_strcmpi(modelname, "pendulum") == 0) {
+		if (modelid == 0) {
 			state_error[0] = -(PI - fabs(d->qpos[0] - PI))*((PI - d->qpos[0] > 0) - (PI - d->qpos[0] < 0));
 		}
-		if (_strcmpi(modelname, "dbar") != 0)////////////////////////
+		if (modelid != 4)////////////////////////
 			mju_mulMatVec(d->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 	}
-	else mju_copy(d->ctrl, &ctrl_nominal[step_index * actuatornum], m->nu);
+	else mju_copy(d->ctrl, &ctrl_nominal[step_index_nominal * actuatornum], m->nu);
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d);
-	step_index++;
+	step_index_nominal++;
 }
 
 bool simulateClosedloop(void)
 {
 	static mjtNum state_error[kMaxState], ctrl_feedback[kMaxState];
-	static int step_index = 0;
 
-	if (step_index == 0) {
+	if (step_index_closedloop == 0) {
 		mj_resetData(m, d_closedloop);
 		mju_copy(d_closedloop->qpos, state_nominal[0], m->nq);
 		mju_copy(d_closedloop->qvel, &state_nominal[0][m->nq], m->nv);
 		mj_forward(m, d_closedloop);
-		cost_closedloop = stepCost(m, d_closedloop, step_index);
+		cost_closedloop = stepCost(m, d_closedloop, step_index_closedloop);
 	}
 
-	if (step_index >= stepnum)
+	if (step_index_closedloop >= stepnum)
 	{
 		mju_sub(state_error, state_target, d_closedloop->qpos, m->nq);
 		mju_sub(&state_error[m->nq], &state_target[m->nq], d_closedloop->qvel, m->nv);
-		if (_strcmpi(modelname, "pendulum") == 0) {
+		if (modelid == 0) {
 			state_error[0] = -(PI - fabs(d_closedloop->qpos[0] - PI))*((PI - d_closedloop->qpos[0] > 0) - (PI - d_closedloop->qpos[0] < 0));
 		}
-		if (_strcmpi(modelname, "cartpole") == 0) {
-			state_error[2] = -(PI - fabs(d_closedloop->qpos[1]))*((d_closedloop->qpos[1] < 0) - (d_closedloop->qpos[1] > 0));
-		}
-		//if (_strcmpi(modelname, "dbar") != 0)////////////////////////////////
-			//mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
+		if (modelid != 4)////////////////////////////////
+			mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 		if (_strcmpi(testmode, "policy_compare") == 0) {
-			step_index = 0;
+			step_index_closedloop = 0;
 			return 1;
 		}
 	}
 	else {
-		mju_sub(state_error, state_nominal[step_index], d_closedloop->qpos, m->nq);
-		mju_sub(&state_error[m->nq], &state_nominal[step_index][m->nq], d_closedloop->qvel, m->nv);
-		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index], state_error, m->nu, kMaxState);
-		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index * actuatornum], ctrl_feedback, m->nu);
+		mju_sub(state_error, state_nominal[step_index_closedloop], d_closedloop->qpos, m->nq);
+		mju_sub(&state_error[m->nq], &state_nominal[step_index_closedloop][m->nq], d_closedloop->qvel, m->nv);
+		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index_closedloop], state_error, m->nu, kMaxState);
+		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
 	}
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
-	step_index++;
-	cost_closedloop += stepCost(m, d_closedloop, step_index);
+	step_index_closedloop++;
+	cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
 	return 0;
 }
 
 bool simulateOpenloop(void)
 {
 	static mjtNum state_error[kMaxState];
-	static int step_index = 0;
 
-	if (step_index == 0) {
+	if (step_index_openloop == 0) {
 		mj_resetData(m, d_openloop);
 		mju_copy(d_openloop->qpos, state_nominal[0], m->nq);
 		mju_copy(d_openloop->qvel, &state_nominal[0][m->nq], m->nv);
 		mj_forward(m, d_closedloop);
-		cost_openloop = stepCost(m, d_openloop, step_index);
+		cost_openloop = stepCost(m, d_openloop, step_index_openloop);
 	}
-	if (step_index >= stepnum)
+	if (step_index_openloop >= stepnum)
 	{
 		mju_sub(state_error, state_target, d_openloop->qpos, m->nq);
 		mju_sub(&state_error[m->nq], &state_target[m->nq], d_openloop->qvel, m->nv);
-		if (_strcmpi(modelname, "pendulum") == 0) {
+		if (modelid == 0) {
 			state_error[0] = -(PI - fabs(d_openloop->qpos[0] - PI))*((PI - d_openloop->qpos[0] > 0) - (PI - d_openloop->qpos[0] < 0));
 		}
-		if (_strcmpi(modelname, "cartpole") == 0) {
-			state_error[2] = -(PI - fabs(d_openloop->qpos[1]))*((d_openloop->qpos[1] < 0) - (d_openloop->qpos[1] > 0));
-		}
-		//if (_strcmpi(modelname, "dbar") != 0)///////////////////////////
-			//mju_mulMatVec(d_openloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
+		if (modelid != 4)///////////////////////////
+			mju_mulMatVec(d_openloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 		if (_strcmpi(testmode, "policy_compare") == 0) {
-			step_index = 0;
+			step_index_openloop = 0;
 			return 1;
 		}
 	}
-	else mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index * actuatornum], m->nu);
+	else mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index_openloop * actuatornum], m->nu);
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_openloop);
-	step_index++;
-	cost_openloop += stepCost(m, d_openloop, step_index); 
+	step_index_openloop++;
+	cost_openloop += stepCost(m, d_openloop, step_index_openloop);
 	return 0;
 }
 
@@ -1882,9 +1881,9 @@ mjtNum terminalError(mjtNum ptb)
 		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index * actuatornum], ctrl_feedback, m->nu);
 		for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
 	}
-	if (_strcmpi(modelname, "pendulum") == 0)
-		return sqrt(angleModify(modelname, d_closedloop->qpos[0])*angleModify(modelfilename, d_closedloop->qpos[0]) + d_closedloop->qvel[0] * d_closedloop->qvel[0]);
-	else if (_strcmpi(modelname, "swimmer3") == 0)
+	if (modelid == 0)
+		return sqrt(angleModify(modelid, d_closedloop->qpos[0])*angleModify(modelid, d_closedloop->qpos[0]) + d_closedloop->qvel[0] * d_closedloop->qvel[0]);
+	else if (modelid == 2)
 		return sqrt((d_closedloop->geom_xpos[6] - 0.6) * (d_closedloop->geom_xpos[6] - 0.6) + (d_closedloop->geom_xpos[7] + 0.6) * (d_closedloop->geom_xpos[7] + 0.6));
 	return 0;
 }
@@ -1946,7 +1945,9 @@ void modelTest(void)
 	printf(" m->nq             : %d\n", m->nq);
 	printf(" m->nv             : %d\n", m->nv);
 	printf(" m->nu             : %d\n", m->nu);
+	printf(" m->nsite          : %d\n", m->nsite);
 	for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.2f\n", i, d->qpos[i]);
+	for (int i = 0; i < 3*m->nsite; i++) printf(" d->site_xpos[%d]   : %.2f\n", i, d->site_xpos[i]);
 }
 
 void modeSelection(const char* mode)
@@ -2442,9 +2443,12 @@ int main(int argc, const char** argv)
 	if (argc <= 1) return 0;
 	if (argc > 1)
 	{
-		modelSelection(argv[1]);
+		strcpy(modelfilename, argv[1]);
+		strncpy(modelname, modelfilename, strlen(modelfilename) - 4);
 		settings.loadrequest = 1;
 	}
+	if (argc > 2) modelSelection(argv[2]);
+	else modelSelection(modelname);
 
 	// initialize
 	init();
@@ -2454,6 +2458,11 @@ int main(int argc, const char** argv)
 	if (argc > 2)
 	{
 		modeSelection(argv[2]);
+	}
+
+	if (argc > 3)
+	{
+		modeSelection(argv[3]);
 	}
 
     // start simulation thread

@@ -626,16 +626,19 @@
 #### 6. https://blog.csdn.net/m0_37876745/article/details/78172846 这个是解决无法打开程序数据库，要删除vc140.pdb错误的教程。
 ## 07/06/2019
 ### Log:
-#### 1. test2d pendulum.xml performance_test，或者是policy_compare，只加文件名就是出动画。
+#### 1. test2d pendulum.xml performance_test，或者是policy_compare,model_test，只加文件名就是出动画,test2d是第一个参数，第二个一定是模型文件名，第三个是模型类别或者功能，模型类别是pendulum，dbar，swimmer3这样的，功能就是上面model_test那几个，如果既有模型类别也有功能，先写模型类别，第四个参数是功能。
 #### 2. 做成dll别人不好改代码了，还是别了，省点事。
 ## 07/07/2019
 ### Log:
 #### 1. 外部变量在main里写extern声明但不定义（初始化），在lib.cpp里不加extern再声明一遍，可以初始化。如果是用来声明数组的size的常量需要在两个文件都初始化，但只有main里的会起作用。
 #### 2. 凉了555maxstep不能设大，否则training不能跑，直接在train前面退出了。。。感觉是d[64]这个太坑了，每个d都是一个大的数据结构，64个就很多，所以如果需要改就把64改小吧。
-#### 3. openloop cheetah.xml 100， 100是迭代数也就是gradient更新的次数，后面还可以加thread数，不加默认1个thread，现在多个thread就更之前开多个cmd窗口一起运行check reproducibility一样。
+#### 3. openloop cheetah.xml 100， 100是迭代数也就是gradient更新的次数，如果文件名不是模型名，后面需要加模型名，后面还可以加thread数，不加默认1个thread，现在多个thread就更之前开多个cmd窗口一起运行check reproducibility一样，再后面是profile开关。
 #### 4. sysid2d pendulum.xml 100
 100是迭代数，后面还可以加thread数，不加默认1个thread，多线程这里的iteration是总数，每个rollout互相之间是并行。
 ## 07/10/2019
 ### Log:
 #### 1. 多线程在thread function外面用srand(时间)设置种子然而线程里面产生的随机数每次都是一样的。解决方法如果只开一个线程，就在线程里面设置随机数种子，如果开多个线程，就每个线程里面用精确到微秒的时间加threadID设置随机数种子。暂时只用了第一种在openloop里。
 #### 2. 数组太大内存不够的问题，可以动态分配内存给数组或者矩阵的指针，这样就没有不是const不能用来指定矩阵size的问题了。
+## 07/14/2019
+### Log:
+#### 1. resetdata特别耗时间。

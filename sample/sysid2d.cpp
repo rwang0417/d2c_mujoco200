@@ -13,10 +13,10 @@
 
 //-------------------------------- global variables -------------------------------------
 // constants
-extern const int kTestNum = 10;	// number of monte-carlo runs
-extern const int kMaxStep = 1000;   // max step number for one rollout
-extern const int kMaxState = 100;	// max state dimension
-const int kMaxThread = 4;
+extern const int kTestNum = 200;	// number of monte-carlo runs
+extern const int kMaxStep = 30;   // max step number for one rollout
+extern const int kMaxState = 5;	// max state dimension
+const int kMaxThread = 2;
 
 // extern model specific parameters
 extern int integration_per_step;
@@ -29,8 +29,6 @@ extern mjtNum perturb_coefficient_sysid;
 extern mjtNum state_nominal[kMaxStep][kMaxState];
 extern mjtNum ctrl_nominal[kMaxStep * kMaxState];
 extern char testmode[30];
-extern char modelname[30];
-extern char modelfilename[100];
 
 // user data and other training settings
 int *p = (int *)malloc(5 * sizeof(int));////////////////////////////////////////////
@@ -42,7 +40,9 @@ static int iteration_index[kMaxThread] = { 0 };
 char data_buff[30], idstr[10];
 char keyfilename[100];
 char datafilename[100];
+char modelfilename[100];
 char username[30];
+char modelname[30];
 char keyfilepre[20] = "";
 
 // model and per-thread data
@@ -82,41 +82,34 @@ int finish(const char* msg = NULL, mjModel* m = NULL)
 
 void sysidCheck(mjModel* m, mjData* d)
 {
-	mjtNum dx_estimate[kTestNum][kMaxStep][kMaxState];
-	mjtNum dx_input[kTestNum][kMaxStep][kMaxState + kMaxState] = { 0 };
-	mjtNum dx_simulate[kTestNum][kMaxStep][kMaxState] = { 0 };
+	mjtNum dx_estimate[kMaxStep][kMaxState];
+	mjtNum dx_input[kMaxStep][kMaxState + kMaxState] = { 0 };
+	mjtNum dx_simulate[kMaxStep][kMaxState] = { 0 };
 
-	for (int i = 0; i < statenum + actuatornum; i++)
+	for (int t = 0; t < kTestNum; t++)
 	{
-		for (int j = 0; j < kTestNum; j++)
+		for (int i = 0; i < statenum + actuatornum; i++)
 		{
-			for (int k = 0; k < stepnum; k++) dx_input[j][k][i] = 0.01 * ctrl_max * randGauss(0, 1);
+			for (int m = 0; m < stepnum; m++) dx_input[m][i] = 0.01 * ctrl_max * randGauss(0, 1);
 		}
-	}
-	for (int i = 0; i < kTestNum; i++)
-	{
-		for (int j = 0; j < stepnum; j++) mju_mulMatVec(dx_estimate[i][j], *matAB[0][j], dx_input[i][j], statenum, statenum + actuatornum);
-	}
-
-	for (int i = 0; i < kTestNum; i++)
-	{
+		for (int j = 0; j < stepnum; j++) mju_mulMatVec(dx_estimate[j], *matAB[0][j], dx_input[j], kMaxState, kMaxState+ kMaxState);///////////////////////////////////////////////////
 		for (int step_index = 0; step_index < stepnum; step_index++)
 		{
 			mj_resetData(m, d);
-			mju_add(d->qpos, dx_input[i][step_index], state_nominal[step_index], m->nq);
-			mju_add(d->qvel, &dx_input[i][step_index][m->nq], &state_nominal[step_index][m->nq], m->nv);
-			mju_add(d->ctrl, &dx_input[i][step_index][statenum], &state_nominal[step_index][statenum], m->nu);
+			mju_add(d->qpos, dx_input[step_index], state_nominal[step_index], m->nq);
+			mju_add(d->qvel, &dx_input[step_index][m->nq], &state_nominal[step_index][m->nq], m->nv);
+			mju_add(d->ctrl, &dx_input[step_index][statenum], &ctrl_nominal[step_index * actuatornum], m->nu);
 
-			for (int i = 0; i < integration_per_step; i++) mj_step(m, d);
+			for (int k = 0; k < integration_per_step; k++) mj_step(m, d);
 			
-			mju_sub(dx_simulate[i][step_index], d->qpos, state_nominal[step_index + 1], m->nq);
-			mju_sub(&dx_simulate[i][step_index][m->nq], d->qvel, &state_nominal[step_index + 1][m->nq], m->nv);
+			mju_sub(dx_simulate[step_index], d->qpos, state_nominal[step_index + 1], m->nq);
+			mju_sub(&dx_simulate[step_index][m->nq], d->qvel, &state_nominal[step_index + 1][m->nq], m->nv);
 		}
-		for (int t = 0; t < statenum; t++)
+		for (int y = 0; y < statenum; y++)
 		{
 			for (int h = 0; h < stepnum; h++)
 			{
-				if (dx_simulate[i][h][t] != 0) sysiderr += fabs((dx_estimate[i][h][t] - dx_simulate[i][h][t]) / dx_simulate[i][h][t]);
+				if (dx_simulate[h][y] != 0) sysiderr += fabs((dx_estimate[h][y] - dx_simulate[h][y]) / dx_simulate[h][y]);
 			}
 		}
 	}
@@ -126,7 +119,6 @@ void sysidCheck(mjModel* m, mjData* d)
 // thread function
 void sysid(int id, int nite)
 {
-	static int step_index = 0;
 	mjtNum delta_x1[kMaxState + kMaxState] = { 0 };
 	mjtNum delta_x2[kMaxState] = { 0 };
 	char str1[30];
@@ -135,14 +127,14 @@ void sysid(int id, int nite)
 	contacts[id] = 0;
 	constraints[id] = 0;
 	printfraction = 0.1;
-srand((unsigned)time(NULL));//////////////////////////////////////////////////////////////////
+	srand((unsigned)time(NULL));
+
 	// run and time
 	double start = gettm();
 	for(iteration_index[id] = 0; iteration_index[id] < nite; iteration_index[id]++)
 	{
-		for (step_index = 0; step_index < stepnum; step_index++)
+		for (int step_index = 0; step_index < stepnum; step_index++)
 		{
-			mj_resetData(m, d[id]);
 			for (int y = 0; y < statenum + actuatornum; y++)
 			{
 				delta_x1[y] = perturb_coefficient_sysid * ctrl_max * randGauss(0, 1);
@@ -150,7 +142,7 @@ srand((unsigned)time(NULL));////////////////////////////////////////////////////
 			}
 			mju_add(d[id]->qpos, delta_x1, state_nominal[step_index], m->nq);
 			mju_add(d[id]->qvel, &delta_x1[m->nq], &state_nominal[step_index][m->nq], m->nv);
-			mju_add(d[id]->ctrl, &delta_x1[statenum], &state_nominal[step_index][statenum], m->nu);
+			mju_add(d[id]->ctrl, &delta_x1[statenum], &ctrl_nominal[step_index * actuatornum], m->nu);
 
 			for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
 
@@ -165,14 +157,11 @@ srand((unsigned)time(NULL));////////////////////////////////////////////////////
 					matAB[id][step_index][y][i] = matAB[id][step_index][y][i] * (1 - 1 / (iteration_index[id] + 1.0)) + delta_x2[y] * delta_x1[i] / ((iteration_index[id] + 1.0) * perturb_coefficient_sysid * perturb_coefficient_sysid * ctrl_max * ctrl_max);
 				}
 			}
-
-			if (step_index == 0)
-			{
-				sprintf(str1, "%3.3f", matAB[id][step_index][0][1]);
-				fwrite(str1, 5, 1, filestream2);
-				fputs(" ", filestream2);
-			}
 		}
+		sprintf(str1, "%3.3f", matAB[id][0][0][1]);
+		fwrite(str1, 5, 1, filestream2);
+		fputs(" ", filestream2);
+
 		// print '.' every printfraction of niteration for thread 0
 		if (iteration_index[id] >= nite * printfraction && id == 0)
 		{
@@ -207,24 +196,34 @@ int main(int argc, const char** argv)
 		mj_activate(keyfilename);
 	}
 
-    // read niteration and nthread
-    int niteration = 0, nthread = 0, profile = 0;
-    if( sscanf(argv[2], "%d", &niteration)!=1 || niteration<=0 )
-        return finish("Invalid niteration argument");
-    if( argc>3 )
-        if( sscanf(argv[3], "%d", &nthread)!=1 || nthread > kMaxThread)
-            return finish("Invalid nthread argument");
-    if( argc>4 )
-        if( sscanf(argv[4], "%d", &profile)!=1 )
-            return finish("Invalid profile argument");
+	// get filename, determine file type
+	std::string filename(argv[1]);
+	bool binary = (filename.find(".mjb") != std::string::npos);
+	strcpy(modelfilename, argv[1]);
+	strncpy(modelname, modelfilename, strlen(modelfilename) - 4);
+	modelSelection(modelname);
+
+	// read niteration and nthread
+	int niteration = 0, nthread = 0, profile = 0;
+	if (sscanf(argv[2], "%d", &niteration) != 1 || niteration <= 0)
+		return finish("Invalid niteration argument");
+	if (argc > 3 && modelSelection(argv[3]) != 1) {
+		if (sscanf(argv[3], "%d", &nthread) != 1)
+			return finish("Invalid nthread argument");
+		if (argc > 4)
+			if (sscanf(argv[4], "%d", &profile) != 1)
+				return finish("Invalid profile argument");
+	}
+	else if (argc > 4) {
+		if (sscanf(argv[4], "%d", &nthread) != 1)
+			return finish("Invalid nthread argument");
+		if (argc > 5)
+			if (sscanf(argv[5], "%d", &profile) != 1)
+				return finish("Invalid profile argument");
+	}
 
     // clamp nthread to [1, kMaxThread]
     nthread = mjMAX(1, mjMIN(kMaxThread, nthread));
-
-    // get filename, determine file type
-    std::string filename(argv[1]);
-    bool binary = (filename.find(".mjb")!=std::string::npos);
-	modelSelection(argv[1]);
 
     // load model
     char error[500] = "Could not load binary model";
@@ -251,7 +250,7 @@ int main(int argc, const char** argv)
             mju_copy(d[id]->act,  m->key_act  + testkey*m->na, m->na);
         }
     }
-	srand((unsigned)time(NULL));
+
 	strcpy(datafilename, "converge.txt");
 	if ((filestream2 = fopen(datafilename, "wt+")) == NULL) {
 		printf("Could not open file: converge.txt");
@@ -283,12 +282,13 @@ int main(int argc, const char** argv)
     thread th[kMaxThread];
     double starttime = gettm();
 	stateNominal(m, d[0]);
+
 	for (int id = 0; id < nthread; id++) {
 		th[id] = thread(sysid, id, int(niteration / nthread));
 	}
 	for (int id = 0; id < nthread; id++)
 		th[id].join();
-	for (int idt = 1; idt < nthread; idt++)
+	/*for (int idt = 1; idt < nthread; idt++)
 	{
 		for (int i = 0; i < stepnum; i++)
 		{
@@ -304,9 +304,9 @@ int main(int argc, const char** argv)
 		for (int j = 0; j < actuatornum; j++)
 		{
 			for (int k = 0; k < statenum + actuatornum; k++)
-				matAB[0][i][j][k] = matAB[0][i][j][k]/4;
+				matAB[0][i][j][k] = matAB[0][i][j][k]/(nthread+1);
 		}
-	}
+	}*/
     double tottime = gettm() - starttime;
 	sysidCheck(m, d[0]);
     // all-thread summary
