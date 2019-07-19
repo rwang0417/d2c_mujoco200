@@ -16,8 +16,8 @@
 
 /* Extern variables -------------------------------------------------------*/
 // constants
-const int kMaxStep = 30;   // max step number for one rollout
-const int kMaxState = 5;	// max state dimension
+const int kMaxStep = 700;   // max step number for one rollout
+const int kMaxState = 10;	// max state dimension
 
 // model parameters and environment settings
 int integration_per_step = 1;
@@ -33,7 +33,6 @@ mjtNum perturb_coefficient_sysid;
 mjtNum ctrl_limit_train = 100;
 mjtNum state_nominal[kMaxStep][kMaxState] = { 0 };
 mjtNum ctrl_nominal[kMaxStep * kMaxState] = { 0 };
-mjtNum strlen_origin[kMaxState] = { 0 };
 mjtNum state_target[kMaxState] = { 0 };
 mjtNum stabilizer_feedback_gain[kMaxState][kMaxState] = { 0 };
 mjtNum tracker_feedback_gain[kMaxStep][kMaxState][kMaxState] = { 0 };
@@ -196,19 +195,17 @@ int modelSelection(const char* model)
 	}
 	else if (_strcmpi(model, "dbar") == 0) {
 		modelid = 4;
-		control_timestep = 0.1;
+		control_timestep = 0.02;
 		simulation_timestep = 0.02;
-		perturb_coefficient_test = 0.2;
-		perturb_coefficient_sysid = 0.001;
-		stepnum = 40;
-		statenum = 52;
+		perturb_coefficient_test = 0.3;
+		perturb_coefficient_sysid = 0.05;
+		stepnum = 50;
+		statenum = 4;
 		actuatornum = 4;
 		rolloutnum_train = 300;
 		ctrl_limit_train = 50;
 		mjtNum temp[kMaxState][kMaxState] = { 0 };
 		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], statenum);
-		mjtNum temp2[kMaxState] = { 2, 2, 1.414, 1.414 };
-		mju_copy(strlen_origin, temp2, actuatornum);
 		integration_per_step = (int)(control_timestep / simulation_timestep);
 		return 1;
 	}
@@ -262,14 +259,14 @@ mjtNum stepCost(mjModel* m, mjData* d, int step_index)
 
 void stateNominal(mjModel* m, mjData* d)
 {
-	mju_copy(d->qpos, state_nominal[0], m->nq);
-	mju_copy(d->qvel, &state_nominal[0][m->nq], m->nv);
+	mju_copy(d->qpos, state_nominal[0], int(statenum / 2));
+	mju_copy(d->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
 	mj_forward(m, d);
 	for (int step_index = 0; step_index < stepnum; step_index++) {
 		mju_copy(d->ctrl, &ctrl_nominal[step_index * actuatornum], m->nu);
 		for (int i = 0; i < integration_per_step; i++) mj_step(m, d);
-		mju_copy(state_nominal[step_index+1], d->qpos, m->nq);
-		mju_copy(&state_nominal[step_index+1][m->nq], d->qvel, m->nv);
+		mju_copy(state_nominal[step_index + 1], d->qpos, int(statenum / 2));
+		mju_copy(&state_nominal[step_index + 1][int(statenum / 2)], d->qvel, int(statenum / 2));
 	}
 	mj_resetData(m, d);
 }

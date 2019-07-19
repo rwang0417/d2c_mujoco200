@@ -40,55 +40,27 @@
         <site name="target" pos="0 0 2.5" size="0.06" rgba="1 0 0 .3"/>
 
         <body pos="0 0 0">
-            <geom name="bar1" type="capsule" fromto="0 0 0  0 -1 1" rgba=".5 .1 .1 1"/>
+            <geom name="bar1" type="capsule" fromto="0 0 0  0 -1 1" rgba=".5 .1 .1 1" mass="1"/>
             <site name="b1s" pos="0 0 0"/>
 			<site name="b1e" pos="0 -1 1"/>
 			<joint name="bottom"/>
             <body pos="0 -1 1">
-                <geom name="bar2" type="capsule" fromto="0 0 0  0 1 1" rgba=".5 .1 .1 1"/>
+                <geom name="bar2" type="capsule" fromto="0 0 0  0 1 1" rgba=".5 .1 .1 1" mass="1"/>
                 <joint name="left"/>
                 <site name="b2e" pos="0 1 1"/>
 				<body name="bar3" pos="0 1 1">
-					<geom name="bar3" type="capsule" fromto="0 0 0  0 1 -1" rgba=".5 .1 .1 1"/>
+					<geom name="bar3" type="capsule" fromto="0 0 0  0 1 -1" rgba=".5 .1 .1 1" mass="1"/>
 					<joint name="top"/>
 					<site name="b3e" pos="0 1 -1"/>
+                    <body name="bar4" pos="0 1 -1">
+                        <geom name="bar4" type="capsule" fromto="0 0 0  0 -1 -1" rgba=".5 .1 .1 1" mass="1"/>
+                        <joint name="right"/>
+                        <joint name="bottom2" pos="0 -1 -1"/>
+                    </body>
 				</body>
             </body>
-			<body name="bar4" pos="0 0 0">
-                <geom name="bar4" type="capsule" fromto="0 0 0  0 1 1" rgba=".5 .1 .1 1"/>
-				<joint name="right"/>
-            </body>
+			
         </body>
     </worldbody>
-	
-	<equality>
-		<connect active="true" name='1bar34' body1='bar3' body2='bar4' anchor='-0.05 1 -1'/>
-		<connect active="true" name='2bar34' body1='bar3' body2='bar4' anchor='0.05 1 -1'/>
-	</equality>
-
-    <tendon>
-        <spatial name="S1" width="0.02">
-            <site site="b1s"/>
-            <site site="b2e"/>
-        </spatial>
-		<spatial name="S2" width="0.02">
-            <site site="b1e"/>
-            <site site="b3e"/>
-        </spatial>
-		<spatial name="S3" width="0.02">
-            <site site="b3e"/>
-            <site site="s4"/>
-        </spatial>
-		<spatial name="S4" width="0.02">
-            <site site="b1e"/>
-            <site site="s5"/>
-        </spatial>
-    </tendon>   
-
-    <actuator>
-        <position tendon="S1" kp="1"/>
-        <position tendon="S2" kp="1"/>
-		<position tendon="S3" kp="1"/>
-        <position tendon="S4" kp="1"/>
-    </actuator>
+  
 </mujoco>

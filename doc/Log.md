@@ -638,7 +638,18 @@
 ## 07/10/2019
 ### Log:
 #### 1. 多线程在thread function外面用srand(时间)设置种子然而线程里面产生的随机数每次都是一样的。解决方法如果只开一个线程，就在线程里面设置随机数种子，如果开多个线程，就每个线程里面用精确到微秒的时间加threadID设置随机数种子。暂时只用了第一种在openloop里。
-#### 2. 数组太大内存不够的问题，可以动态分配内存给数组或者矩阵的指针，这样就没有不是const不能用来指定矩阵size的问题了。
+#### 2. 数组太大内存不够的问题，可以动态分配内存给数组或者矩阵的指针，这样就没有不是const不能用来指定矩阵size的问题了，但是但是但是但是，要把stepnum这些当成参数传给函数，在函数里分配内存，再传指针出来。
 ## 07/14/2019
 ### Log:
 #### 1. resetdata特别耗时间。
+## 07/16/2019
+### Log:
+#### 1. qpos和qvel是对齐的，set 全套qpos constraint就不满足，会开，而且和string有耦合。
+#### 2. tendon直接模拟的spring是spring不是string，受拉压都有力。
+#### 3. tendon可以加motor，通过加相应的力模拟tensegrity改原长，通过改变zero order hold，还可以模拟motor dynamics。或者直接当前长度乘force density得到应该加的力。用motor避免state确定位置之后tendon长度也需要相应改变导致模糊，也不知道这样是不是对的，觉得不太放心。
+#### 4. state要用minimal coordinates，dbar就是两个角度和两个角速度。mujoco长度单位是米。
+## 07/19/2019
+### Log:
+#### 1. tendon加motor成功，虽然加噪声之后闭环也进不去target，效果没有很好，但是比较图是闭环比开环好。
+#### 2. damping和viscosity大的话，噪声和feedback的影响会变小，会让闭环和开环最后的结果差不多，虽然还是闭环好一些，但是这两个应该在sysid的时候被model到AB中，不确定是为什么会这样。把它们取小或者置零效果会变好，取0的话openloop曲线spike会大。
+#### 3. sysid的perturbation取0.05到0.0002好像效果都差不多，就是iteration取多点就行。

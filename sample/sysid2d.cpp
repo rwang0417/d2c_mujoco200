@@ -13,9 +13,9 @@
 
 //-------------------------------- global variables -------------------------------------
 // constants
-extern const int kTestNum = 200;	// number of monte-carlo runs
-extern const int kMaxStep = 30;   // max step number for one rollout
-extern const int kMaxState = 5;	// max state dimension
+extern const int kTestNum = 100;	// number of monte-carlo runs
+extern const int kMaxStep = 700;   // max step number for one rollout
+extern const int kMaxState = 10;	// max state dimension
 const int kMaxThread = 2;
 
 // extern model specific parameters
@@ -23,6 +23,7 @@ extern int integration_per_step;
 extern int stepnum;
 extern int actuatornum;
 extern int statenum;
+extern int modelid;
 extern mjtNum control_timestep;
 extern mjtNum simulation_timestep;
 extern mjtNum perturb_coefficient_sysid;
@@ -31,7 +32,6 @@ extern mjtNum ctrl_nominal[kMaxStep * kMaxState];
 extern char testmode[30];
 
 // user data and other training settings
-int *p = (int *)malloc(5 * sizeof(int));////////////////////////////////////////////
 mjtNum matAB[kMaxThread][kMaxStep][kMaxState][kMaxState + kMaxState] = { 0 };
 mjtNum ctrl_max = 0;
 mjtNum sysiderr = 0;
@@ -92,18 +92,24 @@ void sysidCheck(mjModel* m, mjData* d)
 		{
 			for (int m = 0; m < stepnum; m++) dx_input[m][i] = 0.01 * ctrl_max * randGauss(0, 1);
 		}
-		for (int j = 0; j < stepnum; j++) mju_mulMatVec(dx_estimate[j], *matAB[0][j], dx_input[j], kMaxState, kMaxState+ kMaxState);///////////////////////////////////////////////////
+		for (int j = 0; j < stepnum; j++) mju_mulMatVec(dx_estimate[j], *matAB[0][j], dx_input[j], kMaxState, kMaxState+ kMaxState);
 		for (int step_index = 0; step_index < stepnum; step_index++)
 		{
-			mj_resetData(m, d);
-			mju_add(d->qpos, dx_input[step_index], state_nominal[step_index], m->nq);
-			mju_add(d->qvel, &dx_input[step_index][m->nq], &state_nominal[step_index][m->nq], m->nv);
+			mju_add(d->qpos, dx_input[step_index], state_nominal[step_index], int(statenum/2));
+			mju_add(d->qvel, &dx_input[step_index][int(statenum / 2)], &state_nominal[step_index][int(statenum / 2)], int(statenum / 2));
 			mju_add(d->ctrl, &dx_input[step_index][statenum], &ctrl_nominal[step_index * actuatornum], m->nu);
 
+			if (modelid == 4) {
+				d->qpos[2] = -d->qpos[1];
+				d->qpos[3] = d->qpos[1];
+				d->qvel[2] = -d->qvel[1];
+				d->qvel[3] = d->qvel[1];
+			}
+
 			for (int k = 0; k < integration_per_step; k++) mj_step(m, d);
-			
-			mju_sub(dx_simulate[step_index], d->qpos, state_nominal[step_index + 1], m->nq);
-			mju_sub(&dx_simulate[step_index][m->nq], d->qvel, &state_nominal[step_index + 1][m->nq], m->nv);
+
+			mju_sub(dx_simulate[step_index], d->qpos, state_nominal[step_index + 1], int(statenum / 2));
+			mju_sub(&dx_simulate[step_index][int(statenum / 2)], d->qvel, &state_nominal[step_index + 1][int(statenum / 2)], int(statenum / 2));
 		}
 		for (int y = 0; y < statenum; y++)
 		{
@@ -135,19 +141,23 @@ void sysid(int id, int nite)
 	{
 		for (int step_index = 0; step_index < stepnum; step_index++)
 		{
-			for (int y = 0; y < statenum + actuatornum; y++)
-			{
-				delta_x1[y] = perturb_coefficient_sysid * ctrl_max * randGauss(0, 1);
+			for (int y = 0; y < statenum + actuatornum; y++) delta_x1[y] = perturb_coefficient_sysid * ctrl_max * randGauss(0, 1);
 
-			}
-			mju_add(d[id]->qpos, delta_x1, state_nominal[step_index], m->nq);
-			mju_add(d[id]->qvel, &delta_x1[m->nq], &state_nominal[step_index][m->nq], m->nv);
+			mju_add(d[id]->qpos, delta_x1, state_nominal[step_index], int(statenum / 2));
+			mju_add(d[id]->qvel, &delta_x1[int(statenum / 2)], &state_nominal[step_index][int(statenum / 2)], int(statenum / 2));
 			mju_add(d[id]->ctrl, &delta_x1[statenum], &ctrl_nominal[step_index * actuatornum], m->nu);
+
+			if (modelid == 4) {
+				d[id]->qpos[2] = -d[id]->qpos[1];
+				d[id]->qpos[3] = d[id]->qpos[1];
+				d[id]->qvel[2] = -d[id]->qvel[1];
+				d[id]->qvel[3] = d[id]->qvel[1];
+			}
 
 			for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
 
-			mju_sub(delta_x2, d[id]->qpos, state_nominal[step_index + 1], m->nq);
-			mju_sub(&delta_x2[m->nq], d[id]->qvel, &state_nominal[step_index + 1][m->nq], m->nv);
+			mju_sub(delta_x2, d[id]->qpos, state_nominal[step_index + 1], int(statenum / 2));
+			mju_sub(&delta_x2[int(statenum / 2)], d[id]->qvel, &state_nominal[step_index + 1][int(statenum / 2)], int(statenum / 2));
 
 			// option 1: iteration method
 			for (int y = 0; y < statenum; y++)

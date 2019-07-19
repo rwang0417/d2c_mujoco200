@@ -15,8 +15,8 @@
 
 //-------------------------------- global -----------------------------------------------
 // constants
-extern const int kMaxStep = 1000;   // max step number for one rollout
-extern const int kMaxState = 100;	// max state dimension
+extern const int kMaxStep = 700;   // max step number for one rollout
+extern const int kMaxState = 10;	// max state dimension
 
 const int kTestNum = 500;	// number of monte-carlo runs
 const int kMaxGeom = 5000;          // preallocated geom array in mjvScene
@@ -594,7 +594,7 @@ void sensorshow(mjrRect rect)
 // prepare info text
 void infotext(mjData* d, char* title, char* content, double interval)
 {
-    char tmp[20];
+    char tmp[30];
 
     // compute solver error
     mjtNum solerr = 0;
@@ -1405,7 +1405,11 @@ void uiEvent(mjuiState* state)
 					mj_forward(m, d_closedloop);
                     profilerupdate();
                     sensorupdate();
-                    updatesettings();
+					updatesettings();
+					for (int e = 0; e < stepnum * actuatornum; e++)
+					{
+						ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_test * ctrl_max * randGauss(0, 1);
+					}
                 }
                 break;
 
@@ -1774,8 +1778,8 @@ void simulateNominal(void)
 
 	if (step_index_nominal == 0) {
 		mj_resetData(m, d);
-		mju_copy(d->qpos, state_nominal[0], m->nq);
-		mju_copy(d->qvel, &state_nominal[0][m->nq], m->nv);
+		mju_copy(d->qpos, state_nominal[0], int(statenum / 2));
+		mju_copy(d->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
 	}
 	if (step_index_nominal >= stepnum)
 	{
@@ -1784,8 +1788,7 @@ void simulateNominal(void)
 		if (modelid == 0) {
 			state_error[0] = -(PI - fabs(d->qpos[0] - PI))*((PI - d->qpos[0] > 0) - (PI - d->qpos[0] < 0));
 		}
-		if (modelid != 4)////////////////////////
-			mju_mulMatVec(d->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
+		mju_mulMatVec(d->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 	}
 	else mju_copy(d->ctrl, &ctrl_nominal[step_index_nominal * actuatornum], m->nu);
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d);
@@ -1798,8 +1801,8 @@ bool simulateClosedloop(void)
 
 	if (step_index_closedloop == 0) {
 		mj_resetData(m, d_closedloop);
-		mju_copy(d_closedloop->qpos, state_nominal[0], m->nq);
-		mju_copy(d_closedloop->qvel, &state_nominal[0][m->nq], m->nv);
+		mju_copy(d_closedloop->qpos, state_nominal[0], int(statenum / 2));
+		mju_copy(d_closedloop->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
 		mj_forward(m, d_closedloop);
 		cost_closedloop = stepCost(m, d_closedloop, step_index_closedloop);
 	}
@@ -1811,17 +1814,16 @@ bool simulateClosedloop(void)
 		if (modelid == 0) {
 			state_error[0] = -(PI - fabs(d_closedloop->qpos[0] - PI))*((PI - d_closedloop->qpos[0] > 0) - (PI - d_closedloop->qpos[0] < 0));
 		}
-		if (modelid != 4)////////////////////////////////
-			mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
+		mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 		if (_strcmpi(testmode, "policy_compare") == 0) {
 			step_index_closedloop = 0;
 			return 1;
 		}
 	}
 	else {
-		mju_sub(state_error, state_nominal[step_index_closedloop], d_closedloop->qpos, m->nq);
-		mju_sub(&state_error[m->nq], &state_nominal[step_index_closedloop][m->nq], d_closedloop->qvel, m->nv);
-		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index_closedloop], state_error, m->nu, kMaxState);
+		mju_sub(state_error, state_nominal[step_index_closedloop], d_closedloop->qpos, int(statenum / 2));
+		mju_sub(&state_error[int(statenum / 2)], &state_nominal[step_index_closedloop][int(statenum / 2)], d_closedloop->qvel, int(statenum / 2));
+		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index_closedloop], state_error, kMaxState, kMaxState);
 		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
 	}
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
@@ -1836,9 +1838,9 @@ bool simulateOpenloop(void)
 
 	if (step_index_openloop == 0) {
 		mj_resetData(m, d_openloop);
-		mju_copy(d_openloop->qpos, state_nominal[0], m->nq);
-		mju_copy(d_openloop->qvel, &state_nominal[0][m->nq], m->nv);
-		mj_forward(m, d_closedloop);
+		mju_copy(d_openloop->qpos, state_nominal[0], int(statenum / 2));
+		mju_copy(d_openloop->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
+		mj_forward(m, d_openloop);
 		cost_openloop = stepCost(m, d_openloop, step_index_openloop);
 	}
 	if (step_index_openloop >= stepnum)
@@ -1848,8 +1850,7 @@ bool simulateOpenloop(void)
 		if (modelid == 0) {
 			state_error[0] = -(PI - fabs(d_openloop->qpos[0] - PI))*((PI - d_openloop->qpos[0] > 0) - (PI - d_openloop->qpos[0] < 0));
 		}
-		if (modelid != 4)///////////////////////////
-			mju_mulMatVec(d_openloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
+		mju_mulMatVec(d_openloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 		if (_strcmpi(testmode, "policy_compare") == 0) {
 			step_index_openloop = 0;
 			return 1;
@@ -1867,17 +1868,15 @@ mjtNum terminalError(mjtNum ptb)
 	mjtNum state_error[kMaxState], ctrl_feedback[kMaxState];
 
 	mj_resetData(m, d_closedloop);
-	mju_copy(d_closedloop->qpos, state_nominal[0], m->nq);
-	mju_copy(d_closedloop->qvel, &state_nominal[0][m->nq], m->nv);
+	mju_copy(d_closedloop->qpos, state_nominal[0], int(statenum / 2));
+	mju_copy(d_closedloop->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
 	mj_forward(m, d_closedloop);
-	for (int e = 0; e < stepnum * actuatornum; e++)
-	{
-		ctrl_openloop[e] = ctrl_nominal[e] + ptb * ctrl_max * randGauss(0, 1);
-	}
+	for (int e = 0; e < stepnum * actuatornum; e++) ctrl_openloop[e] = ctrl_nominal[e] + ptb * ctrl_max * randGauss(0, 1);
+
 	for (int step_index = 0; step_index < stepnum; step_index++) {
-		mju_sub(state_error, state_nominal[step_index], d_closedloop->qpos, m->nq);
-		mju_sub(&state_error[m->nq], &state_nominal[step_index][m->nq], d_closedloop->qvel, m->nv);
-		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index], state_error, m->nu, statenum);
+		mju_sub(state_error, state_nominal[step_index], d_closedloop->qpos, int(statenum / 2));
+		mju_sub(&state_error[int(statenum / 2)], &state_nominal[step_index][int(statenum / 2)], d_closedloop->qvel, int(statenum / 2));
+		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index], state_error, kMaxState, kMaxState);
 		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index * actuatornum], ctrl_feedback, m->nu);
 		for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
 	}
@@ -1885,6 +1884,8 @@ mjtNum terminalError(mjtNum ptb)
 		return sqrt(angleModify(modelid, d_closedloop->qpos[0])*angleModify(modelid, d_closedloop->qpos[0]) + d_closedloop->qvel[0] * d_closedloop->qvel[0]);
 	else if (modelid == 2)
 		return sqrt((d_closedloop->geom_xpos[6] - 0.6) * (d_closedloop->geom_xpos[6] - 0.6) + (d_closedloop->geom_xpos[7] + 0.6) * (d_closedloop->geom_xpos[7] + 0.6));
+	else if (modelid == 4)
+		return sqrt(d_closedloop->site_xpos[19] * d_closedloop->site_xpos[19] + (d_closedloop->site_xpos[20] - 2.5) * (d_closedloop->site_xpos[20] - 2.5));
 	return 0;
 }
 
@@ -1906,6 +1907,7 @@ void performanceTest(void)
 		}
 		fclose(filestream1);
 	}
+	else printf("Could not open file: perfcheck.txt");
 }
 
 void policyCompare()
@@ -1917,10 +1919,8 @@ void policyCompare()
 		{
 			for (int i = 0; i < kTestNum; i++)
 			{
-				for (int e = 0; e < stepnum * actuatornum; e++)
-				{
-					ctrl_openloop[e] = ctrl_nominal[e] + ptb * ctrl_max * randGauss(0, 1);
-				}
+				for (int e = 0; e < stepnum * actuatornum; e++) ctrl_openloop[e] = ctrl_nominal[e] + ptb * ctrl_max * randGauss(0, 1);
+
 				while (simulateOpenloop() != 1);
 				while (simulateClosedloop() != 1);
 
@@ -1933,12 +1933,11 @@ void policyCompare()
 			}
 		}
 		fclose(filestream1);
-	}
+	}else printf("Could not open file: clopdata.txt");
 }
 
 void modelTest(void)
 {
-	mju_zero(ctrl_openloop, actuatornum);
 	mj_resetData(m, d);
 	mj_forward(m, d);
 	printf("\n Model file name : %s\n", modelfilename);
@@ -1961,7 +1960,7 @@ void modeSelection(const char* mode)
 		performanceTest();
 		exit(0);
 	}
-	else if (_strcmpi(testmode, "model_test") == 0)
+	else if (_strcmpi(testmode, "modeltest") == 0)
 		modelTest();
 }
 

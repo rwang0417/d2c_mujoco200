@@ -8,7 +8,7 @@
             https://www.roboti.us/resourcelicense.txt
     -->
 
-    <option timestep="0.01" iterations="50" solver="Newton" tolerance="1e-10" gravity = "0 0 0" collision="predefined" viscosity=".5"/>
+    <option timestep="0.02" iterations="50" solver="Newton" tolerance="1e-10" gravity = "0 0 0" collision="predefined" viscosity="0.5"/>
 
     <size njmax="100" nconmax="20" nstack="400"/>
 
@@ -17,8 +17,8 @@
     </visual>
 
     <default>
-        <joint type="hinge" pos="0 0 0" axis="1 0 0" limited="false" range="-180 180" damping="0"/>
-        <position ctrllimited="false" ctrlrange="-1 1"/>
+        <joint type="hinge" pos="0 0 0" axis="0 1 0" limited="false" range="-180 180" damping="0"/>
+        <motor ctrllimited="false" ctrlrange="-1 1"/>
 		<tendon stiffness="0" damping="2"/>
 		<geom size="0.02"/>
 		<site size="0.04"/>
@@ -35,35 +35,35 @@
         <light directional="true" diffuse=".8 .8 .8" specular=".2 .2 .2" pos="0 0 5" dir="0 0 -1"/>
 
         <site name="s0" pos="0 0 0"/>
-		<site name="s4" pos="0 2 0"/>
-		<site name="s5" pos="0 -2 0"/>
+		<site name="s4" pos="2 0 0"/>
+		<site name="s5" pos="-2 0 0"/>
         <site name="target" pos="0 0 2.5" size="0.06" rgba="1 0 0 .3"/>
 
         <body pos="0 0 0">
-            <geom name="bar1" type="capsule" fromto="0 0 0  0 -1 1" rgba=".5 .1 .1 1"/>
+            <geom name="bar1" type="capsule" fromto="0 0 0  -1 0 1" rgba=".5 .1 .1 1" mass="1"/>
             <site name="b1s" pos="0 0 0"/>
-			<site name="b1e" pos="0 -1 1"/>
-			<joint name="bottom"/>
-            <body pos="0 -1 1">
-                <geom name="bar2" type="capsule" fromto="0 0 0  0 1 1" rgba=".5 .1 .1 1"/>
+			<site name="b1e" pos="-1 0 1"/>
+			<joint name="bottom1"/>
+            <body pos="-1 0 1">
+                <geom name="bar2" type="capsule" fromto="0 0 0  1 0 1" rgba=".5 .1 .1 1" mass="1"/>
                 <joint name="left"/>
-                <site name="b2e" pos="0 1 1"/>
-				<body name="bar3" pos="0 1 1">
-					<geom name="bar3" type="capsule" fromto="0 0 0  0 1 -1" rgba=".5 .1 .1 1"/>
+                <site name="b2e" pos="1 0 1"/>
+				<body name="bar3" pos="1 0 1">
+					<geom name="bar3" type="capsule" fromto="0 0 0  1 0 -1" rgba=".5 .1 .1 1" mass="1"/>
 					<joint name="top"/>
-					<site name="b3e" pos="0 1 -1"/>
+					<site name="b3e" pos="1 0 -1"/>
 				</body>
             </body>
 			<body name="bar4" pos="0 0 0">
-                <geom name="bar4" type="capsule" fromto="0 0 0  0 1 1" rgba=".5 .1 .1 1"/>
-				<joint name="right"/>
+                <geom name="bar4" type="capsule" fromto="0 0 0  1 0 1" rgba=".5 .1 .1 1" mass="1"/>
+				<joint name="bottom2"/>
             </body>
         </body>
     </worldbody>
 	
 	<equality>
-		<connect active="true" name='1bar34' body1='bar3' body2='bar4' anchor='-0.05 1 -1'/>
-		<connect active="true" name='2bar34' body1='bar3' body2='bar4' anchor='0.05 1 -1'/>
+		<connect active="true" name='1bar34' body1='bar3' body2='bar4' anchor='1 -0.05 -1'/>
+		<connect active="true" name='2bar34' body1='bar3' body2='bar4' anchor='1 0.05 -1'/>
 	</equality>
 
     <tendon>
@@ -86,9 +86,9 @@
     </tendon>   
 
     <actuator>
-        <position tendon="S1" kp="1"/>
-        <position tendon="S2" kp="1"/>
-		<position tendon="S3" kp="1"/>
-        <position tendon="S4" kp="1"/>
+        <motor tendon="S1" gear="1"/>
+        <motor tendon="S2" gear="1"/>
+		<motor tendon="S3" gear="1"/>
+        <motor tendon="S4" gear="1"/>
     </actuator>
 </mujoco>

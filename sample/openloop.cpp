@@ -17,8 +17,8 @@
 
 //-------------------------------- global variables -------------------------------------
 // constants
-extern const int kMaxStep = 1000;   // max step number for one rollout
-extern const int kMaxState = 100;	// max state dimension
+extern const int kMaxStep = 700;   // max step number for one rollout
+extern const int kMaxState = 10;	// max state dimension
 const int kMaxThread = 64;
 const mjtNum kMaxUpdate = 0.1;
 
@@ -34,7 +34,6 @@ extern mjtNum simulation_timestep;
 extern mjtNum ctrl_limit_train;
 extern mjtNum state_nominal[kMaxStep][kMaxState];
 extern mjtNum state_target[kMaxState];
-extern mjtNum strlen_origin[kMaxState];
 extern char testmode[30];
 
 
@@ -102,10 +101,10 @@ void train(mjData* d, int id)
 	mjtNum delta_u[kMaxStep*kMaxState] = { 0 };
 	mjtNum average_cost = 0;
 
-	mj_resetData(m, d);
-	//mju_copy(d->qpos, state_nominal[0], m->nq);
-	//mju_copy(d->qvel, &state_nominal[0][m->nq], m->nv);
-	mj_forward(m, d); 
+	//mj_resetData(m, d);
+	mju_copy(d->qpos, state_nominal[0], m->nq);
+	mju_copy(d->qvel, &state_nominal[0][m->nq], m->nv);
+	//mj_forward(m, d); 
 	for (int step_index = 0; step_index <= stepnum; step_index++) {
 		rollout_cost += stepCost(m, d, step_index);
 		for (int i = 0; i < actuatornum; i++)
@@ -325,12 +324,12 @@ int main(int argc, const char** argv)
 	}
 	else printf("Could not open file: parameters.txt");
 
-	if (modelid == 4) {
-		for (int i = 0; i < stepnum; i++)
-		{
-			mju_copy(&ctrl_init[actuatornum*i], strlen_origin, actuatornum);
-		}
-	}
+	//if (modelid == 4) {
+	//	for (int i = 0; i < stepnum; i++)
+	//	{
+	//		mju_copy(&ctrl_init[actuatornum*i], strlen_origin, actuatornum);///////////////////////////////////////////////////////
+	//	}
+	//}
 
 	strcpy(datafilename, "init.txt");
 	if ((filestream3 = fopen(datafilename, "r")) != NULL)
