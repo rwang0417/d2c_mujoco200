@@ -15,8 +15,8 @@
 
 //-------------------------------- global -----------------------------------------------
 // constants
-extern const int kMaxStep = 700;   // max step number for one rollout
-extern const int kMaxState = 10;	// max state dimension
+extern const int kMaxStep = 500;   // max step number for one rollout
+extern const int kMaxState = 20;	// max state dimension
 
 const int kTestNum = 500;	// number of monte-carlo runs
 const int kMaxGeom = 5000;          // preallocated geom array in mjvScene
@@ -1886,6 +1886,8 @@ mjtNum terminalError(mjtNum ptb)
 		return sqrt((d_closedloop->geom_xpos[6] - 0.6) * (d_closedloop->geom_xpos[6] - 0.6) + (d_closedloop->geom_xpos[7] + 0.6) * (d_closedloop->geom_xpos[7] + 0.6));
 	else if (modelid == 4)
 		return sqrt(d_closedloop->site_xpos[19] * d_closedloop->site_xpos[19] + (d_closedloop->site_xpos[20] - 2.5) * (d_closedloop->site_xpos[20] - 2.5));
+	else if (modelid == 5)
+		return sqrt((d_closedloop->site_xpos[30] - d_closedloop->site_xpos[0]) * (d_closedloop->site_xpos[30] - d_closedloop->site_xpos[0]) + (d_closedloop->site_xpos[32] - d_closedloop->site_xpos[2]) * (d_closedloop->site_xpos[32] - d_closedloop->site_xpos[2]));
 	return 0;
 }
 
@@ -2288,7 +2290,7 @@ void init(void)
 		}
 		fclose(filestream1);
 	}
-	else printf("Could not open file: result.txt");
+	else printf("Could not open file: result.txt\n");
 
 	strcpy(datafilename, "TK.txt");
 	if ((filestream1 = fopen(datafilename, "r")) != NULL)
@@ -2303,7 +2305,7 @@ void init(void)
 		}
 		fclose(filestream1);
 	}
-	else printf("Could not open file: TK.txt");
+	else printf("Could not open file: TK.txt\n");
 
 	strcpy(datafilename, "parameters.txt");
 	if ((filestream1 = fopen(datafilename, "r")) != NULL) {
@@ -2333,7 +2335,7 @@ void init(void)
 		}
 		fclose(filestream1);
 	}
-	else printf("Could not open file: parameters.txt");
+	else printf("Could not open file: parameters.txt\n");
 
 	srand((unsigned)time(NULL));
 	for (int e = 0; e < stepnum * actuatornum; e++)
@@ -2446,7 +2448,7 @@ int main(int argc, const char** argv)
 		strncpy(modelname, modelfilename, strlen(modelfilename) - 4);
 		settings.loadrequest = 1;
 	}
-	if (argc > 2) modelSelection(argv[2]);
+	if (argc > 2 && modelSelection(argv[2]) == 1);
 	else modelSelection(modelname);
 
 	// initialize

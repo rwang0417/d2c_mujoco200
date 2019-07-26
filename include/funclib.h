@@ -23,6 +23,7 @@
 #include <math.h> 
 #include <time.h>
 #include "Eigen/Geometry"
+#include "Eigen/LU"
 #include <iostream>
 
 using namespace Eigen;

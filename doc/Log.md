@@ -653,3 +653,14 @@
 #### 1. tendon加motor成功，虽然加噪声之后闭环也进不去target，效果没有很好，但是比较图是闭环比开环好。
 #### 2. damping和viscosity大的话，噪声和feedback的影响会变小，会让闭环和开环最后的结果差不多，虽然还是闭环好一些，但是这两个应该在sysid的时候被model到AB中，不确定是为什么会这样。把它们取小或者置零效果会变好，取0的话openloop曲线spike会大。
 #### 3. sysid的perturbation取0.05到0.0002好像效果都差不多，就是iteration取多点就行。
+## 07/24/2019
+### Log:
+#### 1. finger的base应该固定。可以加constraint使水平bar和竖直bar一直垂直。
+#### 2. 矩阵求逆，直接用的eigen库里的函数，需要#include "Eigen/LU"，然后就可以用了，定义矩阵，初始化，索引的例子都在functest里面，索引从0开始。MatrixXd b(2,2);或者Matrix<double, 5, 3>。用<<初始化必须指定全部值。
+#### 3. 考虑并行就把step分给不同thread。
+## 07/25/2019
+### Log:
+#### 1. 并行把step分给不同thread，为了并行，还是存一下每个step的AB到一个矩阵里，然后最后一起输出到文件。
+#### 2. 效果太好了，虽然每一步平均时间增加了，但是需要的rollout数量急剧下降，暂时试过的两个tensegrity例子所需rollout数等于state数加control数，就是能够求出线性方程唯一解要求的最小equation数，求逆还是比当成单位阵准确的多，准确率提高了10倍。如果放在training里面，dimension大的模型可能求逆花的时间会更多，可能效果会下降，但是应该还是比现在的好。可以试一下把计算gradient的步骤用这个代替。
+#### 3. sysid的noise level好像小于一个值之后再变小效果不明显。
+#### 3. test和sysid试一下加noise level到输入参数。

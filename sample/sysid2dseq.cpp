@@ -14,8 +14,8 @@
 //-------------------------------- global variables -------------------------------------
 // constants
 extern const int kTestNum = 100;	// number of monte-carlo runs
-extern const int kMaxStep = 700;   // max step number for one rollout
-extern const int kMaxState = 10;	// max state dimension
+extern const int kMaxStep = 500;   // max step number for one rollout
+extern const int kMaxState = 20;	// max state dimension
 const int kMaxThread = 2;
 
 // extern model specific parameters

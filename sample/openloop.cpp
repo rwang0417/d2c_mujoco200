@@ -17,8 +17,8 @@
 
 //-------------------------------- global variables -------------------------------------
 // constants
-extern const int kMaxStep = 700;   // max step number for one rollout
-extern const int kMaxState = 10;	// max state dimension
+extern const int kMaxStep = 500;   // max step number for one rollout
+extern const int kMaxState = 20;	// max state dimension
 const int kMaxThread = 64;
 const mjtNum kMaxUpdate = 0.1;
 
@@ -28,7 +28,6 @@ extern int integration_per_step;
 extern int stepnum;
 extern int actuatornum;
 extern int statenum;
-extern int modelid;
 extern mjtNum control_timestep;
 extern mjtNum simulation_timestep;
 extern mjtNum ctrl_limit_train;
@@ -281,7 +280,7 @@ int main(int argc, const char** argv)
 	
 	strcpy(datafilename, "converge.txt");
 	if ((filestream2 = fopen(datafilename, "wt+")) == NULL) {
-		printf("Could not open file: converge.txt");
+		printf("Could not open file: converge.txt\n");
 	}
 	strcpy(datafilename, "parameters.txt");
 	if ((filestream3 = fopen(datafilename, "r")) != NULL) {
@@ -322,14 +321,7 @@ int main(int argc, const char** argv)
 		//QTm[0][0] = 200; QTm[1][1] = 100; QTm[2][2] = 500; QTm[3][3] = 100;
 		fclose(filestream3);
 	}
-	else printf("Could not open file: parameters.txt");
-
-	//if (modelid == 4) {
-	//	for (int i = 0; i < stepnum; i++)
-	//	{
-	//		mju_copy(&ctrl_init[actuatornum*i], strlen_origin, actuatornum);///////////////////////////////////////////////////////
-	//	}
-	//}
+	else printf("Could not open file: parameters.txt\n");
 
 	strcpy(datafilename, "init.txt");
 	if ((filestream3 = fopen(datafilename, "r")) != NULL)
@@ -341,7 +333,7 @@ int main(int argc, const char** argv)
 		}
 		fclose(filestream3);
 	}
-	else printf("Could not open file: init.txt");
+	else printf("Could not open file: init.txt\n");
 
     // install timer callback for profiling if requested
     tm_start = chrono::system_clock::now();

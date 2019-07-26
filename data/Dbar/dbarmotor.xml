@@ -37,7 +37,7 @@
         <site name="s0" pos="0 0 0"/>
 		<site name="s4" pos="2 0 0"/>
 		<site name="s5" pos="-2 0 0"/>
-        <site name="target" pos="0 0 2.5" size="0.06" rgba="1 0 0 .3"/>
+        <site name="target" pos="0 0 2.5" size="0.08" rgba="1 0 0 .3"/>
 
         <body pos="0 0 0">
             <geom name="bar1" type="capsule" fromto="0 0 0  -1 0 1" rgba=".5 .1 .1 1" mass="1"/>
