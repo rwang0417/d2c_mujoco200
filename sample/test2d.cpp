@@ -31,7 +31,6 @@ extern int statenum;
 extern int modelid;
 extern mjtNum control_timestep;
 extern mjtNum simulation_timestep;
-extern mjtNum perturb_coefficient_test;
 extern mjtNum state_nominal[kMaxStep][kMaxState];
 extern mjtNum ctrl_nominal[kMaxStep * kMaxState];
 extern mjtNum state_target[kMaxState];
@@ -50,6 +49,7 @@ mjData* d_closedloop = NULL;
 mjData* d_openloop = NULL;
 mjtNum ctrl_max = 0;
 mjtNum ctrl_openloop[kMaxStep*kMaxState] = { 0 };
+mjtNum perturb_coefficient_test = 0;
 mjtNum cost_closedloop = 0, cost_openloop = 0;
 FILE *filestream1;
 char data_buff[30];
@@ -2337,12 +2337,6 @@ void init(void)
 	}
 	else printf("Could not open file: parameters.txt\n");
 
-	srand((unsigned)time(NULL));
-	for (int e = 0; e < stepnum * actuatornum; e++)
-	{
-		ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_test * ctrl_max * randGauss(0, 1);
-	}
-
 	// init GLFW, set timer callback (milliseconds)
 	if (!glfwInit())
 		mju_error("could not initialize GLFW");
@@ -2440,6 +2434,12 @@ void init(void)
 // run event loop
 int main(int argc, const char** argv)
 {
+	// print help if arguments are missing
+	if (argc <= 1 || argc > 5) {
+		printf("\n Usage:  test2d modelfile [modeltype [mode [noiselevel]]]\n");
+		return 0;
+	}
+
 	// process input from command window
 	if (argc <= 1) return 0;
 	if (argc > 1)
@@ -2450,22 +2450,26 @@ int main(int argc, const char** argv)
 	}
 	if (argc > 2 && modelSelection(argv[2]) == 1);
 	else modelSelection(modelname);
-
+	
 	// initialize
 	init();
 	loadmodel();
-	stateNominal(m, d); 
-	
+	stateNominal(m, d);
 	if (argc > 2)
 	{
-		modeSelection(argv[2]);
+		if (sscanf(argv[2], "%lf", &perturb_coefficient_test) != 1) modeSelection(argv[2]);
 	}
-
 	if (argc > 3)
 	{
-		modeSelection(argv[3]);
+		if (sscanf(argv[3], "%lf", &perturb_coefficient_test) != 1) modeSelection(argv[3]);
 	}
-
+	if (argc > 4) sscanf(argv[4], "%lf", &perturb_coefficient_test);
+	srand((unsigned)time(NULL));
+	for (int e = 0; e < stepnum * actuatornum; e++)
+	{
+		ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_test * ctrl_max * randGauss(0, 1);
+	}
+	
     // start simulation thread
     std::thread simthread(simulate);
 

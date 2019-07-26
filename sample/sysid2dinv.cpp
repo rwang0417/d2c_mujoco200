@@ -26,7 +26,6 @@ extern int statenum;
 extern int modelid;
 extern mjtNum control_timestep;
 extern mjtNum simulation_timestep;
-extern mjtNum perturb_coefficient_sysid;
 extern mjtNum state_nominal[kMaxStep][kMaxState];
 extern mjtNum ctrl_nominal[kMaxStep * kMaxState];
 extern char testmode[30];
@@ -35,6 +34,7 @@ extern char testmode[30];
 mjtNum matAB_check[kMaxStep][kMaxState][kMaxState + kMaxState] = { 0 };
 mjtNum ctrl_max = 0;
 mjtNum sysiderr = 0;
+mjtNum perturb_coefficient_sysid;
 FILE *filestream3;
 char data_buff[30], idstr[10];
 char keyfilename[100];
@@ -126,7 +126,6 @@ void sysid(int id, int nroll, int nthd)
 	MatrixXd delta_x2(statenum, nroll);
 	MatrixXd matAB(statenum, statenum + actuatornum);
 	static mjtNum printfraction = 0.2;
-	char str1[30];
 
 	// clear statistics
 	contacts[id] = 0;
@@ -195,8 +194,8 @@ void sysid(int id, int nroll, int nthd)
 int main(int argc, const char** argv)
 {
     // print help if arguments are missing
-    if( argc<3 || argc>5 )
-        return finish("\n Usage:  sysid modelfile nrollout [modeltype [nthread [profile]]]\n");
+    if( argc<3 || argc>7 )
+        return finish("\n Usage:  sysid2d modelfile noiselevel rolloutnumber [modeltype [nthread [profile]]]\n");
 
     // activate MuJoCo Pro license (this must be *your* activation key)
 	DWORD usernamesize = 30;
@@ -221,20 +220,22 @@ int main(int argc, const char** argv)
 
 	// read nrollout and nthread
 	int nrollout = 0, nthread = 0, profile = 0;
-	if (sscanf(argv[2], "%d", &nrollout) != 1 || nrollout <= 0)
+	if (sscanf(argv[2], "%lf", &perturb_coefficient_sysid) != 1 || perturb_coefficient_sysid < 0)
+		return finish("Invalid noise level argument");
+	if (sscanf(argv[3], "%d", &nrollout) != 1 || nrollout <= 0)
 		return finish("Invalid nrollout argument");
-	if (argc > 3 && modelSelection(argv[3]) != 1) {
-		if (sscanf(argv[3], "%d", &nthread) != 1)
-			return finish("Invalid nthread argument");
-		if (argc > 4)
-			if (sscanf(argv[4], "%d", &profile) != 1)
-				return finish("Invalid profile argument");
-	}
-	else if (argc > 4) {
+	if (argc > 4 && modelSelection(argv[4]) != 1) {
 		if (sscanf(argv[4], "%d", &nthread) != 1)
 			return finish("Invalid nthread argument");
 		if (argc > 5)
 			if (sscanf(argv[5], "%d", &profile) != 1)
+				return finish("Invalid profile argument");
+	}
+	else if (argc > 5) {
+		if (sscanf(argv[5], "%d", &nthread) != 1)
+			return finish("Invalid nthread argument");
+		if (argc > 6)
+			if (sscanf(argv[6], "%d", &profile) != 1)
 				return finish("Invalid profile argument");
 	}
 

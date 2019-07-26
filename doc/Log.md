@@ -627,6 +627,8 @@
 ## 07/06/2019
 ### Log:
 #### 1. test2d pendulum.xml performance_test，或者是policy_compare,model_test，只加文件名就是出动画,test2d是第一个参数，第二个一定是模型文件名，第三个是模型类别或者功能，模型类别是pendulum，dbar，swimmer3这样的，功能就是上面model_test那几个，如果既有模型类别也有功能，先写模型类别，第四个参数是功能。
+test2d dbarmotor.xml dbar modeltest 0.5
+改成test2d 模型文件名，模型名，功能名，noise level，除了modeltest其他功能最后noise level可以不写，不写默认为0.模型名，功能名都可以被跳过。
 #### 2. 做成dll别人不好改代码了，还是别了，省点事。
 ## 07/07/2019
 ### Log:
@@ -635,6 +637,8 @@
 #### 3. openloop cheetah.xml 100， 100是迭代数也就是gradient更新的次数，如果文件名不是模型名，后面需要加模型名，后面还可以加thread数，不加默认1个thread，现在多个thread就更之前开多个cmd窗口一起运行check reproducibility一样，再后面是profile开关。
 #### 4. sysid2d pendulum.xml 100
 100是迭代数，后面还可以加thread数，不加默认1个thread，多线程这里的iteration是总数，每个rollout互相之间是并行。
+sysid2d finger.xml 0.005 20 finger 8
+sysid2d 模型文件名，noise level，rollout数，模型名，线程数，最后两个可以不写，改成求逆的方法就没有iteration和convergence了。
 ## 07/10/2019
 ### Log:
 #### 1. 多线程在thread function外面用srand(时间)设置种子然而线程里面产生的随机数每次都是一样的。解决方法如果只开一个线程，就在线程里面设置随机数种子，如果开多个线程，就每个线程里面用精确到微秒的时间加threadID设置随机数种子。暂时只用了第一种在openloop里。
@@ -664,3 +668,8 @@
 #### 2. 效果太好了，虽然每一步平均时间增加了，但是需要的rollout数量急剧下降，暂时试过的两个tensegrity例子所需rollout数等于state数加control数，就是能够求出线性方程唯一解要求的最小equation数，求逆还是比当成单位阵准确的多，准确率提高了10倍。如果放在training里面，dimension大的模型可能求逆花的时间会更多，可能效果会下降，但是应该还是比现在的好。可以试一下把计算gradient的步骤用这个代替。
 #### 3. sysid的noise level好像小于一个值之后再变小效果不明显。
 #### 3. test和sysid试一下加noise level到输入参数。
+#### 5. test一下多线程是不是work。
+## 07/26/2019
+### Log:
+#### 1. test，sysid加入了noise level的参数，都work，sysid多线程work，时间有缩短，4线程以内差不多是按照倍数缩短，超过4线程仍然缩短但不是倍数，improvement更不明显。
+#### 2. finger的policy compare在noise level 70%左右开始，就会有一定几率在一些点出现大variance然后后面又变小。但每次出现的地方不是一样的，有点奇怪，可能是因为突然产生了几个特别大的随机数吧。

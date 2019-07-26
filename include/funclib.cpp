@@ -28,8 +28,6 @@ int modelid;
 int rolloutnum_train;
 mjtNum control_timestep;
 mjtNum simulation_timestep;
-mjtNum perturb_coefficient_test;
-mjtNum perturb_coefficient_sysid;
 mjtNum ctrl_limit_train = 100;
 mjtNum state_nominal[kMaxStep][kMaxState] = { 0 };
 mjtNum ctrl_nominal[kMaxStep * kMaxState] = { 0 };
@@ -117,8 +115,6 @@ int modelSelection(const char* model)
 		modelid = 0;
 		control_timestep = 0.1;
 		simulation_timestep = 0.1;
-		perturb_coefficient_test = 0.4;
-		perturb_coefficient_sysid = 0.005;
 		stepnum = 30;
 		statenum = 2;
 		actuatornum = 1;
@@ -137,8 +133,6 @@ int modelSelection(const char* model)
 		modelid = 1;
 		control_timestep = 0.1;
 		simulation_timestep = 0.05;
-		perturb_coefficient_test = 0.1;
-		perturb_coefficient_sysid = 0.008;
 		stepnum = 50;
 		statenum = 18;
 		actuatornum = 6;
@@ -157,8 +151,6 @@ int modelSelection(const char* model)
 		modelid = 2;
 		control_timestep = 0.005;
 		simulation_timestep = 0.005;
-		perturb_coefficient_test = 0.05;
-		perturb_coefficient_sysid = 0.006;
 		stepnum = 1600;
 		statenum = 10;
 		actuatornum = 2;
@@ -177,8 +169,6 @@ int modelSelection(const char* model)
 		modelid = 3;
 		control_timestep = 0.01;
 		simulation_timestep = 0.01;
-		perturb_coefficient_test = 0.0;
-		perturb_coefficient_sysid = 0.001;
 		stepnum = 800;
 		statenum = 4;
 		actuatornum = 1;
@@ -197,8 +187,6 @@ int modelSelection(const char* model)
 		modelid = 4;
 		control_timestep = 0.02;
 		simulation_timestep = 0.02;
-		perturb_coefficient_test = 0.3;
-		perturb_coefficient_sysid = 0.05;
 		stepnum = 50;
 		statenum = 4;
 		actuatornum = 4;
@@ -213,8 +201,6 @@ int modelSelection(const char* model)
 		modelid = 5;
 		control_timestep = 0.02;
 		simulation_timestep = 0.02;
-		perturb_coefficient_test = 0.5;
-		perturb_coefficient_sysid = 0.005;
 		stepnum = 200;
 		statenum = 10;
 		actuatornum = 10;
