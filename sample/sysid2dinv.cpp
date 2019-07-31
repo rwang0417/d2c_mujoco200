@@ -130,7 +130,7 @@ void sysid(int id, int nroll, int nthd)
 	// clear statistics
 	contacts[id] = 0;
 	constraints[id] = 0;
-	srand((unsigned)time(NULL));
+	srand((unsigned)time(NULL) + id);
 
 	// run and time
 	double start = gettm();
@@ -287,9 +287,9 @@ int main(int argc, const char** argv)
 
     // print start
 	if (nthread > 1)
-		printf("\nRunning %d iterations per thread at dt_c = %g, dt_s = %g for %d thread\n\n", int(nrollout / nthread), control_timestep, m->opt.timestep, nthread);
-    else
-        printf("\nRunning %d iterations at dt_c = %g, dt_s = %g\n\n", nrollout, control_timestep, m->opt.timestep);
+		printf("\nRunning %d rollouts per thread at dt_c = %g, dt_s = %g for %d thread\n\n", int(nrollout * 2 / nthread), control_timestep, m->opt.timestep, nthread);
+	else
+		printf("\nRunning %d rollouts at dt_c = %g, dt_s = %g\n\n", nrollout * 2, control_timestep, m->opt.timestep);
 
     // run simulation, record total time
     thread th[kMaxThread];
@@ -308,20 +308,20 @@ int main(int argc, const char** argv)
     {
         printf("Summary for all %d threads\n\n", nthread);
         printf(" Total simulation time  : %.2f s\n", tottime);
-        printf(" Total steps per second : %.0f\n", nthread*nrollout*stepnum*integration_per_step /tottime);
-        printf(" Total realtime factor  : %.2f x\n", nthread*nrollout*stepnum*integration_per_step*m->opt.timestep/tottime);
-        printf(" Total time per step    : %.4f ms\n\n", 1000*tottime/(nthread*nrollout*stepnum*integration_per_step));
+        printf(" Total steps per second : %.0f\n", nthread*nrollout*2*stepnum*integration_per_step /tottime);
+        printf(" Total realtime factor  : %.2f x\n", nthread*nrollout*2*stepnum*integration_per_step*m->opt.timestep/tottime);
+        printf(" Total time per step    : %.4f ms\n\n", 1000*tottime/(nthread*nrollout*2*stepnum*integration_per_step));
         printf("Details for thread 0\n\n");
     }
 
     // details for thread 0
     printf("\n Simulation time      : %.2f s\n", simtime[0]);
-	printf(" Number of steps      : %d\n", nrollout*stepnum*integration_per_step);
-	printf(" Steps per second     : %.0f\n", nrollout*stepnum*integration_per_step / simtime[0]);
-	printf(" Realtime factor      : %.2f x\n", nrollout*stepnum*integration_per_step*m->opt.timestep / simtime[0]);
-	printf(" Time per step        : %.4f ms\n\n", 1000 * simtime[0] / (nrollout*stepnum*integration_per_step));
-	printf(" Contacts per step    : %d\n", contacts[0] / (nrollout*stepnum*integration_per_step));
-	printf(" Constraints per step : %d\n", constraints[0] / (nrollout*stepnum*integration_per_step));
+	printf(" Number of steps      : %d\n", nrollout*2*stepnum*integration_per_step);
+	printf(" Steps per second     : %.0f\n", nrollout*2*stepnum*integration_per_step / simtime[0]);
+	printf(" Realtime factor      : %.2f x\n", nrollout*2*stepnum*integration_per_step*m->opt.timestep / simtime[0]);
+	printf(" Time per step        : %.4f ms\n\n", 1000 * simtime[0] / (nrollout*2*stepnum*integration_per_step));
+	printf(" Contacts per step    : %d\n", contacts[0] / (nrollout*2*stepnum*integration_per_step));
+	printf(" Constraints per step : %d\n", constraints[0] / (nrollout*2*stepnum*integration_per_step));
     printf(" Degrees of freedom   : %d\n\n", m->nv);
 
     // profiler results for thread 0

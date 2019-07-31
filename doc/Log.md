@@ -673,3 +673,17 @@ sysid2d 模型文件名，noise level，rollout数，模型名，线程数，最
 ### Log:
 #### 1. test，sysid加入了noise level的参数，都work，sysid多线程work，时间有缩短，4线程以内差不多是按照倍数缩短，超过4线程仍然缩短但不是倍数，improvement更不明显。
 #### 2. finger的policy compare在noise level 70%左右开始，就会有一定几率在一些点出现大variance然后后面又变小。但每次出现的地方不是一样的，有点奇怪，可能是因为突然产生了几个特别大的随机数吧。
+#### 3. time+id作为随机数种子在sysid里好像可以，每个thread的随机数是不一样的。
+#### 4. 应该不需要每次设加速度为0，因为加速度可以从受力求得，而受力是每次给的。
+#### 5. eigen的matrix声明时不能只用一个参数，如果只有一行或一列，要么显式把行或列设为1，要么用RowVectorXd这样的向量，不然会有一个you are tring to call 什么的错误，双击导到resize。
+## 07/28/2019
+### Log:
+#### 1. openloop算gradient直接改求逆不行，因为gradient的元素数是step数乘actuator数，太大，求逆耗时过长。可以考虑加momentum。
+## 07/29/2019
+### Log:
+#### 1. int 强制类型转换是向下取整。
+#### 2. training num宏好像不需要了。
+## 07/30/2019
+### Log:
+#### 1. 好好看看前面写的有没有漏的。
+#### 2. 改openloop到之前的方法，加减delta好像没什么用，policy还是一样的，没有更好，时间反而更多。

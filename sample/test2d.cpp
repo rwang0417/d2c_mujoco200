@@ -1780,6 +1780,7 @@ void simulateNominal(void)
 		mj_resetData(m, d);
 		mju_copy(d->qpos, state_nominal[0], int(statenum / 2));
 		mju_copy(d->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
+		mj_forward(m, d);
 	}
 	if (step_index_nominal >= stepnum)
 	{
@@ -1800,11 +1801,10 @@ bool simulateClosedloop(void)
 	static mjtNum state_error[kMaxState], ctrl_feedback[kMaxState];
 
 	if (step_index_closedloop == 0) {
-		mj_resetData(m, d_closedloop);
 		mju_copy(d_closedloop->qpos, state_nominal[0], int(statenum / 2));
 		mju_copy(d_closedloop->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
 		mj_forward(m, d_closedloop);
-		cost_closedloop = stepCost(m, d_closedloop, step_index_closedloop);
+		cost_closedloop = 0;
 	}
 
 	if (step_index_closedloop >= stepnum)
@@ -1816,6 +1816,7 @@ bool simulateClosedloop(void)
 		}
 		mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 		if (_strcmpi(testmode, "policy_compare") == 0) {
+			cost_closedloop += stepCost(m, d_closedloop, stepnum);
 			step_index_closedloop = 0;
 			return 1;
 		}
@@ -1826,9 +1827,9 @@ bool simulateClosedloop(void)
 		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index_closedloop], state_error, kMaxState, kMaxState);
 		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
 	}
+	cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
 	step_index_closedloop++;
-	cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
 	return 0;
 }
 
@@ -1837,11 +1838,10 @@ bool simulateOpenloop(void)
 	static mjtNum state_error[kMaxState];
 
 	if (step_index_openloop == 0) {
-		mj_resetData(m, d_openloop);
 		mju_copy(d_openloop->qpos, state_nominal[0], int(statenum / 2));
 		mju_copy(d_openloop->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
 		mj_forward(m, d_openloop);
-		cost_openloop = stepCost(m, d_openloop, step_index_openloop);
+		cost_openloop = 0;
 	}
 	if (step_index_openloop >= stepnum)
 	{
@@ -1852,14 +1852,15 @@ bool simulateOpenloop(void)
 		}
 		mju_mulMatVec(d_openloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 		if (_strcmpi(testmode, "policy_compare") == 0) {
+			cost_openloop += stepCost(m, d_openloop, stepnum);
 			step_index_openloop = 0;
 			return 1;
 		}
 	}
 	else mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index_openloop * actuatornum], m->nu);
+	cost_openloop += stepCost(m, d_openloop, step_index_openloop);
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_openloop);
 	step_index_openloop++;
-	cost_openloop += stepCost(m, d_openloop, step_index_openloop);
 	return 0;
 }
 
@@ -2455,6 +2456,7 @@ int main(int argc, const char** argv)
 	init();
 	loadmodel();
 	stateNominal(m, d);
+
 	if (argc > 2)
 	{
 		if (sscanf(argv[2], "%lf", &perturb_coefficient_test) != 1) modeSelection(argv[2]);

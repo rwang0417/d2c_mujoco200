@@ -100,10 +100,8 @@ void train(mjData* d, int id)
 	mjtNum delta_u[kMaxStep*kMaxState] = { 0 };
 	mjtNum average_cost = 0;
 
-	//mj_resetData(m, d);
 	mju_copy(d->qpos, state_nominal[0], m->nq);
 	mju_copy(d->qvel, &state_nominal[0][m->nq], m->nv);
-	//mj_forward(m, d); 
 	for (int step_index = 0; step_index <= stepnum; step_index++) {
 		rollout_cost += stepCost(m, d, step_index);
 		for (int i = 0; i < actuatornum; i++)
