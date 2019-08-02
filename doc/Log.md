@@ -687,3 +687,15 @@ sysid2d 模型文件名，noise level，rollout数，模型名，线程数，最
 ### Log:
 #### 1. 好好看看前面写的有没有漏的。
 #### 2. 改openloop到之前的方法，加减delta好像没什么用，policy还是一样的，没有更好，时间反而更多。
+#### 3. momentum的classical和nesterov方法都没什么明显的改进，有影响也能通过调stepsize达到相同的效果。
+#### 4. testnum宏可以保留，cost文件输出覆盖可以加filemode解决。
+#### 5. 有空测一下用eigen库和数组哪个快。。。。。数组快！
+## 07/31/2019
+### Log:
+#### 1. finger每iteration用20rollouts就可以， 大约3秒training好。arm也是的，用20 rollouts就可以。
+#### 2. 需要加constraint才效果好一点，保持垂直。但是轨迹不是卷上去的。
+## 08/01/2019
+### Log:
+#### 1. mju_strncpy后面长度设的不对，把后面QT覆盖了2333. 改了之后cost还是有点差别。
+#### 2. 尽量避免用eigen矩阵库，赋值比数组慢2到3倍，向量点乘比数组和mju_dot慢约50倍。
+#### 3. inverse相比sequential，平均每个iteration耗时更长，但可以使所需iteration数减少很多，所以总的时间减少了很多。精度提高主要是因为加delta减delta，不过这样时间会变长，因为需要两个rollouts做一次计算。

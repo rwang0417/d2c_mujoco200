@@ -18,7 +18,7 @@
 //-------------------------------- global variables -------------------------------------
 // constants
 extern const int kMaxStep = 500;   // max step number for one rollout
-extern const int kMaxState = 20;	// max state dimension
+extern const int kMaxState = 50;	// max state dimension
 const int kMaxThread = 64;
 const mjtNum kMaxUpdate = 0.1;
 
@@ -39,13 +39,12 @@ extern char testmode[30];
 // user data and other training settings
 mjtNum ctrl_current[kMaxThread][kMaxStep * kMaxState] = { 0 };
 mjtNum ctrl_init[kMaxStep * kMaxState] = { 0 };
-FILE *filestream1[kMaxThread], *filestream2, *filestream3;
+FILE *filestream2, *filestream3;
 static int iteration_index[kMaxThread] = { 0 };
-char data_buff[30], idstr[10];
+char data_buff[30];
 char keyfilename[100];
 char datafilename[100];
 char modelfilename[100];
-char costfilename[kMaxThread][100];
 char username[30];
 char modelname[30];
 char keyfilepre[20] = "";
@@ -64,7 +63,7 @@ mjData* d[kMaxThread];
 int contacts[kMaxThread];
 int constraints[kMaxThread];
 double simtime[kMaxThread];
-double printfraction = 0.1;
+double printfraction = 0.2;
 
 
 // timer
@@ -91,111 +90,108 @@ int finish(const char* msg = NULL, mjModel* m = NULL)
     return 0;
 }
 
-void train(mjData* d, int id)
+void train(int id, int niteration)
 {
-	static mjtNum gradient[kMaxStep * kMaxState] = { 0 };
-	static mjtNum rollout_cost = 0, sum_cost = 0, nominal_cost = 0;
-	static char str1[30];
-	static int rollout_index = 0;
+    static char str1[30];
+    static char costfilename[30];
+	FILE *filestream1;
+	mjtNum gradient[kMaxStep*kMaxState] = { 0 };
 	mjtNum delta_u[kMaxStep*kMaxState] = { 0 };
-	mjtNum average_cost = 0;
+    RowVectorXd nominal_cost(niteration);
 
-	mju_copy(d->qpos, state_nominal[0], m->nq);
-	mju_copy(d->qvel, &state_nominal[0][m->nq], m->nv);
-	for (int step_index = 0; step_index <= stepnum; step_index++) {
-		rollout_cost += stepCost(m, d, step_index);
-		for (int i = 0; i < actuatornum; i++)
-		{
-			delta_u[step_index*actuatornum + i] = perturb_coefficient_train[id] * randGauss(0, 1);
-			d->ctrl[i] = ctrl_current[id][step_index * actuatornum + i] + delta_u[step_index * actuatornum + i];
-		}
-		for (int i = 0; i < integration_per_step; i++) mj_step(m, d);
-	}
-	nominal_cost = rollout_cost / (rollout_index + 1.0) + (1 - 1 / (rollout_index + 1.0)) * nominal_cost;
-	for (int i = 0; i < actuatornum * stepnum; i++)
-	{
-		gradient[i] = gradient[i] * (1 - 1 / (rollout_index + 1.0)) + (rollout_cost - nominal_cost) * delta_u[i] / ((rollout_index + 1.0)*perturb_coefficient_train[id]*perturb_coefficient_train[id]);
-	}
-
-	if (id == 0) {
-		sprintf(str1, "%3.3f", gradient[2]);
-		fwrite(str1, 5, 1, filestream2);
-		fputs(" ", filestream2);
-	}
-
-	sum_cost = sum_cost + rollout_cost;
-	rollout_cost = 0;
-	rollout_index++;
-	if (rollout_index >= rolloutnum_train)
-	{
-		rollout_index = 0;
-		average_cost = sum_cost / (1.0 * rolloutnum_train);
-		sprintf(str1, "%5.0f", average_cost);
-		fwrite(str1, 5, 1, filestream1[id]);
-		fputs(" ", filestream1[id]);
-		if (id == 0)fputs("\n", filestream2);
-		sum_cost = 0;
-		nominal_cost = 0;
-		for (int i = 0; i < actuatornum * stepnum; i++)
-		{
-			if (update_coefficient[id] * gradient[i] > kMaxUpdate) ctrl_current[id][i] -= kMaxUpdate;
-			else if (update_coefficient[id] * gradient[i] < -kMaxUpdate) ctrl_current[id][i] -= -kMaxUpdate;
-			else ctrl_current[id][i] -= update_coefficient[id] * gradient[i];
-#if(CTRL_LIMITTED == true)
-			if (ctrl_current[id][i] > ctrl_limit_train) ctrl_current[id][i] = ctrl_limit_train;
-			else if (ctrl_current[id][i] < -ctrl_limit_train) ctrl_current[id][i] = -ctrl_limit_train;
-#endif
-			gradient[i] = 0;
-		}
-		iteration_index[id]++;
-		//if (iteration_index > 150) { update_coefficient = 0.00001; perturb_coefficient_train = 0.01; }
-		//if (iteration_index > 600) { update_coefficient = 0.00001; perturb_coefficient_train = 0.01; }
-	}
-}
-
-// thread function
-void simulate(int id, int niteration)
-{
-    // clear statistics
-    contacts[id] = 0;
-    constraints[id] = 0;
-	
-	sprintf(idstr, "%d", id);
-	snprintf(costfilename[id], sizeof(costfilename[id]), "%s%s%s", "cost", idstr, ".txt");
-	if ((filestream1[id] = fopen(costfilename[id], "wt+")) == NULL) {
-		printf("Could not open file: cost.txt");
-	}
-	srand((unsigned)time(NULL));////////////////////////////////////// doesn't work with multi-thread
-	for (int i = 0; i < TRAINING_NUM; i++) {
+    srand((unsigned)time(NULL) + id);
+	for (int train_index = 0; train_index < TRAINING_NUM; train_index++) {
 		// task initialization
-		mju_copy(ctrl_current[id], ctrl_init, actuatornum*stepnum);
-		iteration_index[id] = 0;
+		mju_copy(ctrl_current[id], ctrl_init, actuatornum*stepnum);  
 		perturb_coefficient_train[id] = perturb_coefficient_train_init;
 		update_coefficient[id] = update_coefficient_init;
-		printfraction = 0.1;
+		printfraction = 0.2;
 
 		// run and time
 		double start = gettm();
-		while (iteration_index[id] < niteration)
+		for (int iteration_index = 0; iteration_index < niteration; iteration_index++)
 		{
-			train(d[id], id);
-			
-			// accumulate statistics
-			contacts[id] += d[id]->ncon;
-			constraints[id] += d[id]->nefc;
-
-			// print '.' every printfraction of niteration for thread 0
-			if (iteration_index[id] >= niteration * printfraction && id == 0)
-			{
-				printf(".");
-				printfraction += 0.1;
+			// nominal
+			nominal_cost(iteration_index) = 0;
+			mju_copy(d[id]->qpos, state_nominal[0], m->nq);
+			mju_copy(d[id]->qvel, &state_nominal[0][m->nq], m->nv);
+			for (int step_index = 0; step_index < stepnum; step_index++) {
+				for (int i = 0; i < actuatornum; i++) d[id]->ctrl[i] = ctrl_current[id][step_index * actuatornum + i];
+				nominal_cost(iteration_index) += stepCost(m, d[id], step_index);
+				for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
 			}
-		}
-		fclose(filestream1[id]);
-		simtime[id] = gettm() - start;
-	}
-}
+			nominal_cost(iteration_index) += stepCost(m, d[id], stepnum); printf("%f", d[id]->site_xpos[95] - d[id]->site_xpos[2]);
 
+            //calculate gradient and update control
+            for (int rollout_index = 0; rollout_index < int(rolloutnum_train); rollout_index++)
+            {
+                for (int i = 0; i < stepnum * actuatornum; i++) delta_u[i] = perturb_coefficient_train[id] * randGauss(0, 1);
+                mjtNum rollout_cost = 0;
+                
+                // plus
+                mju_copy(d[id]->qpos, state_nominal[0], m->nq);
+                mju_copy(d[id]->qvel, &state_nominal[0][m->nq], m->nv);
+                for (int step_index = 0; step_index < stepnum; step_index++) {
+                    for (int i = 0; i < actuatornum; i++) d[id]->ctrl[i] = ctrl_current[id][step_index * actuatornum + i] + delta_u[step_index * actuatornum + i];
+                    rollout_cost += stepCost(m, d[id], step_index);
+                    for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
+                }
+                rollout_cost += stepCost(m, d[id], stepnum);
+
+                // gradient
+                for (int i = 0; i < actuatornum * stepnum; i++)
+                {
+                    gradient[i] = gradient[i] * (1 - 1 / (rollout_index + 1.0)) + (rollout_cost - nominal_cost(iteration_index)) * delta_u[i] / ((rollout_index + 1.0)*perturb_coefficient_train[id]*perturb_coefficient_train[id]);
+                }
+                if (id == 0) {
+                    sprintf(str1, "%3.3f", gradient[2]);
+                    fwrite(str1, 5, 1, filestream2);
+                    fputs(" ", filestream2);
+                }
+            }
+			if (id == 0) fputs("\n", filestream2);
+
+            // update
+            for (int i = 0; i < actuatornum * stepnum; i++)
+            {
+                if (update_coefficient[id] * gradient[i] > kMaxUpdate) ctrl_current[id][i] -= kMaxUpdate;
+                else if (update_coefficient[id] * gradient[i] < -kMaxUpdate) ctrl_current[id][i] -= -kMaxUpdate;
+				else ctrl_current[id][i] -= update_coefficient[id] * gradient[i];
+        #if(CTRL_LIMITTED == true)
+                if (ctrl_current[id][i] > ctrl_limit_train) ctrl_current[id][i] = ctrl_limit_train;
+                else if (ctrl_current[id][i] < -ctrl_limit_train) ctrl_current[id][i] = -ctrl_limit_train;
+        #endif
+                gradient[i] = 0;
+            }
+            
+            // print '.' every printfraction of niteration for thread 0
+            if (id == 0 && iteration_index >= niteration * printfraction)
+            {
+                printf(".");
+                printfraction += 0.2;
+            }
+            //if (iteration_index > 150) { update_coefficient = 0.00001; perturb_coefficient_train = 0.01; }
+            //if (iteration_index > 600) { update_coefficient = 0.00001; perturb_coefficient_train = 0.01; }
+        }
+        simtime[id] = gettm() - start;
+        
+        // save result to file
+		snprintf(costfilename, sizeof(costfilename), "%s%d%s", "cost", id, ".txt");
+
+		char filemode[5] = "wt+";
+		if (TRAINING_NUM > 1) strcpy(filemode, "at+");
+		if ((filestream1 = fopen(costfilename, filemode)) != NULL) {
+			for (int iteration_index = 0; iteration_index < niteration; iteration_index++) {
+				sprintf(str1, "%5.0f", nominal_cost(iteration_index));
+				fwrite(str1, 5, 1, filestream1);
+				fputs(" ", filestream1);
+			}
+			fputs("\n", filestream1);
+			fclose(filestream1);
+		}
+		else printf("Could not open file: cost.txt\n");
+    } 
+}
 
 // main function
 int main(int argc, const char** argv)
@@ -274,7 +270,7 @@ int main(int argc, const char** argv)
             mju_copy(d[id]->act,  m->key_act  + testkey*m->na, m->na);
         }
     }
-	mju_add(state_nominal[0], state_nominal[0], d[0]->qpos, m->nq);
+	mju_add(state_nominal[0], state_nominal[0], d[0]->qpos, m->nq); // get initial position from key pos
 	
 	strcpy(datafilename, "converge.txt");
 	if ((filestream2 = fopen(datafilename, "wt+")) == NULL) {
@@ -348,7 +344,7 @@ int main(int argc, const char** argv)
     thread th[kMaxThread];
     double starttime = gettm();
 	for (int id = 0; id < nthread; id++) {
-		th[id] = thread(simulate, id, niteration);
+		th[id] = thread(train, id, niteration);
 	}
 	for (int id = 0; id < nthread; id++)
 		th[id].join();
@@ -371,8 +367,8 @@ int main(int argc, const char** argv)
 	printf(" Steps per second     : %.0f\n", niteration*rolloutnum_train*stepnum*integration_per_step / simtime[0]);
 	printf(" Realtime factor      : %.2f x\n", niteration*rolloutnum_train*stepnum*integration_per_step*m->opt.timestep / simtime[0]);
 	printf(" Time per step        : %.4f ms\n\n", 1000 * simtime[0] / (niteration*rolloutnum_train*stepnum*integration_per_step));
-	printf(" Contacts per step    : %d\n", contacts[0] / (niteration*rolloutnum_train*stepnum*integration_per_step));
-	printf(" Constraints per step : %d\n", constraints[0] / (niteration*rolloutnum_train*stepnum*integration_per_step));
+	//printf(" Contacts per step    : %d\n", contacts[0] / (niteration*rolloutnum_train*stepnum*integration_per_step));
+	//printf(" Constraints per step : %d\n", constraints[0] / (niteration*rolloutnum_train*stepnum*integration_per_step));
     printf(" Degrees of freedom   : %d\n\n", m->nv);
 	
     // profiler results for thread 0
@@ -392,8 +388,7 @@ int main(int argc, const char** argv)
 	// print control pos vel
 	for (int id = 0; id < nthread; id++)
 	{
-		sprintf(idstr, "%d", id);
-		snprintf(datafilename, sizeof(datafilename), "%s%s%s", "result", idstr, ".txt");
+		snprintf(datafilename, sizeof(datafilename), "%s%d%s", "result", id, ".txt");
 		if ((filestream3 = fopen(datafilename, "wt+")) != NULL)
 		{
 			for (int h = 0; h < stepnum * actuatornum; h++)

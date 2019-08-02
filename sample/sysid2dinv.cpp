@@ -15,7 +15,7 @@
 // constants
 extern const int kTestNum = 100;	// number of monte-carlo runs
 extern const int kMaxStep = 500;   // max step number for one rollout
-extern const int kMaxState = 20;	// max state dimension
+extern const int kMaxState = 50;	// max state dimension
 const int kMaxThread = 8;
 
 // extern model specific parameters
@@ -125,7 +125,7 @@ void sysid(int id, int nroll, int nthd)
 	MatrixXd delta_x1(nroll, statenum + actuatornum);
 	MatrixXd delta_x2(statenum, nroll);
 	MatrixXd matAB(statenum, statenum + actuatornum);
-	static mjtNum printfraction = 0.2;
+	mjtNum printfraction = 0.2;
 
 	// clear statistics
 	contacts[id] = 0;

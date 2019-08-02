@@ -16,9 +16,9 @@
 //-------------------------------- global -----------------------------------------------
 // constants
 extern const int kMaxStep = 500;   // max step number for one rollout
-extern const int kMaxState = 20;	// max state dimension
+extern const int kMaxState = 50;	// max state dimension
 
-const int kTestNum = 500;	// number of monte-carlo runs
+const int kTestNum = 500;	        // number of monte-carlo runs
 const int kMaxGeom = 5000;          // preallocated geom array in mjvScene
 const double syncmisalign = 0.1;    // maximum time mis-alignment before re-sync
 const double refreshfactor = 0.5;   // fraction of refresh available for simulation
@@ -35,8 +35,6 @@ extern mjtNum state_nominal[kMaxStep][kMaxState];
 extern mjtNum ctrl_nominal[kMaxStep * kMaxState];
 extern mjtNum state_target[kMaxState];
 extern mjtNum stabilizer_feedback_gain[kMaxState][kMaxState];
-extern mjtNum tracker_feedback_gain[kMaxStep][kMaxState][kMaxState];
-extern char testmode[30];
 
 // hyperparameters 
 extern mjtNum Q, QT, R;
@@ -51,7 +49,9 @@ mjtNum ctrl_max = 0;
 mjtNum ctrl_openloop[kMaxStep*kMaxState] = { 0 };
 mjtNum perturb_coefficient_test = 0;
 mjtNum cost_closedloop = 0, cost_openloop = 0;
+mjtNum tracker_feedback_gain[kMaxStep][kMaxState][kMaxState] = { 0 };
 FILE *filestream1;
+char testmode[30];
 char data_buff[30];
 char keyfilename[100];
 char datafilename[100];
@@ -1118,7 +1118,7 @@ void drop(GLFWwindow* window, int count, const char** paths)
     // make sure list is non-empty
     if( count>0 )
     {
-        mju_strncpy(modelfilename, paths[0], 100);
+        strcpy(modelfilename, paths[0]);
         settings.loadrequest = 1;
     }
 }
@@ -1817,7 +1817,7 @@ bool simulateClosedloop(void)
 		mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 		if (_strcmpi(testmode, "policy_compare") == 0) {
 			cost_closedloop += stepCost(m, d_closedloop, stepnum);
-			step_index_closedloop = 0;
+			step_index_closedloop = 0; 
 			return 1;
 		}
 	}
@@ -1889,11 +1889,15 @@ mjtNum terminalError(mjtNum ptb)
 		return sqrt(d_closedloop->site_xpos[19] * d_closedloop->site_xpos[19] + (d_closedloop->site_xpos[20] - 2.5) * (d_closedloop->site_xpos[20] - 2.5));
 	else if (modelid == 5)
 		return sqrt((d_closedloop->site_xpos[30] - d_closedloop->site_xpos[0]) * (d_closedloop->site_xpos[30] - d_closedloop->site_xpos[0]) + (d_closedloop->site_xpos[32] - d_closedloop->site_xpos[2]) * (d_closedloop->site_xpos[32] - d_closedloop->site_xpos[2]));
+	else if (modelid == 6)
+		return sqrt((d_closedloop->site_xpos[93] - d_closedloop->site_xpos[0]) * (d_closedloop->site_xpos[93] - d_closedloop->site_xpos[0]) + (d_closedloop->site_xpos[95] - d_closedloop->site_xpos[2]) * (d_closedloop->site_xpos[95] - d_closedloop->site_xpos[2]));
 	return 0;
 }
 
 void performanceTest(void)
 {
+	double printfraction = 0.2;
+
 	strcpy(datafilename, "perfcheck.txt");
 	if ((filestream1 = fopen(datafilename, "wt+")) != NULL)
 	{
@@ -1907,6 +1911,12 @@ void performanceTest(void)
 				fputs(" ", filestream1);
 			}
 			fputs("\n", filestream1);
+
+			if (ptb >= 1 * printfraction)
+			{
+				printf(".");
+				printfraction += 0.2;
+			}
 		}
 		fclose(filestream1);
 	}
@@ -1915,6 +1925,8 @@ void performanceTest(void)
 
 void policyCompare()
 {
+	double printfraction = 0.2;
+	
 	strcpy(datafilename, "clopdata.txt");
 	if ((filestream1 = fopen(datafilename, "wt+")) != NULL)
 	{
@@ -1933,6 +1945,12 @@ void policyCompare()
 				sprintf(data_buff, "%4.8f", cost_openloop);
 				fwrite(data_buff, 10, 1, filestream1);
 				fputs("\n", filestream1);
+			}
+
+			if (ptb >= 1 * printfraction)
+			{
+				printf(".");
+				printfraction += 0.2;
 			}
 		}
 		fclose(filestream1);
@@ -1954,7 +1972,7 @@ void modelTest(void)
 
 void modeSelection(const char* mode)
 {
-	mju_strncpy(testmode, mode, 100);
+	strcpy(testmode, mode);
 	if (_strcmpi(testmode, "policy_compare") == 0) {
 		policyCompare();
 		exit(0);
@@ -2451,22 +2469,18 @@ int main(int argc, const char** argv)
 	}
 	if (argc > 2 && modelSelection(argv[2]) == 1);
 	else modelSelection(modelname);
-	
+	srand((unsigned)time(NULL));
+
 	// initialize
 	init();
 	loadmodel();
 	stateNominal(m, d);
 
-	if (argc > 2)
-	{
-		if (sscanf(argv[2], "%lf", &perturb_coefficient_test) != 1) modeSelection(argv[2]);
-	}
-	if (argc > 3)
-	{
-		if (sscanf(argv[3], "%lf", &perturb_coefficient_test) != 1) modeSelection(argv[3]);
-	}
+	if (argc > 2) if (sscanf(argv[2], "%lf", &perturb_coefficient_test) != 1) modeSelection(argv[2]);
+
+	if (argc > 3) if (sscanf(argv[3], "%lf", &perturb_coefficient_test) != 1) modeSelection(argv[3]);
+
 	if (argc > 4) sscanf(argv[4], "%lf", &perturb_coefficient_test);
-	srand((unsigned)time(NULL));
 	for (int e = 0; e < stepnum * actuatornum; e++)
 	{
 		ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_test * ctrl_max * randGauss(0, 1);
