@@ -16,8 +16,8 @@
 
 /* Extern variables -------------------------------------------------------*/
 // constants
-const int kMaxStep = 500;   // max step number for one rollout
-const int kMaxState = 50;	// max state dimension
+const int kMaxStep = 1010;   // max step number for one rollout
+const int kMaxState = 30;	// max state dimension
 
 // model parameters and environment settings
 int integration_per_step = 1;
@@ -197,8 +197,8 @@ int modelSelection(const char* model)
 	}
 	else if (_strcmpi(model, "finger") == 0) {
 		modelid = 5;
-		control_timestep = 0.02;
-		simulation_timestep = 0.02;
+		control_timestep = 0.04;
+		simulation_timestep = 0.04;
 		stepnum = 200;
 		statenum = 10;
 		actuatornum = 10;
@@ -214,9 +214,23 @@ int modelSelection(const char* model)
 		control_timestep = 0.02;
 		simulation_timestep = 0.02;
 		stepnum = 300;
-		statenum = 20;
+		statenum = 18;
 		actuatornum = 38;
 		rolloutnum_train = 20;
+		ctrl_limit_train = 50;
+		mjtNum temp[kMaxState][kMaxState] = { 0 };
+		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], statenum);
+		integration_per_step = (int)(control_timestep / simulation_timestep);
+		return 1;
+	}
+	else if (_strcmpi(model, "swimmer6t") == 0) {
+		modelid = 7;
+		control_timestep = 0.01;
+		simulation_timestep = 0.01;
+		stepnum = 1000;
+		statenum = 16;
+		actuatornum = 22;
+		rolloutnum_train = 50;
 		ctrl_limit_train = 50;
 		mjtNum temp[kMaxState][kMaxState] = { 0 };
 		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], statenum);
@@ -228,10 +242,10 @@ int modelSelection(const char* model)
 
 mjtNum stepCost(mjModel* m, mjData* d, int step_index)
 {
-	mjtNum state[kMaxState], res0[kMaxState], res1[kMaxState], cost;
+	mjtNum state[kMaxState], res0[kMaxState] = { 0 }, res1[kMaxState] = { 0 }, cost;
 
-	mju_copy(state, d->qpos, m->nq);
-	mju_copy(&state[m->nq], d->qvel, m->nv);
+	mju_copy(state, d->qpos, int(statenum / 2));
+	mju_copy(&state[int(statenum / 2)], d->qvel, int(statenum / 2));
 	if (modelid == 0) {
 		if (state[0] < PI) state_target[0] = 0; else state_target[0] = 2 * PI;
 		mju_sub(res0, state, state_target, statenum);
@@ -273,6 +287,25 @@ mjtNum stepCost(mjModel* m, mjData* d, int step_index)
 	else if (modelid == 6) {
 		if (step_index >= stepnum) cost = (QT * (1 * (d->site_xpos[93] - d->site_xpos[0]) * (d->site_xpos[93] - d->site_xpos[0]) + 5 * (d->site_xpos[95] - d->site_xpos[2]) * (d->site_xpos[95] - d->site_xpos[2]) + 0.1 * mju_dot(d->qvel, d->qvel, m->nv)));
 		else cost = (Q * ((1 * (d->site_xpos[93] - d->site_xpos[0]) * (d->site_xpos[93] - d->site_xpos[0]) + 5 * (d->site_xpos[95] - d->site_xpos[2]) * (d->site_xpos[95] - d->site_xpos[2])) + 0.00*mju_dot(d->qvel, d->qvel, m->nv)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+		//mju_sub(res0, state, state_target, int(statenum / 2));
+		//if (step_index >= stepnum) {
+		//	mju_mulMatVec(res1, *QTm, res0, kMaxState, kMaxState);
+		//	mju_zero(d->ctrl, actuatornum);
+		//}
+		//else mju_mulMatVec(res1, *Qm, res0, kMaxState, kMaxState);
+		//cost = (mju_dot(res0, res1, statenum) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+
+		//// point track
+		//if (step_index >= stepnum) cost = (QT * (0.8 * ((d->site_xpos[27] - 2.4) * (d->site_xpos[27] - 2.4)+ (d->site_xpos[36] - 3.58) * (d->site_xpos[36] - 3.58)+ (d->site_xpos[45] - 4.74) * (d->site_xpos[45] - 4.74)+ (d->site_xpos[54] - 5.86) * (d->site_xpos[54] - 5.86) + (d->site_xpos[63] - 6.95) * (d->site_xpos[63] - 6.95) + (d->site_xpos[72] - 7.99) * (d->site_xpos[72] - 7.99) + 1*(d->site_xpos[81] - 8.97) * (d->site_xpos[81] - 8.97) + 1*(d->site_xpos[90] - 9.89) * (d->site_xpos[90] - 9.89) + 1*(d->site_xpos[93] - 10.74) * (d->site_xpos[93] - 10.74)) + 4.5 * ((d->site_xpos[95] - 6.75) * (d->site_xpos[95] - 6.75) + 1*(d->site_xpos[92] - 5.9) * (d->site_xpos[92] - 5.9) + 1*(d->site_xpos[83] - 5.13) * (d->site_xpos[83] - 5.13) + 1*(d->site_xpos[74] - 4.44) * (d->site_xpos[74] - 4.44) + 1*(d->site_xpos[65] - 3.84) * (d->site_xpos[65] - 3.84) + 1.2*(d->site_xpos[56] - 3.33) * (d->site_xpos[56] - 3.33) + 1.5*(d->site_xpos[47] - 2.92) * (d->site_xpos[47] - 2.92) + 1.8*(d->site_xpos[38] - 2.61) * (d->site_xpos[38] - 2.61) + 2*(d->site_xpos[29] - 2.4) * (d->site_xpos[29] - 2.4))) + 0.8 * mju_dot(d->qvel, d->qvel, m->nv));
+		//else cost = (Q * ((0.8 * ((d->site_xpos[27] - 2.4) * (d->site_xpos[27] - 2.4)+ (d->site_xpos[36] - 3.58) * (d->site_xpos[36] - 3.58)+ (d->site_xpos[45] - 4.74) * (d->site_xpos[45] - 4.74) + (d->site_xpos[54] - 5.86) * (d->site_xpos[54] - 5.86) + (d->site_xpos[63] - 6.95) * (d->site_xpos[63] - 6.95) + (d->site_xpos[72] - 7.99) * (d->site_xpos[72] - 7.99) + 1*(d->site_xpos[81] - 8.97) * (d->site_xpos[81] - 8.97) + 1*(d->site_xpos[90] - 9.89) * (d->site_xpos[90] - 9.89) + 1*(d->site_xpos[93] - 10.74) * (d->site_xpos[93] - 10.74)) + 4.5 * ((d->site_xpos[95] - 6.75) * (d->site_xpos[95] - 6.75) + 1*(d->site_xpos[92] - 5.9) * (d->site_xpos[92] - 5.9)+1*(d->site_xpos[83] - 5.13) * (d->site_xpos[83] - 5.13) + 1*(d->site_xpos[74] - 4.44) * (d->site_xpos[74] - 4.44) + 1*(d->site_xpos[65] - 3.84) * (d->site_xpos[65] - 3.84) + 1.2*(d->site_xpos[56] - 3.33) * (d->site_xpos[56] - 3.33) + 1.5*(d->site_xpos[47] - 2.92) * (d->site_xpos[47] - 2.92) + 1.8*(d->site_xpos[38] - 2.61) * (d->site_xpos[38] - 2.61) + 2*(d->site_xpos[29] - 2.4) * (d->site_xpos[29] - 2.4))) + 0.1*mju_dot(d->qvel, d->qvel, m->nv)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+		
+		//// height track
+		//if (step_index >= stepnum) cost = (QT * (0.0 * ((d->site_xpos[27] - 2.4) * (d->site_xpos[27] - 2.4) + (d->site_xpos[36] - 3.58) * (d->site_xpos[36] - 3.58) + (d->site_xpos[45] - 4.74) * (d->site_xpos[45] - 4.74) + (d->site_xpos[54] - 5.86) * (d->site_xpos[54] - 5.86) + (d->site_xpos[63] - 6.95) * (d->site_xpos[63] - 6.95) + (d->site_xpos[72] - 7.99) * (d->site_xpos[72] - 7.99) + 1 * (d->site_xpos[81] - 8.97) * (d->site_xpos[81] - 8.97) + 1 * (d->site_xpos[90] - 9.89) * (d->site_xpos[90] - 9.89) + 1 * (d->site_xpos[93] - 10.74) * (d->site_xpos[93] - 10.74))+ .0 * (d->site_xpos[93] - 12) * (d->site_xpos[93] - 12) + 4. * (0.01*(d->site_xpos[95] - 6.75) * (d->site_xpos[95] - 6.75) + .04 * (d->site_xpos[92] - 5.9) * (d->site_xpos[92] - 5.9) + .1 * (d->site_xpos[83] - 5.13) * (d->site_xpos[83] - 5.13) + .5 * (d->site_xpos[74] - 4.44) * (d->site_xpos[74] - 4.44) + .8 * (d->site_xpos[65] - 3.84) * (d->site_xpos[65] - 3.84) + 1.2*(d->site_xpos[56] - 3.33) * (d->site_xpos[56] - 3.33) + 4*(d->site_xpos[47] - 2.92) * (d->site_xpos[47] - 2.92) + 8*(d->site_xpos[38] - 2.61) * (d->site_xpos[38] - 2.61) + 12 * (d->site_xpos[29] - 2.4) * (d->site_xpos[29] - 2.4))) + 0.2 * mju_dot(d->qvel, d->qvel, m->nv));
+		//else cost = (Q * ((0.0 * ((d->site_xpos[27] - 2.4) * (d->site_xpos[27] - 2.4) + (d->site_xpos[36] - 3.58) * (d->site_xpos[36] - 3.58) + (d->site_xpos[45] - 4.74) * (d->site_xpos[45] - 4.74) + (d->site_xpos[54] - 5.86) * (d->site_xpos[54] - 5.86) + (d->site_xpos[63] - 6.95) * (d->site_xpos[63] - 6.95) + (d->site_xpos[72] - 7.99) * (d->site_xpos[72] - 7.99) + 1 * (d->site_xpos[81] - 8.97) * (d->site_xpos[81] - 8.97) + 1 * (d->site_xpos[90] - 9.89) * (d->site_xpos[90] - 9.89) + 1 * (d->site_xpos[93] - 10.74) * (d->site_xpos[93] - 10.74))+ .0 * (d->site_xpos[93] - 12) * (d->site_xpos[93] - 12) + 4. * (0.01*(d->site_xpos[95] - 6.75) * (d->site_xpos[95] - 6.75) + .04 * (d->site_xpos[92] - 5.9) * (d->site_xpos[92] - 5.9) + .1 * (d->site_xpos[83] - 5.13) * (d->site_xpos[83] - 5.13) + .5 * (d->site_xpos[74] - 4.44) * (d->site_xpos[74] - 4.44) + .8 * (d->site_xpos[65] - 3.84) * (d->site_xpos[65] - 3.84) + 1.2*(d->site_xpos[56] - 3.33) * (d->site_xpos[56] - 3.33) + 4*(d->site_xpos[47] - 2.92) * (d->site_xpos[47] - 2.92) + 8*(d->site_xpos[38] - 2.61) * (d->site_xpos[38] - 2.61) + 12 * (d->site_xpos[29] - 2.4) * (d->site_xpos[29] - 2.4))) + 0.2*mju_dot(d->qvel, d->qvel, m->nv)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+	}
+	else if (modelid == 7) {
+		if (step_index >= stepnum) cost = (QT * (1 * (d->qpos[0] - d->site_xpos[0]) * (d->qpos[0] - d->site_xpos[0]) + 1 * (d->qpos[1] - d->site_xpos[1]) * (d->qpos[1] - d->site_xpos[1]) + 0.0 * mju_dot(d->qvel, d->qvel, m->nv)));
+		else cost = (Q * ((1 * (d->qpos[0] - d->site_xpos[0]) * (d->qpos[0] - d->site_xpos[0]) + 1 * (d->qpos[1] - d->site_xpos[1]) * (d->qpos[1] - d->site_xpos[1])) + 0.00*mju_dot(d->qvel, d->qvel, m->nv)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
 	}
 	return cost;
 }

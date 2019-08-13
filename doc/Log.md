@@ -699,3 +699,20 @@ sysid2d 模型文件名，noise level，rollout数，模型名，线程数，最
 #### 1. mju_strncpy后面长度设的不对，把后面QT覆盖了2333. 改了之后cost还是有点差别。
 #### 2. 尽量避免用eigen矩阵库，赋值比数组慢2到3倍，向量点乘比数组和mju_dot慢约50倍。
 #### 3. inverse相比sequential，平均每个iteration耗时更长，但可以使所需iteration数减少很多，所以总的时间减少了很多。精度提高主要是因为加delta减delta，不过这样时间会变长，因为需要两个rollouts做一次计算。
+## 08/06/2019
+### Log:
+#### 1. 用角度做轨迹track得到的解不对，会牺牲前面几个joint使后面的达标。
+27   29，36   38，45   47，54   56，63   65，72   74， 81   83，90   92，93   95
+## 08/10/2019
+### Log:
+#### 1. 老师说不应该去要求系统给我一个motion而应该接受系统能给出的motion，确实在优化中可以通过cost function设目标，但是训练得到的motion不一定是想要的，而这个motion是由系统的特性决定，不应该强行要求一个系统优化得到不适合这个系统的解。所以这个arm的模型就不要做鱼尾的摆动了，reach target point也挺好的。
+#### 2. 把arm变成swimmer，mass要大一点，不然容易不稳定。
+#### 3. 加了constraint后要特别仔细注意control是不是还都有效以及state数量变化。
+#### 4. density小阻力小，产生的推力也小，site的dimension不与介质产生力，但geom的size影响与介质作用的力。
+## 08/13/2019
+### Log:
+#### 1. terminal cost要大，不然后期游很慢，很难进入target。
+#### 2. bar长的产生推力大，更容易向目标游，training更快，但是受noise影响大，闭环差一些，不知道为啥。
+#### 3. damping太大很难游，太小training不稳定。
+#### 4. 只用50 rollouts也可以，就是training的spikes多点，很节省时间而且cost下降差不多。
+#### 5. bar长和角度constraint要配合着设，没有角度constraint容易卷起来。

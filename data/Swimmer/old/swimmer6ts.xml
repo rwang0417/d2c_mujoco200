@@ -1,0 +1,228 @@
+<mujoco model="swimmer">
+    <include file="./common/visual.xml"/>
+    <include file="./common/skybox.xml"/>
+    <include file="./common/materials.xml"/>
+    
+    <option timestep="0.01" iterations="50" solver="Newton" tolerance="1e-10" gravity = "0 0 0" collision="predefined" density="1000" viscosity="0.0"/>
+
+    <size njmax="500" nconmax="100" nstack="1000"/>
+    
+    <visual>
+        <rgba haze=".15 .25 .35 1"/>
+    </visual>
+    
+    <default>
+        <joint type="hinge" pos="0 0 0" axis="0 0 1" limited="true" range="-180 180" solreflimit=".05 1" solimplimit="0 .8 .1" armature="1e-6"/>
+        <motor ctrllimited="false" ctrlrange="-100 100" gear="0.1"/>
+		<tendon stiffness="0" damping=".1" width="0.005"/>
+		<geom size="0.01" mass="0.1" material="self"/>
+		<site size="0.016"/>
+    </default>
+
+    <worldbody>
+        <geom name="floor" pos="0 0 0" size="0 0 1" type="plane" material="grid"/>
+        <light directional="true" diffuse=".8 .8 .8" specular=".2 .2 .2" pos="0 0 5" dir="0 0 -1"/>
+        <site name="target" pos="-1 1 0.1" size="0.024" rgba="1 0 0 .3"/>
+        <body name="head" pos="0 0 0.1">
+            <geom type="capsule" fromto="0 -0.02 0  0 0.02 0"/>
+            <geom name="head" type="ellipsoid" size=".04 .02 .017" pos="-.022 0 0"  material="self" mass="0"/>
+            <geom name="nose" type="sphere" pos="-.06 0 0" size=".004" material="effector" mass="0"/>
+            <geom name="eyes" type="capsule" fromto="-.054 -.006 .005  -.054 .006 .005" size=".004" material="eye" mass="0"/>
+            <camera name="tracking1" pos="0 -.2 .5" xyaxes="1 0 0 0 1 1" mode="trackcom" fovy="60"/>
+            <camera name="tracking2" pos="-.9 .5 .15" xyaxes="0 -1 0 .3 0 1" mode="trackcom" fovy="60"/>
+            <camera name="eyes" pos="0 -.058 .005" xyaxes="-1 0 0 0 0 1"/>
+            <joint name="rootx" limited="false" stiffness="0" armature="0" type="slide" axis="1 0 0" pos="0 0 0"/>
+            <joint name="rooty" limited="false" stiffness="0" armature="0" type="slide" axis="0 1 0" pos="0 0 0"/>
+            <joint name="rootz" limited="false" stiffness="0" armature="0" type="hinge" axis="0 0 1" pos="0 0 0"/>
+            <site name="heads" pos="0 -0.02 0"/>
+			<site name="heade" pos="0 0.02 0"/>
+            <site name="headm" pos="0 0 0"/>
+            <body name="hbar1" pos="0 0 0">
+                <geom type="capsule" fromto="0 0 0  .2 0 0"/>
+                <!-- <joint pos="0 0 0"/> -->
+                <body name="vbar2" pos=".2 0 0">
+                    <geom type="capsule" fromto="0 -0.02 0  0 0.02 0"/>
+                    <site name="vb2s" pos="0 -0.02 0"/>
+                    <site name="vb2e" pos="0 0.02 0"/>
+                    <site name="vb2m" pos="0 0 0"/>
+                    <joint pos="0 0 0"/>
+                    <body name="hbar2" pos="0 0 0">
+                        <geom type="capsule" fromto="0 0 0  .2 0 0"/>
+                        <!-- <joint pos="0 0 0"/> -->
+                        <body name="vbar3" pos=".2 0 0">
+                            <geom type="capsule" fromto="0 -0.02 0  0 0.02 0"/>
+                            <site name="vb3s" pos="0 -0.02 0"/>
+                            <site name="vb3e" pos="0 0.02 0"/>
+                            <site name="vb3m" pos="0 0 0"/>
+                            <joint pos="0 0 0"/>
+                            <body name="hbar3" pos="0 0 0">
+                                <geom type="capsule" fromto="0 0 0  .2 0 0"/>
+                                <!-- <joint pos="0 0 0"/> -->
+                                <body name="vbar4" pos=".2 0 0">
+                                    <geom type="capsule" fromto="0 -0.02 0  0 0.02 0"/>
+                                    <site name="vb4s" pos="0 -0.02 0"/>
+                                    <site name="vb4e" pos="0 0.02 0"/>
+                                    <site name="vb4m" pos="0 0 0"/>
+                                    <joint name="j7" pos="0 0 0"/>
+                                    <body name="hbar4" pos="0 0 0">
+                                        <geom type="capsule" fromto="0 0 0  .2 0 0"/>
+                                        <!-- <joint pos="0 0 0"/> -->
+                                        <body name="vbar5" pos=".2 0 0">
+                                            <geom type="capsule" fromto="0 -0.02 0  0 0.02 0"/>
+                                            <site name="vb5s" pos="0 -0.02 0"/>
+                                            <site name="vb5e" pos="0 0.02 0"/>
+                                            <site name="vb5m" pos="0 0 0"/>
+                                            <joint name="j9" pos="0 0 0"/>
+                                            <body name="hbar5" pos="0 0 0">
+                                                <geom type="capsule" fromto="0 0 0  .2 0 0"/>
+                                                <!-- <joint pos="0 0 0"/> -->
+                                                <body name="vbar6" pos=".2 0 0">
+                                                    <geom type="capsule" fromto="0 -0.02 0  0 0.02 0"/>
+                                                    <site name="vb6s" pos="0 -0.02 0"/>
+                                                    <site name="vb6e" pos="0 0.02 0"/>
+                                                    <site name="vb6m" pos="0 0 0"/>
+                                                    <joint name="j11" pos="0 0 0"/>
+                                                    <body name="hbar6" pos="0 0 0">
+                                                        <geom type="capsule" fromto="0 0 0  .2 0 0"/>
+                                                        <!-- <joint pos="0 0 0"/> -->
+                                                        <site name="hb6e" pos=".2 0 0"/>
+                                                    </body>
+                                                </body>
+                                            </body>
+                                        </body>
+                                    </body>
+                                </body>
+                            </body>
+                        </body>
+                    </body>
+                </body>
+            </body>
+        </body>
+    </worldbody>
+
+    <tendon>
+        <spatial name="S11">
+            <site site="heads"/>
+            <site site="vb2s"/>
+        </spatial>
+		<spatial name="S12">
+            <site site="headm"/>
+            <site site="vb2s"/>
+        </spatial>
+		<spatial name="S13">
+            <site site="headm"/>
+            <site site="vb2e"/>
+        </spatial>
+		<spatial name="S14">
+            <site site="heade"/>
+            <site site="vb2e"/>
+        </spatial>
+        
+        <spatial name="S21">
+            <site site="vb2s"/>
+            <site site="vb3s"/>
+        </spatial>
+		<spatial name="S22">
+            <site site="vb2m"/>
+            <site site="vb3s"/>
+        </spatial>
+		<spatial name="S23">
+            <site site="vb2m"/>
+            <site site="vb3e"/>
+        </spatial>
+		<spatial name="S24">
+            <site site="vb2e"/>
+            <site site="vb3e"/>
+        </spatial>
+        
+        <spatial name="S31">
+            <site site="vb3s"/>
+            <site site="vb4s"/>
+        </spatial>
+		<spatial name="S32">
+            <site site="vb3m"/>
+            <site site="vb4s"/>
+        </spatial>
+		<spatial name="S33">
+            <site site="vb3m"/>
+            <site site="vb4e"/>
+        </spatial>
+		<spatial name="S34">
+            <site site="vb3e"/>
+            <site site="vb4e"/>
+        </spatial>
+        
+        <spatial name="S41">
+            <site site="vb4s"/>
+            <site site="vb5s"/>
+        </spatial>
+		<spatial name="S42">
+            <site site="vb4m"/>
+            <site site="vb5s"/>
+        </spatial>
+		<spatial name="S43">
+            <site site="vb4m"/>
+            <site site="vb5e"/>
+        </spatial>
+		<spatial name="S44">
+            <site site="vb4e"/>
+            <site site="vb5e"/>
+        </spatial>
+        
+        <spatial name="S51">
+            <site site="vb5s"/>
+            <site site="vb6s"/>
+        </spatial>
+		<spatial name="S52">
+            <site site="vb5m"/>
+            <site site="vb6s"/>
+        </spatial>
+		<spatial name="S53">
+            <site site="vb5m"/>
+            <site site="vb6e"/>
+        </spatial>
+		<spatial name="S54">
+            <site site="vb5e"/>
+            <site site="vb6e"/>
+        </spatial>
+        
+        <spatial name="S61">
+            <site site="vb6s"/>
+            <site site="hb6e"/>
+        </spatial>
+        <spatial name="S62">
+            <site site="vb6e"/>
+            <site site="hb6e"/>
+        </spatial>
+    </tendon>   
+
+    <actuator>
+        <motor tendon="S11"/>
+        <motor tendon="S12"/>
+		<motor tendon="S13"/>
+        <motor tendon="S14"/>
+        
+        <motor tendon="S21"/>
+        <motor tendon="S22"/>
+		<motor tendon="S23"/>
+        <motor tendon="S24"/>
+        
+        <motor tendon="S31"/>
+        <motor tendon="S32"/>
+		<motor tendon="S33"/>
+        <motor tendon="S34"/>
+        
+        <motor tendon="S41"/>
+        <motor tendon="S42"/>
+		<motor tendon="S43"/>
+        <motor tendon="S44"/>
+        
+        <motor tendon="S51"/>
+        <motor tendon="S52"/>
+		<motor tendon="S53"/>
+        <motor tendon="S54"/>
+        
+        <motor tendon="S61"/>
+        <motor tendon="S62"/>
+    </actuator>
+</mujoco>

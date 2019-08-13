@@ -15,8 +15,8 @@
 
 //-------------------------------- global -----------------------------------------------
 // constants
-extern const int kMaxStep = 500;   // max step number for one rollout
-extern const int kMaxState = 50;	// max state dimension
+extern const int kMaxStep = 1010;   // max step number for one rollout
+extern const int kMaxState = 30;	// max state dimension
 
 const int kTestNum = 500;	        // number of monte-carlo runs
 const int kMaxGeom = 5000;          // preallocated geom array in mjvScene
@@ -1891,6 +1891,8 @@ mjtNum terminalError(mjtNum ptb)
 		return sqrt((d_closedloop->site_xpos[30] - d_closedloop->site_xpos[0]) * (d_closedloop->site_xpos[30] - d_closedloop->site_xpos[0]) + (d_closedloop->site_xpos[32] - d_closedloop->site_xpos[2]) * (d_closedloop->site_xpos[32] - d_closedloop->site_xpos[2]));
 	else if (modelid == 6)
 		return sqrt((d_closedloop->site_xpos[93] - d_closedloop->site_xpos[0]) * (d_closedloop->site_xpos[93] - d_closedloop->site_xpos[0]) + (d_closedloop->site_xpos[95] - d_closedloop->site_xpos[2]) * (d_closedloop->site_xpos[95] - d_closedloop->site_xpos[2]));
+	else if (modelid == 7)
+		return sqrt((d->qpos[0] - d->site_xpos[0]) * (d->qpos[0] - d->site_xpos[0]) + (d->qpos[1] - d->site_xpos[1]) * (d->qpos[1] - d->site_xpos[1]));
 	return 0;
 }
 
@@ -2244,6 +2246,9 @@ void simulate(void)
 						simulateOpenloop();
 						simulateClosedloop();
 
+						//for (int i = 0; i < m->nq; i++) d->qpos[i] = -PI / 36;
+						//mj_step(m, d);
+
                         // break on reset
                         if( d->time<prevtm )
                             break;
@@ -2521,7 +2526,7 @@ int main(int argc, const char** argv)
 		glfwMakeContextCurrent(window);
 		render(window);
     }
-
+	//for (int i = 0; i < 3 * m->nsite; i++) printf(" d->site_xpos[%d]   : %.2f\n", i, d->site_xpos[i]);
     // stop simulation thread
     settings.exitrequest = 1;
     simthread.join();

@@ -13,10 +13,10 @@
 
 //-------------------------------- global variables -------------------------------------
 // constants
-extern const int kTestNum = 100;	// number of monte-carlo runs
-extern const int kMaxStep = 500;   // max step number for one rollout
-extern const int kMaxState = 50;	// max state dimension
-const int kMaxThread = 8;
+extern const int kMaxStep = 1010;   // max step number for one rollout
+extern const int kMaxState = 30;	// max state dimension
+const int kTestNum = 100;	        // number of monte-carlo runs
+const int kMaxThread = 8;           // max thread number
 
 // extern model specific parameters
 extern int integration_per_step;
@@ -287,7 +287,7 @@ int main(int argc, const char** argv)
 
     // print start
 	if (nthread > 1)
-		printf("\nRunning %d rollouts per thread at dt_c = %g, dt_s = %g for %d thread\n\n", int(nrollout * 2 / nthread), control_timestep, m->opt.timestep, nthread);
+		printf("\nRunning %d rollouts per thread at dt_c = %g, dt_s = %g for %d threads\n\n", int(nrollout * 2 / nthread), control_timestep, m->opt.timestep, nthread);
 	else
 		printf("\nRunning %d rollouts at dt_c = %g, dt_s = %g\n\n", nrollout * 2, control_timestep, m->opt.timestep);
 

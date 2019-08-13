@@ -17,8 +17,8 @@
 
 //-------------------------------- global variables -------------------------------------
 // constants
-extern const int kMaxStep = 500;   // max step number for one rollout
-extern const int kMaxState = 50;	// max state dimension
+extern const int kMaxStep = 1010;   // max step number for one rollout
+extern const int kMaxState = 30;	// max state dimension
 const int kMaxThread = 64;
 const mjtNum kMaxUpdate = 0.1;
 
@@ -120,7 +120,7 @@ void train(int id, int niteration)
 				nominal_cost(iteration_index) += stepCost(m, d[id], step_index);
 				for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
 			}
-			nominal_cost(iteration_index) += stepCost(m, d[id], stepnum); printf("%f", d[id]->site_xpos[95] - d[id]->site_xpos[2]);
+			nominal_cost(iteration_index) += stepCost(m, d[id], stepnum);
 
             //calculate gradient and update control
             for (int rollout_index = 0; rollout_index < int(rolloutnum_train); rollout_index++)
@@ -425,6 +425,18 @@ int main(int argc, const char** argv)
 			fputs("\nstep_coef: ", filestream3);
 			sprintf(str2, "%2.4f", update_coefficient_init);
 			fwrite(str2, 6, 1, filestream3);
+			fputs("\nctrl_step: ", filestream3);
+			sprintf(str2, "%2.4f", control_timestep);
+			fwrite(str2, 6, 1, filestream3);
+			fputs("\nsim_step: ", filestream3);
+			sprintf(str2, "%2.4f", simulation_timestep);
+			fwrite(str2, 6, 1, filestream3);
+			fputs("\nstep_num: ", filestream3);
+			sprintf(str2, "%4d", stepnum);
+			fwrite(str2, 4, 1, filestream3);
+			fputs("\nrollout_train: ", filestream3);
+			sprintf(str2, "%d", rolloutnum_train);
+			fwrite(str2, 3, 1, filestream3);
 			fclose(filestream3);
 		}
 	}

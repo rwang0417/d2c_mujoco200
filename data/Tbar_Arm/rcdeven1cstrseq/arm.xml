@@ -1,4 +1,4 @@
-<mujoco model="finger">
+<mujoco model="arm">
     <include file="./common/visual.xml"/>
     <include file="./common/skybox.xml"/>
     <include file="./common/materials.xml"/>
