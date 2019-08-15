@@ -716,3 +716,8 @@ sysid2d 模型文件名，noise level，rollout数，模型名，线程数，最
 #### 3. damping太大很难游，太小training不稳定。
 #### 4. 只用50 rollouts也可以，就是training的spikes多点，很节省时间而且cost下降差不多。
 #### 5. bar长和角度constraint要配合着设，没有角度constraint容易卷起来。
+## 08/14/2019
+### Log:
+#### 1. 太难训练了，0.01闭环只能到5% noise，改成0.006，闭环data和图太奇怪了，怎么会这么小，变化太小了。。。
+#### 2. sysid如果statenum之类的太大就会不出结果，是因为sysidcheck函数开头三个大数组定义，所以只能不用这个函数了。。。
+#### 3. incremental cost比较大更难从头不变参数训练到最后，后面下降非常慢。

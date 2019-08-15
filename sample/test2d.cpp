@@ -15,8 +15,8 @@
 
 //-------------------------------- global -----------------------------------------------
 // constants
-extern const int kMaxStep = 1010;   // max step number for one rollout
-extern const int kMaxState = 30;	// max state dimension
+extern const int kMaxStep = 1510;   // max step number for one rollout
+extern const int kMaxState = 23;	// max (state dimension, actuator number)
 
 const int kTestNum = 500;	        // number of monte-carlo runs
 const int kMaxGeom = 5000;          // preallocated geom array in mjvScene
@@ -1864,21 +1864,23 @@ bool simulateOpenloop(void)
 	return 0;
 }
 
-mjtNum terminalError(mjtNum ptb)
+mjtNum terminalError(mjtNum ptb, const char *type)
 {
 	mjtNum state_error[kMaxState], ctrl_feedback[kMaxState];
 
-	mj_resetData(m, d_closedloop);
 	mju_copy(d_closedloop->qpos, state_nominal[0], int(statenum / 2));
 	mju_copy(d_closedloop->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
 	mj_forward(m, d_closedloop);
 	for (int e = 0; e < stepnum * actuatornum; e++) ctrl_openloop[e] = ctrl_nominal[e] + ptb * ctrl_max * randGauss(0, 1);
 
 	for (int step_index = 0; step_index < stepnum; step_index++) {
-		mju_sub(state_error, state_nominal[step_index], d_closedloop->qpos, int(statenum / 2));
-		mju_sub(&state_error[int(statenum / 2)], &state_nominal[step_index][int(statenum / 2)], d_closedloop->qvel, int(statenum / 2));
-		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index], state_error, kMaxState, kMaxState);
-		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index * actuatornum], ctrl_feedback, m->nu);
+		if (_strcmpi(type, "openloop") == 0) mju_copy(d_closedloop->ctrl, &ctrl_openloop[step_index * actuatornum], m->nu);
+		else {
+			mju_sub(state_error, state_nominal[step_index], d_closedloop->qpos, int(statenum / 2));
+			mju_sub(&state_error[int(statenum / 2)], &state_nominal[step_index][int(statenum / 2)], d_closedloop->qvel, int(statenum / 2));
+			mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index], state_error, kMaxState, kMaxState);
+			mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index * actuatornum], ctrl_feedback, m->nu);
+		}
 		for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
 	}
 	if (modelid == 0)
@@ -1892,7 +1894,7 @@ mjtNum terminalError(mjtNum ptb)
 	else if (modelid == 6)
 		return sqrt((d_closedloop->site_xpos[93] - d_closedloop->site_xpos[0]) * (d_closedloop->site_xpos[93] - d_closedloop->site_xpos[0]) + (d_closedloop->site_xpos[95] - d_closedloop->site_xpos[2]) * (d_closedloop->site_xpos[95] - d_closedloop->site_xpos[2]));
 	else if (modelid == 7)
-		return sqrt((d->qpos[0] - d->site_xpos[0]) * (d->qpos[0] - d->site_xpos[0]) + (d->qpos[1] - d->site_xpos[1]) * (d->qpos[1] - d->site_xpos[1]));
+		return sqrt((d_closedloop->qpos[0] - d_closedloop->site_xpos[0]) * (d_closedloop->qpos[0] - d_closedloop->site_xpos[0]) + (d_closedloop->qpos[1] - d_closedloop->site_xpos[1]) * (d_closedloop->qpos[1] - d_closedloop->site_xpos[1]));
 	return 0;
 }
 
@@ -1908,7 +1910,7 @@ void performanceTest(void)
 			for (int i = 0; i < kTestNum; i++)
 			{
 				// data output for checking
-				sprintf(data_buff, "%4.8f", terminalError(ptb));
+				sprintf(data_buff, "%4.8f", terminalError(ptb, "closedloop"));
 				fwrite(data_buff, 10, 1, filestream1);
 				fputs(" ", filestream1);
 			}
@@ -1919,6 +1921,17 @@ void performanceTest(void)
 				printf(".");
 				printfraction += 0.2;
 			}
+		}
+		for (mjtNum ptb = 0; ptb < 1.0001; ptb += 0.05)
+		{
+			for (int i = 0; i < kTestNum; i++)
+			{
+				// data output for checking
+				sprintf(data_buff, "%4.8f", terminalError(ptb, "openloop"));
+				fwrite(data_buff, 10, 1, filestream1);
+				fputs(" ", filestream1);
+			}
+			fputs("\n", filestream1);
 		}
 		fclose(filestream1);
 	}

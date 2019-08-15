@@ -3,7 +3,7 @@
     <include file="./common/skybox.xml"/>
     <include file="./common/materials.xml"/>
     
-    <option timestep="0.01" iterations="50" solver="Newton" tolerance="1e-10" gravity = "0 0 0" collision="predefined" density="3000" viscosity="0.0"/>
+    <option timestep="0.006" iterations="50" solver="Newton" tolerance="1e-10" gravity = "0 0 0" collision="predefined" density="3000" viscosity="0.0"/>
 
     <size njmax="500" nconmax="100" nstack="1000"/>
     
@@ -36,9 +36,9 @@
         <site name="target" pos="-0.5 0.5 0.1" size="0.03" rgba="1 0 0 .3"/>
         <body name="head" pos="0 0 0.1">
             <geom type="capsule" class="vbar"/>
-            <geom name="head" type="ellipsoid" size=".04 .02 .017" pos="-.022 0 0"  material="self" mass="0"/>
-            <geom name="nose" type="sphere" pos="-.06 0 0" size=".004" material="effector" mass="0"/>
-            <geom name="eyes" type="capsule" fromto="-.054 -.006 .005  -.054 .006 .005" size=".004" material="eye" mass="0"/>
+            <geom name="head" type="ellipsoid" size=".04 .02 .017" pos="-.01 0 0"  material="self" mass="0"/>
+            <geom name="nose" type="sphere" pos="-.049 0 0" size=".004" material="effector" mass="0"/>
+            <geom name="eyes" type="capsule" fromto="-.042 -.006 .005  -.042 .006 .005" size=".004" material="eye" mass="0"/>
             <camera name="tracking1" pos="0 -.2 .5" xyaxes="1 0 0 0 1 1" mode="trackcom" fovy="60"/>
             <camera name="tracking2" pos="-.9 .5 .15" xyaxes="0 -1 0 .3 0 1" mode="trackcom" fovy="60"/>
             <camera name="eyes" pos="0 -.058 .005" xyaxes="-1 0 0 0 0 1"/>

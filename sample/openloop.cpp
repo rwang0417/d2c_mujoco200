@@ -17,8 +17,8 @@
 
 //-------------------------------- global variables -------------------------------------
 // constants
-extern const int kMaxStep = 1010;   // max step number for one rollout
-extern const int kMaxState = 30;	// max state dimension
+extern const int kMaxStep = 1510;   // max step number for one rollout
+extern const int kMaxState = 23;	// max (state dimension, actuator number)
 const int kMaxThread = 64;
 const mjtNum kMaxUpdate = 0.1;
 

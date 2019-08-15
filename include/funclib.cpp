@@ -16,8 +16,8 @@
 
 /* Extern variables -------------------------------------------------------*/
 // constants
-const int kMaxStep = 1010;   // max step number for one rollout
-const int kMaxState = 30;	// max state dimension
+const int kMaxStep = 1510;   // max step number for one rollout
+const int kMaxState = 23;	// max (state dimension, actuator number)
 
 // model parameters and environment settings
 int integration_per_step = 1;
@@ -145,14 +145,14 @@ int modelSelection(const char* model)
 		integration_per_step = (int)(control_timestep / simulation_timestep);
 		return 1;
 	}
-	else if (_strcmpi(model, "swimmer3") == 0) {
+	else if (_strcmpi(model, "swimmer6") == 0) {
 		modelid = 2;
-		control_timestep = 0.005;
-		simulation_timestep = 0.005;
-		stepnum = 1600;
-		statenum = 10;
-		actuatornum = 2;
-		rolloutnum_train = 800;
+		control_timestep = 0.01;
+		simulation_timestep = 0.01;
+		stepnum = 1000;
+		statenum = 16;
+		actuatornum = 5;
+		rolloutnum_train = 50;
 		ctrl_limit_train = 50;
 		mjtNum temp[kMaxState][kMaxState] = { 0 };
 		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], statenum);
@@ -225,9 +225,9 @@ int modelSelection(const char* model)
 	}
 	else if (_strcmpi(model, "swimmer6t") == 0) {
 		modelid = 7;
-		control_timestep = 0.01;
-		simulation_timestep = 0.01;
-		stepnum = 1000;
+		control_timestep = 0.006;
+		simulation_timestep = 0.006;
+		stepnum = 1500;
 		statenum = 16;
 		actuatornum = 22;
 		rolloutnum_train = 50;

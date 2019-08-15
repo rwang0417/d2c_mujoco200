@@ -3,7 +3,7 @@ clear all;
 %% Param
 NUM_SYS             = 16;    %System state number
 NUM_IN              = 22;    %Number of inputs
-STEP_MAX            = 1000; %Total timestep
+STEP_MAX            = 1500; %Total timestep
 %% Var
 sig_q = 10^3;
 sig_f = 10^4;

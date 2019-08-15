@@ -13,8 +13,8 @@
 
 //-------------------------------- global variables -------------------------------------
 // constants
-extern const int kMaxStep = 1010;   // max step number for one rollout
-extern const int kMaxState = 30;	// max state dimension
+extern const int kMaxStep = 1510;   // max step number for one rollout
+extern const int kMaxState = 23;	// max (state dimension, actuator number)
 const int kTestNum = 100;	        // number of monte-carlo runs
 const int kMaxThread = 8;           // max thread number
 
@@ -79,7 +79,7 @@ int finish(const char* msg = NULL, mjModel* m = NULL)
 
 void sysidCheck(mjModel* m, mjData* d)
 {
-	mjtNum dx_estimate[kMaxStep][kMaxState];
+	mjtNum dx_estimate[kMaxStep][kMaxState] = { 0 };
 	mjtNum dx_input[kMaxStep][kMaxState + kMaxState] = { 0 };
 	mjtNum dx_simulate[kMaxStep][kMaxState] = { 0 };
 
@@ -302,7 +302,8 @@ int main(int argc, const char** argv)
 	for (int id = 0; id < nthread; id++)
 		th[id].join();
     double tottime = gettm() - starttime;
-	sysidCheck(m, d[0]);
+	//sysidCheck(m, d[0]);
+
     // all-thread summary
     if( nthread>1 )
     {
