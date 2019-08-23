@@ -1,5 +1,5 @@
-Q_diag: .04
+Q_diag: .4
 R: 0.001
-QT: 100
+QT: 10
 ptb_coef: 0.06
 step_coef: 0.1

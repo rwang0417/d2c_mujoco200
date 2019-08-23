@@ -16,7 +16,7 @@
 //-------------------------------- global -----------------------------------------------
 // constants
 extern const int kMaxStep = 1510;   // max step number for one rollout
-extern const int kMaxState = 23;	// max (state dimension, actuator number)
+extern const int kMaxState = 40;	// max (state dimension, actuator number)
 
 const int kTestNum = 500;	        // number of monte-carlo runs
 const int kMaxGeom = 5000;          // preallocated geom array in mjvScene
@@ -1801,6 +1801,7 @@ bool simulateClosedloop(void)
 	static mjtNum state_error[kMaxState], ctrl_feedback[kMaxState];
 
 	if (step_index_closedloop == 0) {
+		mj_resetData(m, d_closedloop);
 		mju_copy(d_closedloop->qpos, state_nominal[0], int(statenum / 2));
 		mju_copy(d_closedloop->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
 		mj_forward(m, d_closedloop);
@@ -1838,6 +1839,7 @@ bool simulateOpenloop(void)
 	static mjtNum state_error[kMaxState];
 
 	if (step_index_openloop == 0) {
+		mj_resetData(m, d_openloop);
 		mju_copy(d_openloop->qpos, state_nominal[0], int(statenum / 2));
 		mju_copy(d_openloop->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
 		mj_forward(m, d_openloop);
@@ -1868,6 +1870,7 @@ mjtNum terminalError(mjtNum ptb, const char *type)
 {
 	mjtNum state_error[kMaxState], ctrl_feedback[kMaxState];
 
+	mj_resetData(m, d_closedloop);
 	mju_copy(d_closedloop->qpos, state_nominal[0], int(statenum / 2));
 	mju_copy(d_closedloop->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
 	mj_forward(m, d_closedloop);
@@ -1895,6 +1898,8 @@ mjtNum terminalError(mjtNum ptb, const char *type)
 		return sqrt((d_closedloop->site_xpos[93] - d_closedloop->site_xpos[0]) * (d_closedloop->site_xpos[93] - d_closedloop->site_xpos[0]) + (d_closedloop->site_xpos[95] - d_closedloop->site_xpos[2]) * (d_closedloop->site_xpos[95] - d_closedloop->site_xpos[2]));
 	else if (modelid == 7)
 		return sqrt((d_closedloop->qpos[0] - d_closedloop->site_xpos[0]) * (d_closedloop->qpos[0] - d_closedloop->site_xpos[0]) + (d_closedloop->qpos[1] - d_closedloop->site_xpos[1]) * (d_closedloop->qpos[1] - d_closedloop->site_xpos[1]));
+	else if (modelid == 8)
+		return sqrt((d_closedloop->site_xpos[39] - d_closedloop->site_xpos[9]) * (d_closedloop->site_xpos[39] - d_closedloop->site_xpos[9]) + (d_closedloop->site_xpos[41] - d_closedloop->site_xpos[11]) * (d_closedloop->site_xpos[41] - d_closedloop->site_xpos[11]));
 	return 0;
 }
 
@@ -2260,6 +2265,8 @@ void simulate(void)
 						simulateClosedloop();
 
 						//for (int i = 0; i < m->nq; i++) d->qpos[i] = -PI / 36;
+						//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.2f\n", i, d->qpos[i]);
+						//printf("%f \n", d->qpos[8] - (d->qpos[1]+d->qpos[3] + d->qpos[4]));
 						//mj_step(m, d);
 
                         // break on reset

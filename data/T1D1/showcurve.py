@@ -30,7 +30,7 @@ params = {
 }
 mpl.rcParams.update(params)
 
-def latexplot(timefactor=0.1928,filtered=False):
+def latexplot(timefactor=0.085,filtered=False):
     #plot
     if filtered == True:
         b, a = signal.butter(8  , 0.025)
@@ -38,7 +38,7 @@ def latexplot(timefactor=0.1928,filtered=False):
             r=f.readlines()
         y=np.array(r[0].strip().split()).astype(np.float)
         x=np.linspace(1,y.shape[0],y.shape[0])*timefactor
-        plt.plot(x, y/y[-1], color=colors[1], alpha=0.9)
+        plt.plot(x, y, color=colors[1], alpha=0.9)
         plt.plot(x, signal.filtfilt(b, a, y/y[-1]), color=colors[2], linewidth=3)
         plt.grid(color='.910', linewidth=1.5)
         
@@ -58,7 +58,7 @@ def latexplot(timefactor=0.1928,filtered=False):
 #        plt.legend(['Original'])
     plt.tight_layout()    
 
-def multicost(timefactor=0.1928):
+def multicost(timefactor=1.3149):
     y=np.loadtxt('costmc.txt')
     cm = np.mean(y,axis=0)
     cs = np.std(y,axis=0)
@@ -101,20 +101,23 @@ def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
         y=np.array(np.loadtxt('perfcheck.txt'))
         perf=np.mean(y,axis=1)
         cstd=np.std(y,axis=1)
-        step=noisemax/int(perf.shape[0]-1)
+        step=noisemax/int(perf.shape[0]/2-1)
         sind=int(nstart/step)
         eind=int(nend/step)+1
         plt.grid(color='.910', linewidth=1.5)
         f5,=plt.plot(np.arange(sind,(eind-1)*step+1,step),perf[sind:eind],'orange',linewidth=3)
+        f6,=plt.plot(np.arange(sind,(eind-1)*step+1,step),perf[eind:eind*2+1],'dodgerblue', linewidth=3)
         plt.fill_between(np.arange(sind,(eind-1)*step+1,step),(perf[sind:eind]-cstd[sind:eind]),(perf[sind:eind]+cstd[sind:eind]),alpha=0.3,color='orange')
+        plt.fill_between(np.arange(sind,(eind-1)*step+1,step),(perf[eind:eind*2+1]-cstd[eind:eind*2+1]),(perf[eind:eind*2+1]+cstd[eind:eind*2+1]),alpha=0.3,color='dodgerblue')
         plt.xlabel('Std dev of perturbed noise (Percent of max. control)',fontsize=20)
         plt.ylabel('L2-norm of terminal state error',fontsize=20)
+        plt.legend(handles=[f5,f6,],labels=['Closed-loop cost','Open-loop cost'],loc='upper left')
         plt.show()  
         print('averaged by {value1} rollouts'.format(value1=y.shape[1]))
         
 def clopcompare():                   
-    nstart=0
-    nend=100
+#    nstart=0
+#    nend=30
     pointnum=21
     testnum=500
     y=np.array(np.loadtxt('clopdata.txt'))
@@ -130,8 +133,8 @@ def clopcompare():
             print(np.mean(clerr1[testnum*k:testnum*(k+1)]), np.std(clerr1[testnum*k:testnum*(k+1)]), np.mean(operr1[testnum*k:testnum*(k+1)]), np.std(operr1[testnum*k:testnum*(k+1)]), k*5, file=f)
     
     # plot performance compare data and success rate
-    sind=int(nstart/100*(pointnum-1))
-    eind=int(nend/100*(pointnum-1))+1
+    sind=0
+    eind=21
     perfdata=np.transpose(np.loadtxt('clopbar.txt'))
     f5,=plt.plot(perfdata[4][sind:eind],perfdata[0][sind:eind],'orange', linewidth=3)
     f6,=plt.plot(perfdata[4][sind:eind],perfdata[2][sind:eind],'dodgerblue', linewidth=3)

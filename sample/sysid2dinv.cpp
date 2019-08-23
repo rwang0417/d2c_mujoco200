@@ -14,7 +14,7 @@
 //-------------------------------- global variables -------------------------------------
 // constants
 extern const int kMaxStep = 1510;   // max step number for one rollout
-extern const int kMaxState = 23;	// max (state dimension, actuator number)
+extern const int kMaxState = 40;	// max (state dimension, actuator number)
 const int kTestNum = 100;	        // number of monte-carlo runs
 const int kMaxThread = 8;           // max thread number
 
@@ -102,6 +102,17 @@ void sysidCheck(mjModel* m, mjData* d)
 				d->qvel[2] = -d->qvel[1];
 				d->qvel[3] = d->qvel[1];
 			}
+			if (modelid == 8) {
+				d->qpos[6] = d->qpos[0] + d->qpos[1];
+				d->qpos[7] = -d->qpos[1];
+				d->qpos[8] = d->qpos[1] + d->qpos[3] + d->qpos[4];
+				d->qpos[9] = -d->qpos[4];
+
+				d->qvel[6] = d->qvel[0] + d->qvel[1];
+				d->qvel[7] = -d->qvel[1];
+				d->qvel[8] = d->qvel[1] + d->qvel[3] + d->qvel[4];
+				d->qvel[9] = -d->qvel[4];
+			}
 
 			for (int k = 0; k < integration_per_step; k++) mj_step(m, d);
 
@@ -151,6 +162,17 @@ void sysid(int id, int nroll, int nthd)
 				d[id]->qvel[2] = -d[id]->qvel[1];
 				d[id]->qvel[3] = d[id]->qvel[1];
 			}
+			if (modelid == 8) {
+				d[id]->qpos[6] = d[id]->qpos[0] + d[id]->qpos[1];
+				d[id]->qpos[7] = -d[id]->qpos[1];
+				d[id]->qpos[8] = d[id]->qpos[1] + d[id]->qpos[3] + d[id]->qpos[4];
+				d[id]->qpos[9] = -d[id]->qpos[4];
+
+				d[id]->qvel[6] = d[id]->qvel[0] + d[id]->qvel[1];
+				d[id]->qvel[7] = -d[id]->qvel[1];
+				d[id]->qvel[8] = d[id]->qvel[1] + d[id]->qvel[3] + d[id]->qvel[4];
+				d[id]->qvel[9] = -d[id]->qvel[4];
+			}
 
 			for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
 
@@ -167,6 +189,17 @@ void sysid(int id, int nroll, int nthd)
 				d[id]->qpos[3] = d[id]->qpos[1];
 				d[id]->qvel[2] = -d[id]->qvel[1];
 				d[id]->qvel[3] = d[id]->qvel[1];
+			}
+			if (modelid == 8) {
+				d[id]->qpos[6] = d[id]->qpos[0] + d[id]->qpos[1];
+				d[id]->qpos[7] = -d[id]->qpos[1];
+				d[id]->qpos[8] = d[id]->qpos[1] + d[id]->qpos[3] + d[id]->qpos[4];
+				d[id]->qpos[9] = -d[id]->qpos[4];
+
+				d[id]->qvel[6] = d[id]->qvel[0] + d[id]->qvel[1];
+				d[id]->qvel[7] = -d[id]->qvel[1];
+				d[id]->qvel[8] = d[id]->qvel[1] + d[id]->qvel[3] + d[id]->qvel[4];
+				d[id]->qvel[9] = -d[id]->qvel[4];
 			}
 
 			for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);

@@ -721,3 +721,9 @@ sysid2d 模型文件名，noise level，rollout数，模型名，线程数，最
 #### 1. 太难训练了，0.01闭环只能到5% noise，改成0.006，闭环data和图太奇怪了，怎么会这么小，变化太小了。。。
 #### 2. sysid如果statenum之类的太大就会不出结果，是因为sysidcheck函数开头三个大数组定义，所以只能不用这个函数了。。。
 #### 3. incremental cost比较大更难从头不变参数训练到最后，后面下降非常慢。
+## 08/21/2019
+### Log:
+#### 1. 出现unknown warning type可能是max state number设的小于state数或者control数了。
+## 08/23/2019
+### Log:
+#### 1. 像dbar这种有constraint模拟joint的模型，state之间不独立，所以只取了其中独立的放在state vector里面，这样的话每次开始一个rollout初始化的时候，需要resetdata并且forward，不然会出现模拟很不对，算出来cost特别大的情况，即使没noise cost也一直在变。

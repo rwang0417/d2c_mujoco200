@@ -12,13 +12,13 @@
 #include <funclib.h>
 
 //-------------------------------- user macros --------------------------------------
-#define CTRL_LIMITTED false
+#define CTRL_LIMITTED true
 #define TRAINING_NUM 1
 
 //-------------------------------- global variables -------------------------------------
 // constants
 extern const int kMaxStep = 1510;   // max step number for one rollout
-extern const int kMaxState = 23;	// max (state dimension, actuator number)
+extern const int kMaxState = 40;	// max (state dimension, actuator number)
 const int kMaxThread = 64;
 const mjtNum kMaxUpdate = 0.1;
 
@@ -30,7 +30,8 @@ extern int actuatornum;
 extern int statenum;
 extern mjtNum control_timestep;
 extern mjtNum simulation_timestep;
-extern mjtNum ctrl_limit_train;
+extern mjtNum ctrl_upperlimit_train;
+extern mjtNum ctrl_lowerlimit_train;
 extern mjtNum state_nominal[kMaxStep][kMaxState];
 extern mjtNum state_target[kMaxState];
 extern char testmode[30];
@@ -113,8 +114,10 @@ void train(int id, int niteration)
 		{
 			// nominal
 			nominal_cost(iteration_index) = 0;
+			mj_resetData(m, d[id]);
 			mju_copy(d[id]->qpos, state_nominal[0], m->nq);
 			mju_copy(d[id]->qvel, &state_nominal[0][m->nq], m->nv);
+			mj_forward(m, d[id]);
 			for (int step_index = 0; step_index < stepnum; step_index++) {
 				for (int i = 0; i < actuatornum; i++) d[id]->ctrl[i] = ctrl_current[id][step_index * actuatornum + i];
 				nominal_cost(iteration_index) += stepCost(m, d[id], step_index);
@@ -122,15 +125,16 @@ void train(int id, int niteration)
 			}
 			nominal_cost(iteration_index) += stepCost(m, d[id], stepnum);
 
-            //calculate gradient and update control
+            // calculate gradient and update control
             for (int rollout_index = 0; rollout_index < int(rolloutnum_train); rollout_index++)
             {
                 for (int i = 0; i < stepnum * actuatornum; i++) delta_u[i] = perturb_coefficient_train[id] * randGauss(0, 1);
                 mjtNum rollout_cost = 0;
                 
-                // plus
+				mj_resetData(m, d[id]);
                 mju_copy(d[id]->qpos, state_nominal[0], m->nq);
                 mju_copy(d[id]->qvel, &state_nominal[0][m->nq], m->nv);
+				mj_forward(m, d[id]);
                 for (int step_index = 0; step_index < stepnum; step_index++) {
                     for (int i = 0; i < actuatornum; i++) d[id]->ctrl[i] = ctrl_current[id][step_index * actuatornum + i] + delta_u[step_index * actuatornum + i];
                     rollout_cost += stepCost(m, d[id], step_index);
@@ -158,8 +162,8 @@ void train(int id, int niteration)
                 else if (update_coefficient[id] * gradient[i] < -kMaxUpdate) ctrl_current[id][i] -= -kMaxUpdate;
 				else ctrl_current[id][i] -= update_coefficient[id] * gradient[i];
         #if(CTRL_LIMITTED == true)
-                if (ctrl_current[id][i] > ctrl_limit_train) ctrl_current[id][i] = ctrl_limit_train;
-                else if (ctrl_current[id][i] < -ctrl_limit_train) ctrl_current[id][i] = -ctrl_limit_train;
+                if (ctrl_current[id][i] > ctrl_upperlimit_train) ctrl_current[id][i] = ctrl_upperlimit_train;
+                else if (ctrl_current[id][i] < ctrl_lowerlimit_train) ctrl_current[id][i] = ctrl_lowerlimit_train;
         #endif
                 gradient[i] = 0;
             }

@@ -20,7 +20,7 @@ params = {
     'xtick.labelsize': 15,
     'ytick.labelsize': 15,
     'text.usetex': True ,
-    'figure.figsize': [7, 5], # instead of 4.5, 4.5
+    'figure.figsize': [7, 5.5], # instead of 4.5, 4.5
     'font.weight': 'bold',
     'axes.labelweight': 'bold',
     'ps.useafm' : True,
@@ -30,11 +30,11 @@ params = {
 }
 mpl.rcParams.update(params)
 
-def latexplot(timefactor=8.805,filtered=False):
+def latexplot(timefactor=0.003517,filtered=False):
     #plot
     if filtered == True:
         b, a = signal.butter(8  , 0.025)
-        with open('cost.txt') as f:
+        with open('cost0.txt') as f:
             r=f.readlines()
         y=np.array(r[0].strip().split()).astype(np.float)
         x=np.linspace(1,y.shape[0],y.shape[0])*timefactor
@@ -46,16 +46,16 @@ def latexplot(timefactor=8.805,filtered=False):
         plt.ylabel('Episodic cost fraction', fontsize=20)
         plt.legend(['Original','Filtered'])
     else:
-        with open('cost.txt') as f:
+        with open('cost0.txt') as f:
             r=f.readlines()
         y=np.array(r[0].strip().split()).astype(np.float)
         x=np.linspace(1,y.shape[0],y.shape[0])*timefactor
-        plt.plot(x, y/y[-1], color=colors[2], linewidth=3)
+        plt.plot(x, y, color=colors[2], linewidth=3)
         plt.grid(color='.910', linewidth=1.5)
         
         plt.xlabel('Training time (seconds)', fontsize=20)
-        plt.ylabel('Episodic cost fraction', fontsize=20)
-        plt.legend(['Original'])
+        plt.ylabel('Episodic cost', fontsize=20)
+#        plt.legend(['Original'])
     plt.tight_layout()    
 
 def multicost(timefactor=4.01):
@@ -138,8 +138,8 @@ def clopcompare():
     plt.fill_between(perfdata[4][sind:eind],perfdata[0][sind:eind]-perfdata[1][sind:eind],perfdata[0][sind:eind]+perfdata[1][sind:eind],alpha=0.3,color='orange')
     plt.fill_between(perfdata[4][sind:eind],perfdata[2][sind:eind]-perfdata[3][sind:eind],perfdata[2][sind:eind]+perfdata[3][sind:eind],alpha=0.3,color='dodgerblue')
     plt.xlabel('Std dev of perturbed noise(Percent of max. control)', fontsize=20)
-    plt.ylabel('D2C averaged cost', fontsize=20)
-    plt.legend(handles=[f5,f6,],labels=['Closed-loop cost','Open-loop cost'],loc='upper left')
+    plt.ylabel('Episodic cost', fontsize=20)
+    plt.legend(handles=[f5,f6,],labels=['Closed-loop','Open-loop'],loc='upper left')
     plt.grid(color='.910', linewidth=1.5)
     plt.show()  
     

@@ -1,19 +1,14 @@
 <mujoco model="dbar">
-    <!--  Copyright © 2018, Roboti LLC
-
-          This file is licensed under the MuJoCo Resource License (the "License").
-          You may not use this file except in compliance with the License.
-          You may obtain a copy of the License at
-
-            https://www.roboti.us/resourcelicense.txt
-    -->
-
+    <include file="./common/visual.xml"/>
+    <include file="./common/skybox.xml"/>
+    <include file="./common/materials.xml"/>
+    
     <option timestep="0.02" iterations="50" solver="Newton" tolerance="1e-10" gravity = "0 0 0" collision="predefined" viscosity="0.1"/>
 
     <size njmax="100" nconmax="20" nstack="400"/>
 
     <visual>
-        <rgba haze=".3 .3 .3 1"/>
+        <rgba haze=".15 .25 .35 1"/>
     </visual>
 
     <default>
@@ -24,14 +19,8 @@
 		<site size="0.04"/>
     </default>
 
-    <asset>
-        <texture type="skybox" builtin="gradient" rgb1="0.6 0.6 0.6" rgb2="0 0 0" width="512" height="512"/> 
-        <texture name="texplane" type="2d" builtin="checker" rgb1=".25 .25 .25" rgb2=".3 .3 .3" width="512" height="512" mark="cross" markrgb=".8 .8 .8"/>
-        <material name="matplane" reflectance="0.3" texture="texplane" texrepeat="1 1" texuniform="true"/>
-    </asset>
-
     <worldbody>
-        <geom name="floor" pos="0 0 0" size="0 0 1" type="plane" material="matplane"/>
+        <geom name="floor" pos="0 0 0" size="0 0 1" type="plane" material="grid"/>
         <light directional="true" diffuse=".8 .8 .8" specular=".2 .2 .2" pos="0 0 5" dir="0 0 -1"/>
 
         <site name="s0" pos="0 0 0"/>
@@ -40,22 +29,22 @@
         <site name="target" pos="0 0 2.5" size="0.08" rgba="1 0 0 .3"/>
 
         <body pos="0 0 0">
-            <geom name="bar1" type="capsule" fromto="0 0 0  -1 0 1" rgba=".5 .1 .1 1" mass="1"/>
+            <geom name="bar1" type="capsule" fromto="0 0 0  -1 0 1" material="self" mass="1"/>
             <site name="b1s" pos="0 0 0"/>
 			<site name="b1e" pos="-1 0 1"/>
 			<joint name="bottom1"/>
             <body pos="-1 0 1">
-                <geom name="bar2" type="capsule" fromto="0 0 0  1 0 1" rgba=".5 .1 .1 1" mass="1"/>
+                <geom name="bar2" type="capsule" fromto="0 0 0  1 0 1" material="self" mass="1"/>
                 <joint name="left"/>
                 <site name="b2e" pos="1 0 1"/>
 				<body name="bar3" pos="1 0 1">
-					<geom name="bar3" type="capsule" fromto="0 0 0  1 0 -1" rgba=".5 .1 .1 1" mass="1"/>
+					<geom name="bar3" type="capsule" fromto="0 0 0  1 0 -1" material="self" mass="1"/>
 					<joint name="top"/>
 					<site name="b3e" pos="1 0 -1"/>
 				</body>
             </body>
 			<body name="bar4" pos="0 0 0">
-                <geom name="bar4" type="capsule" fromto="0 0 0  1 0 1" rgba=".5 .1 .1 1" mass="1"/>
+                <geom name="bar4" type="capsule" fromto="0 0 0  1 0 1" material="self" mass="1"/>
 				<joint name="bottom2"/>
             </body>
         </body>
