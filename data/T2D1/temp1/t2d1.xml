@@ -1,0 +1,271 @@
+<mujoco model="t1d1">
+    <include file="./common/visual.xml"/>
+    <include file="./common/skybox.xml"/>
+    <include file="./common/materials.xml"/>
+    
+    <option timestep="0.01" iterations="50" solver="Newton" tolerance="1e-10" gravity="0 0 0" collision="predefined" viscosity="0.0"/>
+
+    <size njmax="50" nconmax="40" nstack="3000"/>
+
+    <visual>
+        <rgba haze=".15 .25 .35 1"/>
+    </visual>
+
+    <default>
+        <joint type="hinge" pos="0 0 0" axis="0 1 0" limited="false" range="-180 180" damping="0"/>
+        <motor ctrllimited="false" ctrlrange="-1 1" gear="1"/>
+		<tendon stiffness="0" damping="0" width="0.02"/>
+		<geom size="0.02" mass="1" material="self"/>
+		<site size="0.04"/>
+    </default>
+
+    <worldbody>
+        <light directional="true" diffuse=".8 .8 .8" specular=".2 .2 .2" pos="0 0 5" dir="0 0 -1"/>
+
+        <site name="f2" pos="0 0 0"/>
+
+        <body pos="0 0 0">
+            <geom name="lbar1" type="capsule" fromto="0 0 0  -0.8 0 0.6" />
+			<site name="lb1e" pos="-0.8 0 0.6"/>
+			<joint name="lj1"/>
+            <body name="lbar2" pos="-0.8 0 0.6">
+                <geom name="lbar2" type="capsule" fromto="0 0 0  0.8 0 0.6"/>
+                <joint name="lj2"/>
+                <site name="lb2e" pos="0.8 0 0.6"/>
+				<body pos="0.8 0 0.6">
+					<geom name="lbar3" type="capsule" fromto="0 0 0  -1 0 0"/>
+					<joint name="lj3"/>
+					<site name="lb3e" pos="-1 0 0"/>
+				</body>
+                <body pos="0.8 0 0.6">
+					<geom name="lbar4" type="capsule" fromto="0 0 0  -0.8 0 0.6"/>
+					<joint name="lj4"/>
+					<site name="lb4e" pos="-0.8 0 0.6"/>
+                    <body name="lbar5" pos="-0.8 0 0.6">
+                        <geom name="lbar5" type="capsule" fromto="0 0 0  0.8 0 0.6"/>
+                        <joint name="lj5"/>
+                        <site name="lb5e" pos="0.8 0 0.6"/>
+                        <body pos="0.8 0 0.6">
+                            <geom name="lbar6" type="capsule" fromto="0 0 0  -2 0 0"/>
+                            <joint name="lj6"/>
+                            <site name="lb6e" pos="-2 0 0"/>
+                        </body>
+                        <body pos="0.8 0 0.6">
+                            <geom name="lbar7" type="capsule" fromto="0 0 0  -0.8 0 0.6"/>
+                            <joint name="lj7"/>
+                            <site name="lb7e" pos="-0.8 0 0.6"/>
+                            <body name="lbar8" pos="-0.8 0 0.6">
+                                <geom name="lbar8" type="capsule" fromto="0 0 0  0.8 0 0.6"/>
+                                <joint name="lj8"/>
+                                <site name="lb8e" pos="0.8 0 0.6"/>
+                                <body pos="0.8 0 0.6">
+                                    <geom name="lbar9" type="capsule" fromto="0 0 0  -1 0 0"/>
+                                    <joint name="lj9"/>
+                                    <site name="lb9e" pos="-1 0 0"/>
+                                </body>
+                                <body pos="0.8 0 0.6">
+                                    <geom name="lbar10" type="capsule" fromto="0 0 0  -0.8 0 0.6"/>
+                                    <joint name="lj10"/>
+                                    <site name="lb10e" pos="-0.8 0 0.6"/>
+                                    <body name="lbar11" pos="-0.8 0 0.6">
+                                        <geom name="lbar11" type="capsule" fromto="0 0 0  0.8 0 0.6"/>
+                                        <joint name="lj11"/>
+                                        <site name="lb11e" pos="0.8 0 0.6"/>
+                                    </body>
+                                </body>
+                                <body pos="0.8 0 0.6">
+                                    <geom name="rbar9" type="capsule" fromto="0 0 0  1 0 0"/>
+                                    <joint name="rj9"/>
+                                    <site name="rb9e" pos="1 0 0"/>
+                                </body>
+                            </body>
+                        </body>
+                        <body pos="0.8 0 0.6">
+                            <geom name="rbar6" type="capsule" fromto="0 0 0  2 0 0"/>
+                            <joint name="rj6"/>
+                            <site name="rb6e" pos="2 0 0"/>
+                        </body>
+                    </body>
+				</body>
+                <body pos="0.8 0 0.6">
+					<geom name="rbar3" type="capsule" fromto="0 0 0  1 0 0"/>
+					<joint name="rj3"/>
+					<site name="rb3e" pos="1 0 0"/>
+				</body>
+            </body>
+        </body>
+        
+        <body pos="0 0 0">
+            <geom name="rbar1" type="capsule" fromto="0 0 0  0.8 0 0.6" />
+			<site name="rb1e" pos="0.8 0 0.6"/>
+			<joint name="rj1"/>
+            <body name="rbar2" pos="0.8 0 0.6">
+                <geom name="rbar2" type="capsule" fromto="0 0 0  -0.8 0 0.6"/>
+                <joint name="rj2"/>
+                <body pos="-0.8 0 0.6">
+					<geom name="rbar4" type="capsule" fromto="0 0 0  0.8 0 0.6"/>
+					<joint name="rj4"/>
+					<site name="rb4e" pos="0.8 0 0.6"/>
+                    <body name="rbar5" pos="0.8 0 0.6">
+                        <geom name="rbar5" type="capsule" fromto="0 0 0  -0.8 0 0.6"/>
+                        <joint name="rj5"/>
+                        <body pos="-0.8 0 0.6">
+                            <geom name="rbar7" type="capsule" fromto="0 0 0  0.8 0 0.6"/>
+                            <joint name="rj7"/>
+                            <site name="rb7e" pos="0.8 0 0.6"/>
+                            <body name="rbar8" pos="0.8 0 0.6">
+                                <geom name="rbar8" type="capsule" fromto="0 0 0  -0.8 0 0.6"/>
+                                <joint name="rj8"/>
+                                <body pos="-0.8 0 0.6">
+                                    <geom name="rbar10" type="capsule" fromto="0 0 0  0.8 0 0.6"/>
+                                    <joint name="rj10"/>
+                                    <site name="rb10e" pos="0.8 0 0.6"/>
+                                    <body name="rbar11" pos="0.8 0 0.6">
+                                        <geom name="rbar11" type="capsule" fromto="0 0 0  -0.8 0 0.6"/>
+                                        <joint name="rj11"/>
+                                    </body>
+                                </body>
+                            </body>
+                        </body>
+                    </body>
+				</body>
+            </body>
+        </body>
+		
+		<body pos="0 0 0">
+			<geom name="floor" pos="0 0 0" size="0 0 1" type="plane" material="grid"/>
+			<site name="f1" pos="-4 0 0"/>
+			<site name="f3" pos="4 0 0"/>
+			<site name="target" pos="-0. 0 5.4" size="0.08" rgba="1 0 0 .3"/>
+		</body>
+    </worldbody>
+	
+	<equality>
+		<connect active="true" name='c1' body1='lbar2' body2='rbar2' anchor='0.8 0 0.6'/>
+        <connect active="true" name='c2' body1='lbar5' body2='rbar5' anchor='0.8 0 0.6'/>
+        <connect active="true" name='c3' body1='lbar8' body2='rbar8' anchor='0.8 0 0.6'/>
+        <connect active="true" name='c4' body1='lbar11' body2='rbar11' anchor='0.8 0 0.6'/>
+	</equality>
+
+    <tendon>
+        <spatial name="S1">
+            <site site="f2"/>
+            <site site="lb2e"/>
+        </spatial>
+		<spatial name="S2">
+            <site site="rb1e"/>
+            <site site="lb1e"/>
+        </spatial>
+		<spatial name="S3">
+            <site site="lb2e"/>
+            <site site="lb5e"/>
+        </spatial>
+		<spatial name="S4">
+            <site site="rb4e"/>
+            <site site="lb4e"/>
+        </spatial>
+        
+        <spatial name="S5">
+            <site site="f2"/>
+            <site site="lb3e"/>
+        </spatial>
+        <spatial name="S6">
+            <site site="f2"/>
+            <site site="rb3e"/>
+        </spatial>
+        <spatial name="S7">
+            <site site="lb5e"/>
+            <site site="lb3e"/>
+        </spatial>
+        <spatial name="S8">
+            <site site="lb5e"/>
+            <site site="rb3e"/>
+        </spatial>
+
+        <spatial name="S9">
+            <site site="lb5e"/>
+            <site site="lb8e"/>
+        </spatial>
+		<spatial name="S10">
+            <site site="rb7e"/>
+            <site site="lb7e"/>
+        </spatial>
+		<spatial name="S11">
+            <site site="lb8e"/>
+            <site site="lb11e"/>
+        </spatial>
+		<spatial name="S12">
+            <site site="rb10e"/>
+            <site site="lb10e"/>
+        </spatial>
+        
+        <spatial name="S13">
+            <site site="lb5e"/>
+            <site site="lb9e"/>
+        </spatial>
+        <spatial name="S14">
+            <site site="lb5e"/>
+            <site site="rb9e"/>
+        </spatial>
+        <spatial name="S15">
+            <site site="lb9e"/>
+            <site site="lb11e"/>
+        </spatial>
+        <spatial name="S16">
+            <site site="rb9e"/>
+            <site site="lb11e"/>
+        </spatial>
+
+
+        <spatial name="S17">
+            <site site="f2"/>
+            <site site="lb6e"/>
+        </spatial>
+        <spatial name="S18">
+            <site site="f2"/>
+            <site site="rb6e"/>
+        </spatial>
+        <spatial name="S19">
+            <site site="lb6e"/>
+            <site site="lb11e"/>
+        </spatial>
+        <spatial name="S20">
+            <site site="rb6e"/>
+            <site site="lb11e"/>
+        </spatial>
+		
+        <spatial name="S21">
+            <site site="f1"/>
+            <site site="lb6e"/>
+        </spatial>
+        <spatial name="S22">
+            <site site="f3"/>
+            <site site="rb6e"/>
+        </spatial>
+    </tendon>   
+
+    <actuator>
+        <motor tendon="S1"/>
+        <motor tendon="S2"/>
+		<motor tendon="S3"/>
+        <motor tendon="S4"/>
+        <motor tendon="S5"/>
+        <motor tendon="S6"/>
+		<motor tendon="S7"/>
+        <motor tendon="S8"/>
+        <motor tendon="S9"/>
+        <motor tendon="S10"/>
+        <motor tendon="S11"/>
+        <motor tendon="S12"/>
+		<motor tendon="S13"/>
+        <motor tendon="S14"/>
+        <motor tendon="S15"/>
+        <motor tendon="S16"/>
+		<motor tendon="S17"/>
+        <motor tendon="S18"/>
+        <motor tendon="S19"/>
+        <motor tendon="S20"/>
+        <motor tendon="S21"/>
+        <motor tendon="S22"/>
+    </actuator>
+</mujoco>

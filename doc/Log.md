@@ -727,3 +727,43 @@ sysid2d 模型文件名，noise level，rollout数，模型名，线程数，最
 ## 08/23/2019
 ### Log:
 #### 1. 像dbar这种有constraint模拟joint的模型，state之间不独立，所以只取了其中独立的放在state vector里面，这样的话每次开始一个rollout初始化的时候，需要resetdata并且forward，不然会出现模拟很不对，算出来cost特别大的情况，即使没noise cost也一直在变。
+## 08/24/2019
+### Log:
+#### 1. velocity的penalty大了cost会不稳定，不下降，所以最后速度还是挺快的。
+## 08/25/2019
+### Log:
+#### 1. matlab用mex调用c，好像不能强制类型转换，之前的.mexwin64要删掉，然后先mex -setup连接c编译器，后面直接mex mexstep.c mujoco200.lib mujoco200nogl.lib然后运行，这里所有lib都要写上，每次改程序都要重新mex编译！！！！！！！。
+#### 2. 去掉damping之后不稳定可以增加质量。
+#### 3. 出现Failed to write the updated manifest to the resource of file错误，多mex几次就会有成功的。
+## 08/26/2019
+### Log:
+#### 1. sensor应该用framelinvel，这样速度是global coordinate的，如果用velocimeter，就是在local frame下的，速度计的三轴和frame固定，不是global。
+#### 2. mjstep之后居然要手动mjforward才会更新sitexpos和sensordata。
+#### 3. 那几个dependent的states如果设置值结果会不一样，其实这个不是很准，不知道咋回事，误差大约0.001。
+#### 4. matlab读写文件如果用c读取，格式设置%f会准确一点，不知道是不是因为科学计数法c不能直接%f读取。
+## 08/27/2019
+### Log:
+#### 1. matlab调用c，mex function 外面的全局变量在仍然是全局的，所以load model只需要第一次。
+## 08/28/2019
+### Log:
+#### 1. 改成负的control，会更难reach，但是可以的，去掉damping训练不稳，加质量会好一点，但是更难reach了。
+#### 2. Before mj_step() you have qpos(t), qvel(t), xpos(t-1) which may be 0 if t = 0. After mj_step() you have qpos(t+1), qvel(t+1), xpos(t). This is because mj_step() calls mj_forward() to compute everything at time t. Then it advances qpos and qvel to t+1 but does not recompute anything else at t+1.
+#### 3. 之前恢复模型文件的时候把sensor搞没了还没发现。
+#### 4. mex mujoco给的cpp一直不成功，打不开.mexw64文件，试过改到其他文件夹，加完全控制权限，clear mex，全部文件都在同一个文件夹，mujoco下载下来的文件结构，之前的mex语句，mujoco给的mex语句，DWIN64，都不行，删除就说matlab在占用，只能关掉。
+#### 5. tendon在mujoco里不能加质量。
+#### 6. 把mjx.cpp里的功能复制到mexstep里可以用，删掉了各种参数检查以及多线程的代码，现在是一个初步的版本，以后有机会再完善，模拟的结果和test2d以及之前的mexstep一致。
+#### 7. 之前的mexstep放到sharemujoco文件夹里面了。
+## 08/30/2019
+### Log:
+#### 1. 加joint和tendondamping不改analytical代码仍然work，不确定是不是仍然valid。
+#### 2. t2d1的也work，生成的control如果输出成txt再读取，值会变化然后就不work了，save mat文件仍然是work的。解决了，可能是复制的时候出错了，出现了一些奇怪的很大的值，但原control中没有，现在matlab产生的值用文件输出读取两边都work，但是由于round error，和mat save load有一些误差。
+#### 3. mujoco可以加skin，看一下！！！！
+#### 4. 在closedloop test的时候给模型文件加上control的hard limit还是可以track，试了arm的30%，没看出影响，开环正的改成负的还是会让结果变差一些。
+#### 5. 应该把control cost再改小很多，决定设为0。
+#### 6. 用strcpy复制字符串到字符串变量，字符串结束符也会被复制，所以即使这个变量之前是很长的字符串，现在复制一个短的进去，由于结束符，这个变量使用的时候会识别成短的而不是短的前面+长的后面。
+## 09/02/2019
+### Log:
+#### 1. test2d里面三个模拟函数内部的state_err等变量需要static类型，不然内存会崩溃。
+#### 2. 两个方法umax都用nominal的umax。
+#### 3. 算cost的时候都不算control cost。
+#### 4. matlab存energy和cost的数组长度要多一个不然影响别的变量。

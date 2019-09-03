@@ -11,14 +11,14 @@
 #include "uitools.h"
 #include <thread>
 #include <mutex>
-#include "funclib.h"
+#include <funclib.h>
 
 //-------------------------------- global -----------------------------------------------
 // constants
 extern const int kMaxStep = 1510;   // max step number for one rollout
 extern const int kMaxState = 40;	// max (state dimension, actuator number)
 
-const int kTestNum = 500;	        // number of monte-carlo runs
+const int kTestNum = 400;	        // number of monte-carlo runs
 const int kMaxGeom = 5000;          // preallocated geom array in mjvScene
 const double syncmisalign = 0.1;    // maximum time mis-alignment before re-sync
 const double refreshfactor = 0.5;   // fraction of refresh available for simulation
@@ -35,6 +35,8 @@ extern mjtNum state_nominal[kMaxStep][kMaxState];
 extern mjtNum ctrl_nominal[kMaxStep * kMaxState];
 extern mjtNum state_target[kMaxState];
 extern mjtNum stabilizer_feedback_gain[kMaxState][kMaxState];
+extern mjtNum ctrl_upperlimit;
+extern mjtNum ctrl_lowerlimit;
 
 // hyperparameters 
 extern mjtNum Q, QT, R;
@@ -49,8 +51,9 @@ mjtNum ctrl_max = 0;
 mjtNum ctrl_openloop[kMaxStep*kMaxState] = { 0 };
 mjtNum perturb_coefficient_test = 0;
 mjtNum cost_closedloop = 0, cost_openloop = 0;
+mjtNum energy = 0;
 mjtNum tracker_feedback_gain[kMaxStep][kMaxState][kMaxState] = { 0 };
-FILE *filestream1;
+FILE *filestream1, *filestream2;
 char testmode[30];
 char data_buff[30];
 char keyfilename[100];
@@ -62,6 +65,7 @@ char keyfilepre[20]  = "";
 int step_index_nominal = 0;
 int step_index_openloop = 0;
 int step_index_closedloop = 0;
+bool NFinal = false;
 
 // abstract visualization
 mjvScene scn, scn_openloop, scn_closedloop;
@@ -1777,10 +1781,7 @@ void simulateNominal(void)
 	
 
 	if (step_index_nominal == 0) {
-		mj_resetData(m, d);
-		mju_copy(d->qpos, state_nominal[0], int(statenum / 2));
-		mju_copy(d->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
-		mj_forward(m, d);
+		modelInit(m, d, state_nominal[0], statenum);
 	}
 	if (step_index_nominal >= stepnum)
 	{
@@ -1790,22 +1791,30 @@ void simulateNominal(void)
 			state_error[0] = -(PI - fabs(d->qpos[0] - PI))*((PI - d->qpos[0] > 0) - (PI - d->qpos[0] < 0));
 		}
 		mju_mulMatVec(d->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
+		mj_forward(m, d);
+		if (NFinal == true) {
+			for (int i = 0; i < 3 * m->nsite; i++) printf("%.4f\n", d->site_xpos[i]); 
+			//for (int i = 0; i < m->nsensordata; i++) printf(" d->sensordata[%d]        : %.4f\n", i, d->sensordata[i]);
+			//for (int i = 0; i < 3 * m->nsite; i++) printf(" d->site_xpos[%d]        : %.4f\n", i, d->site_xpos[i]);
+			//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.8f\n", i, d->qpos[i]);
+			//for (int i = 0; i < m->nv; i++) printf(" d->qvel[%d]        : %.8f\n", i, d->qvel[i]);
+			NFinal = false;
+		}
 	}
 	else mju_copy(d->ctrl, &ctrl_nominal[step_index_nominal * actuatornum], m->nu);
+	ctrlLimit(d->ctrl, m->nu);
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d);
 	step_index_nominal++;
 }
 
 bool simulateClosedloop(void)
 {
-	static mjtNum state_error[kMaxState], ctrl_feedback[kMaxState];
+	static mjtNum state_error[kMaxState], ctrl_feedback[kMaxState], ctrl_temp[kMaxState];
 
 	if (step_index_closedloop == 0) {
-		mj_resetData(m, d_closedloop);
-		mju_copy(d_closedloop->qpos, state_nominal[0], int(statenum / 2));
-		mju_copy(d_closedloop->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
-		mj_forward(m, d_closedloop);
+		modelInit(m, d_closedloop, state_nominal[0], statenum);
 		cost_closedloop = 0;
+		energy = 0;
 	}
 
 	if (step_index_closedloop >= stepnum)
@@ -1828,6 +1837,10 @@ bool simulateClosedloop(void)
 		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index_closedloop], state_error, kMaxState, kMaxState);
 		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
 	}
+	ctrlLimit(d_closedloop->ctrl, m->nu);
+	mju_add(ctrl_temp, &ctrl_nominal[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
+	ctrlLimit(ctrl_temp, m->nu);
+	energy += mju_dot(ctrl_temp, ctrl_temp, m->nu);
 	cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
 	step_index_closedloop++;
@@ -1839,10 +1852,7 @@ bool simulateOpenloop(void)
 	static mjtNum state_error[kMaxState];
 
 	if (step_index_openloop == 0) {
-		mj_resetData(m, d_openloop);
-		mju_copy(d_openloop->qpos, state_nominal[0], int(statenum / 2));
-		mju_copy(d_openloop->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
-		mj_forward(m, d_openloop);
+		modelInit(m, d_openloop, state_nominal[0], statenum);
 		cost_openloop = 0;
 	}
 	if (step_index_openloop >= stepnum)
@@ -1860,6 +1870,7 @@ bool simulateOpenloop(void)
 		}
 	}
 	else mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index_openloop * actuatornum], m->nu);
+	ctrlLimit(d_openloop->ctrl, m->nu);
 	cost_openloop += stepCost(m, d_openloop, step_index_openloop);
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_openloop);
 	step_index_openloop++;
@@ -1900,6 +1911,8 @@ mjtNum terminalError(mjtNum ptb, const char *type)
 		return sqrt((d_closedloop->qpos[0] - d_closedloop->site_xpos[0]) * (d_closedloop->qpos[0] - d_closedloop->site_xpos[0]) + (d_closedloop->qpos[1] - d_closedloop->site_xpos[1]) * (d_closedloop->qpos[1] - d_closedloop->site_xpos[1]));
 	else if (modelid == 8)
 		return sqrt((d_closedloop->site_xpos[39] - d_closedloop->site_xpos[9]) * (d_closedloop->site_xpos[39] - d_closedloop->site_xpos[9]) + (d_closedloop->site_xpos[41] - d_closedloop->site_xpos[11]) * (d_closedloop->site_xpos[41] - d_closedloop->site_xpos[11]));
+	else if (modelid == 9)
+		return sqrt((d_closedloop->site_xpos[75] - d_closedloop->site_xpos[9]) * (d_closedloop->site_xpos[75] - d_closedloop->site_xpos[9]) + (d_closedloop->site_xpos[77] - d_closedloop->site_xpos[11]) * (d_closedloop->site_xpos[77] - d_closedloop->site_xpos[11]));
 	return 0;
 }
 
@@ -1950,31 +1963,42 @@ void policyCompare()
 	strcpy(datafilename, "clopdata.txt");
 	if ((filestream1 = fopen(datafilename, "wt+")) != NULL)
 	{
-		for (double ptb = 0; ptb <= 1.00001; ptb += 0.05)
+		strcpy(datafilename, "energydata.txt");
+		if ((filestream2 = fopen(datafilename, "wt+")) != NULL)
 		{
-			for (int i = 0; i < kTestNum; i++)
+			for (double ptb = 0; ptb <= 1.00001; ptb += 0.05)
 			{
-				for (int e = 0; e < stepnum * actuatornum; e++) ctrl_openloop[e] = ctrl_nominal[e] + ptb * ctrl_max * randGauss(0, 1);
+				for (int i = 0; i < kTestNum; i++)
+				{
+					for (int e = 0; e < stepnum * actuatornum; e++) ctrl_openloop[e] = ctrl_nominal[e] + ptb * ctrl_max * randGauss(0, 1);
 
-				while (simulateOpenloop() != 1);
-				while (simulateClosedloop() != 1);
+					while (simulateOpenloop() != 1);
+					while (simulateClosedloop() != 1);
 
-				sprintf(data_buff, "%4.8f", cost_closedloop);
-				fwrite(data_buff, 10, 1, filestream1);
-				fputs("\n", filestream1);
-				sprintf(data_buff, "%4.8f", cost_openloop);
-				fwrite(data_buff, 10, 1, filestream1);
-				fputs("\n", filestream1);
+					sprintf(data_buff, "%4.8f", cost_closedloop);
+					fwrite(data_buff, 10, 1, filestream1);
+					fputs("\n", filestream1);
+					sprintf(data_buff, "%4.8f", cost_openloop);
+					fwrite(data_buff, 10, 1, filestream1);
+					fputs("\n", filestream1);
+
+					sprintf(data_buff, "%4.8f", energy);
+					fwrite(data_buff, 10, 1, filestream2);
+					fputs(" ", filestream2);
+				}
+				fputs("\n", filestream2);
+
+				if (ptb >= 1 * printfraction)
+				{
+					printf(".");
+					printfraction += 0.2;
+				}
 			}
-
-			if (ptb >= 1 * printfraction)
-			{
-				printf(".");
-				printfraction += 0.2;
-			}
+			fclose(filestream2);
 		}
+		else printf("Could not open file: energydata.txt\n");
 		fclose(filestream1);
-	}else printf("Could not open file: clopdata.txt");
+	}else printf("Could not open file: clopdata.txt\n");
 }
 
 void modelTest(void)
@@ -2003,6 +2027,8 @@ void modeSelection(const char* mode)
 	}
 	else if (_strcmpi(testmode, "modeltest") == 0)
 		modelTest();
+	else if (_strcmpi(testmode, "nfinal") == 0)
+		NFinal = true;
 }
 
 //--------------------------- rendering and simulation ----------------------------------
@@ -2266,7 +2292,7 @@ void simulate(void)
 
 						//for (int i = 0; i < m->nq; i++) d->qpos[i] = -PI / 36;
 						//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.2f\n", i, d->qpos[i]);
-						//printf("%f \n", d->qpos[8] - (d->qpos[1]+d->qpos[3] + d->qpos[4]));
+						//printf("%f \n", d->qpos[20] - (d->qpos[9]+d->qpos[7] + d->qpos[10]));
 						//mj_step(m, d);
 
                         // break on reset

@@ -30,7 +30,7 @@ params = {
 }
 mpl.rcParams.update(params)
 
-def latexplot(timefactor=0.1928,filtered=False):
+def latexplot(timefactor=0.1098,filtered=False):
     #plot
     if filtered == True:
         b, a = signal.butter(8  , 0.025)

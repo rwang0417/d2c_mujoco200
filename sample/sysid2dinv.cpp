@@ -113,6 +113,25 @@ void sysidCheck(mjModel* m, mjData* d)
 				d->qvel[8] = d->qvel[1] + d->qvel[3] + d->qvel[4];
 				d->qvel[9] = -d->qvel[4];
 			}
+			if (modelid == 9) {
+				d->qpos[14] = d->qpos[0] + d->qpos[1];
+				d->qpos[15] = -d->qpos[1];
+				d->qpos[16] = d->qpos[1] + d->qpos[3] + d->qpos[4];
+				d->qpos[17] = -d->qpos[4];
+				d->qpos[18] = d->qpos[4] + d->qpos[6] + d->qpos[7];
+				d->qpos[19] = -d->qpos[7];
+				d->qpos[20] = d->qpos[7] + d->qpos[9] + d->qpos[10];
+				d->qpos[21] = -d->qpos[10];
+
+				d->qvel[14] = d->qvel[0] + d->qvel[1];
+				d->qvel[15] = -d->qvel[1];
+				d->qvel[16] = d->qvel[1] + d->qvel[3] + d->qvel[4];
+				d->qvel[17] = -d->qvel[4];
+				d->qvel[18] = d->qvel[4] + d->qvel[6] + d->qvel[7];
+				d->qvel[19] = -d->qvel[7];
+				d->qvel[20] = d->qvel[7] + d->qvel[9] + d->qvel[10];
+				d->qvel[21] = -d->qvel[10];
+			}
 
 			for (int k = 0; k < integration_per_step; k++) mj_step(m, d);
 
@@ -173,6 +192,25 @@ void sysid(int id, int nroll, int nthd)
 				d[id]->qvel[8] = d[id]->qvel[1] + d[id]->qvel[3] + d[id]->qvel[4];
 				d[id]->qvel[9] = -d[id]->qvel[4];
 			}
+			if (modelid == 9) {
+				d[id]->qpos[14] = d[id]->qpos[0] + d[id]->qpos[1];
+				d[id]->qpos[15] = -d[id]->qpos[1];
+				d[id]->qpos[16] = d[id]->qpos[1] + d[id]->qpos[3] + d[id]->qpos[4];
+				d[id]->qpos[17] = -d[id]->qpos[4];
+				d[id]->qpos[18] = d[id]->qpos[4] + d[id]->qpos[6] + d[id]->qpos[7];
+				d[id]->qpos[19] = -d[id]->qpos[7];
+				d[id]->qpos[20] = d[id]->qpos[7] + d[id]->qpos[9] + d[id]->qpos[10];
+				d[id]->qpos[21] = -d[id]->qpos[10];
+
+				d[id]->qvel[14] = d[id]->qvel[0] + d[id]->qvel[1];
+				d[id]->qvel[15] = -d[id]->qvel[1];
+				d[id]->qvel[16] = d[id]->qvel[1] + d[id]->qvel[3] + d[id]->qvel[4];
+				d[id]->qvel[17] = -d[id]->qvel[4];
+				d[id]->qvel[18] = d[id]->qvel[4] + d[id]->qvel[6] + d[id]->qvel[7];
+				d[id]->qvel[19] = -d[id]->qvel[7];
+				d[id]->qvel[20] = d[id]->qvel[7] + d[id]->qvel[9] + d[id]->qvel[10];
+				d[id]->qvel[21] = -d[id]->qvel[10];
+			}
 
 			for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
 
@@ -200,6 +238,25 @@ void sysid(int id, int nroll, int nthd)
 				d[id]->qvel[7] = -d[id]->qvel[1];
 				d[id]->qvel[8] = d[id]->qvel[1] + d[id]->qvel[3] + d[id]->qvel[4];
 				d[id]->qvel[9] = -d[id]->qvel[4];
+			}
+			if (modelid == 9) {
+				d[id]->qpos[14] = d[id]->qpos[0] + d[id]->qpos[1];
+				d[id]->qpos[15] = -d[id]->qpos[1];
+				d[id]->qpos[16] = d[id]->qpos[1] + d[id]->qpos[3] + d[id]->qpos[4];
+				d[id]->qpos[17] = -d[id]->qpos[4];
+				d[id]->qpos[18] = d[id]->qpos[4] + d[id]->qpos[6] + d[id]->qpos[7];
+				d[id]->qpos[19] = -d[id]->qpos[7];
+				d[id]->qpos[20] = d[id]->qpos[7] + d[id]->qpos[9] + d[id]->qpos[10];
+				d[id]->qpos[21] = -d[id]->qpos[10];
+
+				d[id]->qvel[14] = d[id]->qvel[0] + d[id]->qvel[1];
+				d[id]->qvel[15] = -d[id]->qvel[1];
+				d[id]->qvel[16] = d[id]->qvel[1] + d[id]->qvel[3] + d[id]->qvel[4];
+				d[id]->qvel[17] = -d[id]->qvel[4];
+				d[id]->qvel[18] = d[id]->qvel[4] + d[id]->qvel[6] + d[id]->qvel[7];
+				d[id]->qvel[19] = -d[id]->qvel[7];
+				d[id]->qvel[20] = d[id]->qvel[7] + d[id]->qvel[9] + d[id]->qvel[10];
+				d[id]->qvel[21] = -d[id]->qvel[10];
 			}
 
 			for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);

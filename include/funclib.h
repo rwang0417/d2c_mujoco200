@@ -29,7 +29,6 @@
 using namespace Eigen;
 using namespace std;
 
-/* Exported typedef ---------------------------------------------------------*/
 /* Exported variables -------------------------------------------------------*/
 
 const int N = 4;
@@ -39,7 +38,17 @@ const mjtNum PI = 3.141592653;
 /* Exported functions ------------------------------------------------------- */
 
 mjtNum mjc_costFunction(mjModel* m, mjData* d, mjtNum *ctrl, mjtNum nu, mjtNum *Q, mjtNum R);
-void mjc_modelInit(mjModel* m, mjData* d);
+/**
+* @brief  Set the model to initial state
+* @note   none
+* @param  mjModel* m: model
+*         mjData* d: data
+*         mjtNum* state_init: initial state vector
+*         int len: length of initial state vector
+* @retval none
+* @author rwang0417@tamu.edu
+*/
+void modelInit(mjModel* m, mjData* d, mjtNum* state_init, int len);
 
 /**
 * @brief  Generate Gaussian random value
@@ -50,6 +59,16 @@ void mjc_modelInit(mjModel* m, mjData* d);
 * @author rwang0417@tamu.edu
 */
 mjtNum randGauss(mjtNum mean, mjtNum var);
+
+/**
+* @brief  Apply limit to control value
+* @note   none
+* @param  mjtNum ctrl: control vector
+		  int num: control vector length
+* @retval none
+* @author rwang0417@tamu.edu
+*/
+void ctrlLimit(mjtNum* ctrl, int num);
 
 /**
 * @brief  Angle modification for pendulum, cartpole and acrobot to clamp angle value
