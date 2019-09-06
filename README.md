@@ -2,9 +2,9 @@
 d2c implementation on MuJoCo 200 windows x64 version
 
 --------
-D2C stands for Decoupled Data-based Control. It's a model-free optimal control algorithm proposed to solving finite-horizon control problems for stochastic discretized systems.
+D2C stands for Decoupled Data-based Control. It's a model-free optimal control algorithm proposed to solve finite-horizon control problems for stochastic discrete systems.
 
-The algorithm has three main steps:
+The algorithm has three steps:
 1. Open-loop training using the first order gradient descent method
 2. System identification along the nominal trajectory using the least square method
 3. LQR feedback gain calculation for each discretized step
@@ -24,8 +24,9 @@ The D2C algorithm has advantages in the following aspects over the model-based m
 
 The details of the D2C algorithm can be found in <https://arxiv.org/abs/1904.08361>.
 
-------
+
 ## File Structure
+------
 Tensegrity
 
 - bin: the output dir for executable files. The .lib and .dll files are also here.
@@ -57,9 +58,9 @@ Tensegrity
     - dataprocess.py: python functions for data analysis and plotting.
   - openloop, sysid2d, test2d: Visual Studio projects.
 
-------
-## Set up
 
+## Set up
+------
 Operating system: Windows 64-bit
 
 Software Platform: Visual Studio 2017, Matlab 2019a, Python 3
@@ -70,11 +71,11 @@ For openloop, sysid2d and test2d, set up a Visual Studio project for each of the
 
 For the Matlab wrapper, first set up the c compiler by running `mex setup` in Matlab. Then compile mexstep.c by `mex mexstep.c mujoco200.lib mujoco200nogl.lib`.
 
-----
-## Workflow
 
-1. Build the model in the .xml file and put needed files in the workspace folder. Subfolders in `Tensegrity\data\` can be used as an example.
-2. Write model-dependent parameters into funclib.cpp. Generate executable files openloop.exe, sysid2d.exe and test2d.exe and put them into the workspace folder.
+## Workflow
+----
+1. Write the MuJoCo model in the .xml file and put needed files in the workspace folder. Subfolders in `Tensegrity\data\` can be used as examples.
+2. Write model-dependent parameters into funclib.cpp. Generate executable files: openloop.exe, sysid2d.exe and test2d.exe and put them into the workspace folder.
 3. Open a command window in the workspace folder and run the D2C algorithm
    1. openloop: `openloop modelname.xml iteration_number [modeltype] [thread_number]` Modeltype is usually the same as modelname. If not, it needs to be specified for the code to identify the model.
    2. sysid2d: `sysid2d modelname.xml noise_level rollout_number [modeltype] [thread_number]` The standard deviation of perturbation is set as noise_level * Umax, where Umax is the maximum nominal control value from step 1.
@@ -87,9 +88,22 @@ For the Matlab wrapper, first set up the c compiler by running `mex setup` in Ma
 5. Run the model-based shape control algorithm(shape_control.m) in Matlab. Make sure the Matlab wrapper is re-compiled or the .mexw64 file is in the workspace folder.
 6. Make plots by the functions in dataprocess.py using the data generated from the above steps.
 
------
-## Acknowledgement
+## Result
+----
+- Examples: 
 
+<!-- ![avatar](data/Dbar/init_reacher.PNG) {:height="50%" width="50%"} -->
+
+<img src="data/Dbar/init_reacher.PNG" width="200" height="200" alt="dbar"/>
+<img src="data/T2D1/init_reacher.PNG" width="200" height="200" alt="t2d1"/>
+<img src="data/Tbar_Arm/init_arm.PNG" width="200" height="200" alt="arm"/>
+<img src="data/Swimmer/init_swimmer6t.PNG" width="200" height="200" alt="swimmer6"/>
+<img src="data/T1D1/init_reacher.PNG" width="200" height="200" alt="t1d1"/>
+
+## Acknowledgement
+-----
 The tensegrity shape control code is from Raman Goyal.
+
+The project is supervised by Dr. Suman Chakravorty.
 
 Big big thanks to Muhao Chen and Raman Goyal for being so helpful and kind-hearted.
