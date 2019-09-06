@@ -767,3 +767,11 @@ sysid2d 模型文件名，noise level，rollout数，模型名，线程数，最
 #### 2. 两个方法umax都用nominal的umax。
 #### 3. 算cost的时候都不算control cost。
 #### 4. matlab存energy和cost的数组长度要多一个不然影响别的变量。
+## 09/04/2019
+### Log:
+#### 1. python删值的时候第一遍有的没删掉，两个特别大的连在一起，remove第一个之后index变了直接跳过第二个。
+## 09/06/2019
+### Log:
+#### 1. latex figure 不加星号才是单列图，加了就会在整页的中间显示。
+#### 2. pre-stress！！！！！
+#### 3. mujoco加skin！！！

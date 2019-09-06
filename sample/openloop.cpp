@@ -172,6 +172,7 @@ void train(int id, int niteration)
         // save result to file
 		snprintf(costfilename, sizeof(costfilename), "%s%d%s", "cost", id, ".txt");
 
+		// save nominal episodic cost of every iteration to file
 		char filemode[5] = "wt+";
 		if (TRAINING_NUM > 1) strcpy(filemode, "at+");
 		if ((filestream1 = fopen(costfilename, filemode)) != NULL) {
@@ -266,10 +267,12 @@ int main(int argc, const char** argv)
     }
 	mju_add(state_nominal[0], state_nominal[0], d[0]->qpos, m->nq); // get initial position from key pos
 	
+	// save gradient value to file for convergence checking
 	strcpy(datafilename, "converge.txt");
 	if ((filestream2 = fopen(datafilename, "wt+")) == NULL) {
 		printf("Could not open file: converge.txt\n");
 	}
+	// read cost parameters for the open-loop training
 	strcpy(datafilename, "parameters.txt");
 	if ((filestream3 = fopen(datafilename, "r")) != NULL) {
 		while (!feof(filestream3))
@@ -311,6 +314,7 @@ int main(int argc, const char** argv)
 	}
 	else printf("Could not open file: parameters.txt\n");
 
+	// read initial control values
 	strcpy(datafilename, "init.txt");
 	if ((filestream3 = fopen(datafilename, "r")) != NULL)
 	{
@@ -379,7 +383,7 @@ int main(int argc, const char** argv)
             }
     }
 
-	// print control pos vel
+	// save result and parameters to file
 	for (int id = 0; id < nthread; id++)
 	{
 		snprintf(datafilename, sizeof(datafilename), "%s%d%s", "result", id, ".txt");

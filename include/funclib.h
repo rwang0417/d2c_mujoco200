@@ -61,10 +61,10 @@ void modelInit(mjModel* m, mjData* d, mjtNum* state_init, int len);
 mjtNum randGauss(mjtNum mean, mjtNum var);
 
 /**
-* @brief  Apply limit to control value
+* @brief  Apply limit to control values
 * @note   none
 * @param  mjtNum ctrl: control vector
-		  int num: control vector length
+*		  int num: control vector length
 * @retval none
 * @author rwang0417@tamu.edu
 */

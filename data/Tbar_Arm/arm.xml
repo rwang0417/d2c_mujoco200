@@ -3,7 +3,7 @@
     <include file="./common/skybox.xml"/>
     <include file="./common/materials.xml"/>
     
-    <option timestep="0.02" iterations="50" solver="Newton" tolerance="1e-10" gravity = "0 0 0" collision="predefined" viscosity="0"/>
+    <option timestep="0.01" iterations="50" solver="Newton" tolerance="1e-10" gravity = "0 0 0" collision="predefined" viscosity="0.04"/>
 
     <size njmax="500" nconmax="100" nstack="1000"/>
     
@@ -13,7 +13,7 @@
     
     <default>
         <joint type="hinge" pos="0 0 0" axis="0 1 0" limited="false" range="-180 180" damping=".5"/>
-        <motor ctrllimited="false" ctrlrange="0 100" gear="1"/>
+        <motor ctrllimited="false" gear="1"/>
 		<tendon stiffness="0" damping=".5" width="0.03"/>
 		<geom size="0.05" mass="0.1" material="self"/>
 		<site size="0.08"/>

@@ -77,6 +77,7 @@ int finish(const char* msg = NULL, mjModel* m = NULL)
     return 0;
 }
 
+// check the accuracy of the identified system
 void sysidCheck(mjModel* m, mjData* d)
 {
 	mjtNum dx_estimate[kMaxStep][kMaxState] = { 0 };
@@ -85,17 +86,22 @@ void sysidCheck(mjModel* m, mjData* d)
 
 	for (int t = 0; t < kTestNum; t++)
 	{
+		// generate perturbation
 		for (int i = 0; i < statenum + actuatornum; i++)
 		{
 			for (int m = 0; m < stepnum; m++) dx_input[m][i] = 0.01 * ctrl_max * randGauss(0, 1);
 		}
+		// result from the identified system
 		for (int j = 0; j < stepnum; j++) mju_mulMatVec(dx_estimate[j], *matAB_check[j], dx_input[j], kMaxState, kMaxState+ kMaxState);
+
+		// result from the real system
 		for (int step_index = 0; step_index < stepnum; step_index++)
 		{
 			mju_add(d->qpos, dx_input[step_index], state_nominal[step_index], int(statenum/2));
 			mju_add(d->qvel, &dx_input[step_index][int(statenum / 2)], &state_nominal[step_index][int(statenum / 2)], int(statenum / 2));
 			mju_add(d->ctrl, &dx_input[step_index][statenum], &ctrl_nominal[step_index * actuatornum], m->nu);
 
+			// set values for dependent states
 			if (modelid == 4) {
 				d->qpos[2] = -d->qpos[1];
 				d->qpos[3] = d->qpos[1];
@@ -175,6 +181,7 @@ void sysid(int id, int nroll, int nthd)
 			for (int y = 0; y < int(statenum / 2); y++) d[id]->qvel[y] = state_nominal[step_index][y + int(statenum / 2)] + delta_x1(rollout_index, y + int(statenum / 2));
 			for (int y = 0; y < actuatornum; y++) d[id]->ctrl[y] = ctrl_nominal[step_index * actuatornum + y] + delta_x1(rollout_index, statenum + y);
 
+			// set values for dependent states
 			if (modelid == 4) {
 				d[id]->qpos[2] = -d[id]->qpos[1];
 				d[id]->qpos[3] = d[id]->qpos[1];
@@ -358,6 +365,7 @@ int main(int argc, const char** argv)
         }
     }
 
+	// read nominal control values
 	strcpy(datafilename, "result0.txt");
 	if ((filestream3 = fopen(datafilename, "r")) != NULL) {
 		for (int i = 0; i < actuatornum * stepnum; i++)
@@ -429,6 +437,7 @@ int main(int argc, const char** argv)
             }
     }
 
+	// save result to file
 	strcpy(datafilename, "lnr.txt");
 	if ((filestream3 = fopen(datafilename, "wt+")) != NULL)
 	{

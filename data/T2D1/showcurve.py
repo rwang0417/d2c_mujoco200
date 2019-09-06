@@ -59,21 +59,42 @@ def latexplot(timefactor=3.4324,filtered=False):
     plt.tight_layout()    
 
 def energy(noisemax1=100,noisemax2=30,step=5):
-    y=np.loadtxt('energydata.txt')
-    z=np.loadtxt('energya.txt')
+    noisemax1=100
+    noisemax2=30
+    step=5
+    y=np.sqrt(np.loadtxt('energydata.txt'))
     x1=np.arange(0,noisemax1+1,step)
     x2=np.arange(0,noisemax2+1,step)
+    
+    # remove the huge value in energya.txt
+    anamean=[]
+    anastd=[]
+    delval=[]
+    
+    with open('energya.txt', 'r') as fce:
+        for line in fce:
+            data=list(map(float,line.split()))
+            for i in range(len(data)):
+                data[i] = np.sqrt(data[i])
+                if data[i] > 10**5:
+                    print(data[i])
+                    delval.append(data[i])
+            for val in delval:
+                data.remove(val)
+            anamean.append(np.mean(data))
+            anastd.append(np.std(data))
+            
     cmy = np.mean(y,axis=1)
     csy = np.std(y, axis=1)
-    cmz = np.mean(z,axis=1)
-    csz = np.std(z, axis=1)
+    cmz = np.array(anamean)
+    csz = np.array(anastd)
     f5,=plt.plot(x1,cmy[0:int(noisemax1/step+1)],'orange',linewidth=3)
     f6,=plt.plot(x2,cmz[0:int(noisemax2/step+1)],'seagreen',linewidth=3)
     plt.fill_between(x1,cmy[0:int(noisemax1/step+1)]+csy[0:int(noisemax1/step+1)],cmy[0:int(noisemax1/step+1)]-csy[0:int(noisemax1/step+1)],alpha=0.5,color='orange')
     plt.fill_between(x2,cmz[0:int(noisemax2/step+1)]+csz[0:int(noisemax2/step+1)],cmz[0:int(noisemax2/step+1)]-csz[0:int(noisemax2/step+1)],alpha=0.5,color='seagreen')
     plt.xlabel('Std dev of perturbed noise (Percent of max. control)', fontsize=20)
-    plt.ylabel('Averaged episodic energy', fontsize=20)
-    plt.legend(['D2C', 'Analytical solution'])
+    plt.ylabel('Averaged L2 norm of episodic energy', fontsize=20)
+    plt.legend(['D2C closed-loop', 'MBC'])
     plt.tight_layout()
     plt.grid(color='.910', linewidth=1.5)
     
@@ -134,20 +155,32 @@ def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
         plt.legend(handles=[f5,f6,],labels=['Closed-loop cost','Open-loop cost'],loc='upper left')
         plt.show()  
         print('averaged by {value1} rollouts'.format(value1=y.shape[1]))
-        
-def clopcompare():                   
-#    nstart=0
-#    nend=30
+
+
+def clopcompare():    
     pointnum=21
     testnum=400
     noisemaxz=30
     step=5
     y=np.array(np.loadtxt('clopdata.txt'))
-    z=np.array(np.loadtxt('costa.txt'))
     clerr1=[0 for i in range(int(y.shape[0]/2))]
     operr1=[0 for i in range(int(y.shape[0]/2))]
-    mz=np.mean(z,axis=1)
-    stdz=np.std(z,axis=1)
+    anamean=[]
+    anastd=[]
+    delval=[]
+    
+    with open('costa.txt', 'r') as fca:
+        for line in fca:
+            data=list(map(float,line.split()))
+            for val in data:
+                if val > 10**7:
+                    delval.append(val)
+            for val in delval:
+                data.remove(val)
+            anamean.append(np.mean(data))
+            anastd.append(np.std(data))
+            mz=np.array(anamean)
+            stdz=np.array(anastd)
     
     # calculate error value and get the average by each test
     for i in range(int(y.shape[0]/2)):
@@ -161,15 +194,15 @@ def clopcompare():
     sind=0
     eind=21
     perfdata=np.transpose(np.loadtxt('clopbar.txt'))
-    f5,=plt.plot(perfdata[4][sind:eind],perfdata[0][sind:eind],'orange', linewidth=3)
-    f6,=plt.plot(perfdata[4][sind:eind],perfdata[2][sind:eind],'dodgerblue', linewidth=3)
+    f5,=plt.plot(perfdata[4][sind:eind],perfdata[0,sind:eind],'orange', linewidth=3)
+    f6,=plt.plot(perfdata[4][sind:eind],perfdata[2,sind:eind],'dodgerblue', linewidth=3)
     f7,=plt.plot(np.arange(0,noisemaxz+1,step),mz[0:int(noisemaxz/step+1)],'seagreen', linewidth=3)
     plt.fill_between(perfdata[4][sind:eind],perfdata[0][sind:eind]-perfdata[1][sind:eind],perfdata[0][sind:eind]+perfdata[1][sind:eind],alpha=0.3,color='orange')
     plt.fill_between(perfdata[4][sind:eind],perfdata[2][sind:eind]-perfdata[3][sind:eind],perfdata[2][sind:eind]+perfdata[3][sind:eind],alpha=0.3,color='dodgerblue')
     plt.fill_between(np.arange(0,noisemaxz+1,step),mz[0:int(noisemaxz/step+1)]-stdz[0:int(noisemaxz/step+1)],mz[0:int(noisemaxz/step+1)]+stdz[0:int(noisemaxz/step+1)],alpha=0.3,color='seagreen')
     plt.xlabel('Std dev of perturbed noise(Percent of max. control)', fontsize=20)
     plt.ylabel('Episodic cost', fontsize=20)
-    plt.legend(handles=[f5,f6,f7],labels=['D2C closed-loop','D2C open-loop','Analytical solution'],loc='upper left')
+    plt.legend(handles=[f5,f6,f7],labels=['D2C closed-loop','D2C open-loop','MBC'],loc='upper left')
     plt.grid(color='.910', linewidth=1.5)
     plt.show()  
     

@@ -1775,6 +1775,7 @@ void uiEvent(mjuiState* state)
 }
 
 //--------------------------- control and testing ---------------------------------------
+// simulate the nominal trajectory
 void simulateNominal(void)
 {
 	static mjtNum state_error[kMaxState];
@@ -1792,14 +1793,16 @@ void simulateNominal(void)
 		}
 		mju_mulMatVec(d->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 		mj_forward(m, d);
-		if (NFinal == true) {
-			for (int i = 0; i < 3 * m->nsite; i++) printf("%.4f\n", d->site_xpos[i]); 
-			//for (int i = 0; i < m->nsensordata; i++) printf(" d->sensordata[%d]        : %.4f\n", i, d->sensordata[i]);
-			//for (int i = 0; i < 3 * m->nsite; i++) printf(" d->site_xpos[%d]        : %.4f\n", i, d->site_xpos[i]);
-			//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.8f\n", i, d->qpos[i]);
-			//for (int i = 0; i < m->nv; i++) printf(" d->qvel[%d]        : %.8f\n", i, d->qvel[i]);
-			NFinal = false;
-		}
+
+		//// print N_final to be the target for the analytical shape control
+		//if (NFinal == true) {
+		//	for (int i = 0; i < 3 * m->nsite; i++) printf("%.4f\n", d->site_xpos[i]); 
+		//	//for (int i = 0; i < m->nsensordata; i++) printf(" d->sensordata[%d]        : %.4f\n", i, d->sensordata[i]);
+		//	//for (int i = 0; i < 3 * m->nsite; i++) printf(" d->site_xpos[%d]        : %.4f\n", i, d->site_xpos[i]);
+		//	//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.8f\n", i, d->qpos[i]);
+		//	//for (int i = 0; i < m->nv; i++) printf(" d->qvel[%d]        : %.8f\n", i, d->qvel[i]);
+		//	NFinal = false;
+		//}
 	}
 	else mju_copy(d->ctrl, &ctrl_nominal[step_index_nominal * actuatornum], m->nu);
 	ctrlLimit(d->ctrl, m->nu);
@@ -1807,6 +1810,7 @@ void simulateNominal(void)
 	step_index_nominal++;
 }
 
+// simulate with closed-loop control policy under noise
 bool simulateClosedloop(void)
 {
 	static mjtNum state_error[kMaxState], ctrl_feedback[kMaxState], ctrl_temp[kMaxState];
@@ -1847,6 +1851,7 @@ bool simulateClosedloop(void)
 	return 0;
 }
 
+// simulate with open-loop control policy under noise
 bool simulateOpenloop(void)
 {
 	static mjtNum state_error[kMaxState];
@@ -1877,6 +1882,7 @@ bool simulateOpenloop(void)
 	return 0;
 }
 
+// calculate the distance from the target at the terminal step
 mjtNum terminalError(mjtNum ptb, const char *type)
 {
 	mjtNum state_error[kMaxState], ctrl_feedback[kMaxState];
@@ -1916,6 +1922,7 @@ mjtNum terminalError(mjtNum ptb, const char *type)
 	return 0;
 }
 
+// collect data for comparing the distance from the target at the terminal step between closed-loop policy and open-loop policy under different levels of noise
 void performanceTest(void)
 {
 	double printfraction = 0.2;
@@ -1956,6 +1963,7 @@ void performanceTest(void)
 	else printf("Could not open file: perfcheck.txt");
 }
 
+// compare the expected cost between the closed-loop policy, the open-loop policy and the model-based shape control under different levels of noise 
 void policyCompare()
 {
 	double printfraction = 0.2;
@@ -2001,6 +2009,7 @@ void policyCompare()
 	}else printf("Could not open file: clopdata.txt\n");
 }
 
+// show info for the model
 void modelTest(void)
 {
 	mj_resetData(m, d);
@@ -2014,6 +2023,7 @@ void modelTest(void)
 	for (int i = 0; i < 3*m->nsite; i++) printf(" d->site_xpos[%d]   : %.2f\n", i, d->site_xpos[i]);
 }
 
+// run a certain mode
 void modeSelection(const char* mode)
 {
 	strcpy(testmode, mode);
@@ -2348,7 +2358,7 @@ void init(void)
 		mj_activate(keyfilename);
 	}
 
-	// read data from file
+	// read nominal control values
 	strcpy(datafilename, "result0.txt");
 	if ((filestream1 = fopen(datafilename, "r")) != NULL)
 	{
@@ -2362,6 +2372,7 @@ void init(void)
 	}
 	else printf("Could not open file: result.txt\n");
 
+	// read feedback gain K
 	strcpy(datafilename, "TK.txt");
 	if ((filestream1 = fopen(datafilename, "r")) != NULL)
 	{
@@ -2377,6 +2388,7 @@ void init(void)
 	}
 	else printf("Could not open file: TK.txt\n");
 
+	// read open-loop training cost parameters
 	strcpy(datafilename, "parameters.txt");
 	if ((filestream1 = fopen(datafilename, "r")) != NULL) {
 		while (!feof(filestream1))

@@ -16,7 +16,7 @@
 
 /* Extern variables ---------------------------------------------------------*/
 // constants
-const int kMaxStep = 1510;   // max step number for one rollout
+const int kMaxStep = 1510;// 1510;   // max step number for one rollout
 const int kMaxState = 40;	// max (state dimension, actuator number)
 
 // model parameters and environment settings
@@ -104,6 +104,7 @@ mjtNum randGauss(mjtNum mean, mjtNum var)
 	return mean + sqrt(var) * Z;
 }
 
+// model-depedent settings
 int modelSelection(const char* model)
 {
 	if (_strcmpi(model, "pendulum") == 0) {
@@ -206,9 +207,9 @@ int modelSelection(const char* model)
 	}
 	else if (_strcmpi(model, "arm") == 0) {
 		modelid = 6;
-		control_timestep = 0.02;
-		simulation_timestep = 0.02;
-		stepnum = 200;
+		control_timestep = 0.01;
+		simulation_timestep = 0.01;
+		stepnum = 400;
 		statenum = 18;
 		actuatornum = 38;
 		rolloutnum_train = 20;
@@ -223,10 +224,12 @@ int modelSelection(const char* model)
 		modelid = 7;
 		control_timestep = 0.006;
 		simulation_timestep = 0.006;
-		stepnum = 1500;
+		stepnum = 2500;
 		statenum = 16;
 		actuatornum = 22;
-		rolloutnum_train = 50;
+		rolloutnum_train = 100;
+		ctrl_upperlimit = 0;
+		ctrl_lowerlimit = -100;
 		mjtNum temp[kMaxState][kMaxState] = { 0 };
 		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], statenum);
 		integration_per_step = (int)(control_timestep / simulation_timestep);
@@ -265,6 +268,7 @@ int modelSelection(const char* model)
 	return 0;
 }
 
+// return the cost value at the given step
 mjtNum stepCost(mjModel* m, mjData* d, int step_index)
 {
 	mjtNum state[kMaxState], res0[kMaxState] = { 0 }, res1[kMaxState] = { 0 }, cost;
@@ -311,8 +315,8 @@ mjtNum stepCost(mjModel* m, mjData* d, int step_index)
 		else cost = (Q * ((2 * (d->site_xpos[30] - d->site_xpos[0]) * (d->site_xpos[30] - d->site_xpos[0]) + 4 * (d->site_xpos[32] - d->site_xpos[2]) * (d->site_xpos[32] - d->site_xpos[2])) + 0.1*mju_dot(d->qvel, d->qvel, m->nv)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
 	}
 	else if (modelid == 6) {
-		if (step_index >= stepnum) cost = (QT * (1 * (d->site_xpos[93] - d->site_xpos[0]) * (d->site_xpos[93] - d->site_xpos[0]) + 5 * (d->site_xpos[95] - d->site_xpos[2]) * (d->site_xpos[95] - d->site_xpos[2]) + 2 * mju_dot(d->qvel, d->qvel, m->nv)));
-		else cost = (Q * ((1 * (d->site_xpos[93] - d->site_xpos[0]) * (d->site_xpos[93] - d->site_xpos[0]) + 5 * (d->site_xpos[95] - d->site_xpos[2]) * (d->site_xpos[95] - d->site_xpos[2])) + 1.20*mju_dot(d->qvel, d->qvel, m->nv)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+		if (step_index >= stepnum) cost = (QT * (1 * (d->site_xpos[93] - d->site_xpos[0]) * (d->site_xpos[93] - d->site_xpos[0]) + 5 * (d->site_xpos[95] - d->site_xpos[2]) * (d->site_xpos[95] - d->site_xpos[2]) + 1.2 * mju_dot(d->qvel, d->qvel, m->nv)));
+		else cost = (Q * ((1 * (d->site_xpos[93] - d->site_xpos[0]) * (d->site_xpos[93] - d->site_xpos[0]) + 5 * (d->site_xpos[95] - d->site_xpos[2]) * (d->site_xpos[95] - d->site_xpos[2])) + 1.2*mju_dot(d->qvel, d->qvel, m->nv)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
 		//mju_sub(res0, state, state_target, int(statenum / 2));
 		//if (step_index >= stepnum) {
 		//	mju_mulMatVec(res1, *QTm, res0, kMaxState, kMaxState);
@@ -353,6 +357,7 @@ mjtNum stepCost(mjModel* m, mjData* d, int step_index)
 	return cost;
 }
 
+// simulate and record the nominal trajectory
 void stateNominal(mjModel* m, mjData* d)
 {
 	modelInit(m, d, state_nominal[0], statenum);
@@ -654,121 +659,5 @@ void save_result(const char *_filename, mjtNum *u, mjtNum *u_init, mjtNum len, m
 		fw_array(fop, step_coef, 1, "step_coef: ");
 
 		fclose(fop);
-	}
-}
-
-/**
-* @brief  Calculate the determinant of the input matrix
-* @note   none
-* @param  mjtNum *fh: input matrix; mjtNum r: rank of the matrix
-* @retval mjtNum det: the determinant value of the input matrix
-* @author rwang0417@tamu.edu
-*/
-mjtNum determinant(mjtNum *fh, mjtNum r)
-{
-	mjtNum k, det = 1.0;
-	mjtNum *a = new mjtNum[r*r];
-
-	/* make sure the input matrix won't be changed */
-	for (int i = 0; i < r; i++)
-	{
-		for (int j = 0; j < r; j++)
-		{
-			*(a + j + i * (int)r) = *(fh + j + i * (int)r);
-		}
-	}
-
-	for (int z = 0; z < r - 1; z++)
-		for (int i = z; i < r - 1; i++)
-		{
-			if (*(a + z + z * (int)r) == 0)
-			{
-				for (int j = 0; j < r; j++)
-				{
-					*(a + j + z * (int)r) = *(a + j + z * (int)r) + *(a + j + (i + 1) * (int)r);
-				}
-			}
-			if (*(a + z + z * (int)r) != 0) {
-				k = -(*(a + z + (i+1) * (int)r)) / (*(a + z + z * (int)r));
-				for (int j = z; j < r; j++) *(a + j + (i + 1) * (int)r) = k * (*(a + j + z * (int)r)) + *(a + j + (i + 1) * (int)r);
-			}
-		}
-	for (int z = 0; z < r; z++)
-	{
-		det = det * (*(a + z + z * (int)r));
-	}
-	return (det);
-}
-
-/**
-* @brief  Transpose the input matrix
-* @note   none
-* @param  mjtNum *res: transposed matrix; mjtNum *mat: input matrix
-*         mjtNum r: input matrix row number; mjtNum c: input matrix column number
-* @retval none
-* @author rwang0417@tamu.edu
-*/
-void transpose(mjtNum *res, mjtNum *mat, mjtNum rmat, mjtNum cmat)
-{
-	if (cmat == 0) cmat = rmat;
-
-	for (int i = 0; i < cmat; i++)
-	{
-		for (int j = 0; j < rmat; j++)
-		{
-			*(res+j+(int)rmat*i) = *(mat+i+(int)cmat*j);
-		}
-	}
-}
-
-/**
-* @brief  Find the inverse of the input matrix
-* @note   none
-* @param  mjtNum *res: inversed matrix; mjtNum arg[N][N]: input matrix; mjtNum r: rank of the input matrix
-* @retval none
-* @author rwang0417@tamu.edu
-*/
-void cofactor(mjtNum *res, mjtNum *arg, mjtNum r)
-{
-	mjtNum *b = new mjtNum[(r - 1)*(r - 1)];
-	mjtNum *fac = new mjtNum[r*r];
-	mjtNum *fdv = new mjtNum[r*r];
-	mjtNum d;
-	int  m, n;
-
-	for (int q = 0; q < r; q++)
-	{
-		printf("%d ", q);
-		for (int p = 0; p < r; p++)
-		{
-			m = 0;
-			n = 0;
-			for (int i = 0; i < r; i++)
-			{
-				for (int j = 0; j < r; j++)
-				{
-					if (i != q && j != p)
-					{
-						*(b + n + m * (int)(r - 1)) = *(arg + j + i * (int)r);
-						if (n < (r - 2)) n++;
-						else {
-							n = 0;
-							m++;
-						}
-					}
-				}
-			}
-			*(fac + p + q * (int)r) = pow(mjtNum(-1), q + p) * determinant(b, r - 1);
-		}
-	}
-	transpose(fdv, fac, r);
-	d = determinant(arg, r);
-
-	for (int i = 0; i < r; i++)
-	{
-		for (int j = 0; j < r; j++)
-		{
-			*(res + j + i * (int)r) = *(fdv + j + i * (int)r) / d;
-		}
 	}
 }

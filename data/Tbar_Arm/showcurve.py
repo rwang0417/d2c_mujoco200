@@ -30,7 +30,7 @@ params = {
 }
 mpl.rcParams.update(params)
 
-def latexplot(timefactor=0.1098,filtered=False):
+def latexplot(timefactor=0.2492,filtered=False):
     #plot
     if filtered == True:
         b, a = signal.butter(8  , 0.025)
@@ -116,7 +116,7 @@ def clopcompare():
     nstart=0
     nend=100
     pointnum=21
-    testnum=500
+    testnum=400
     y=np.array(np.loadtxt('clopdata.txt'))
     clerr1=[0 for i in range(int(y.shape[0]/2))]
     operr1=[0 for i in range(int(y.shape[0]/2))]
