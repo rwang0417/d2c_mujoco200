@@ -94,11 +94,7 @@ For the Matlab wrapper, first set up the c compiler by running `mex setup` in Ma
 
 <!-- ![avatar](data/Dbar/init_reacher.PNG) {:height="50%" width="50%"} -->
 
-<img src="data/Dbar/init_reacher.PNG" width="200" height="200" alt="dbar"/>
-<img src="data/T2D1/init_reacher.PNG" width="200" height="200" alt="t2d1"/>
-<img src="data/Tbar_Arm/init_arm.PNG" width="200" height="200" alt="arm"/>
-<img src="data/Swimmer/init_swimmer6t.PNG" width="200" height="200" alt="swimmer6"/>
-<img src="data/T1D1/init_reacher.PNG" width="200" height="200" alt="t1d1"/>
+<img src="data/Dbar/init_reacher.PNG" width="200" height="200" alt="dbar"/><img src="data/T2D1/init_reacher.PNG" width="200" height="200" alt="t2d1"/><img src="data/Tbar_Arm/init_arm.PNG" width="200" height="200" alt="arm"/><img src="data/Swimmer/init_swimmer6t.PNG" width="200" height="200" alt="swimmer6"/><img src="data/T1D1/init_reacher.PNG" width="200" height="200" alt="t1d1"/>
 
 ## Acknowledgement
 -----
