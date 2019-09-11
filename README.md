@@ -26,7 +26,7 @@ The details of the D2C algorithm can be found in <https://arxiv.org/abs/1904.083
 
 
 ## File Structure
-------
+
 Tensegrity
 
 - bin: the output dir for executable files. The .lib and .dll files are also here.
@@ -60,7 +60,7 @@ Tensegrity
 
 
 ## Set up
-------
+
 Operating system: Windows 64-bit
 
 Software Platform: Visual Studio 2017, Matlab 2019a, Python 3
@@ -73,7 +73,7 @@ For the Matlab wrapper, first set up the c compiler by running `mex setup` in Ma
 
 
 ## Workflow
-----
+
 1. Write the MuJoCo model in the .xml file and put needed files in the workspace folder. Subfolders in `Tensegrity\data\` can be used as examples.
 2. Write model-dependent parameters into funclib.cpp. Generate executable files: openloop.exe, sysid2d.exe and test2d.exe and put them into the workspace folder.
 3. Open a command window in the workspace folder and run the D2C algorithm
@@ -89,15 +89,13 @@ For the Matlab wrapper, first set up the c compiler by running `mex setup` in Ma
 6. Make plots by the functions in dataprocess.py using the data generated from the above steps.
 
 ## Result
-----
-- Examples: 
 
-<!-- ![avatar](data/Dbar/init_reacher.PNG) {:height="50%" width="50%"} -->
+- Examples: 
 
 <img src="data/Dbar/init_reacher.PNG" width="200" height="200" alt="dbar"/><img src="data/T2D1/init_reacher.PNG" width="200" height="200" alt="t2d1"/><img src="data/Tbar_Arm/init_arm.PNG" width="200" height="200" alt="arm"/><img src="data/Swimmer/init_swimmer6t.PNG" width="200" height="200" alt="swimmer6"/><img src="data/T1D1/init_reacher.PNG" width="200" height="200" alt="t1d1"/>
 
 ## Acknowledgement
------
+
 The tensegrity shape control code is from Raman Goyal.
 
 The project is supervised by Dr. Suman Chakravorty.

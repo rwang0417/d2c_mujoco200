@@ -1794,15 +1794,15 @@ void simulateNominal(void)
 		mju_mulMatVec(d->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 		mj_forward(m, d);
 
-		//// print N_final to be the target for the analytical shape control
-		//if (NFinal == true) {
-		//	for (int i = 0; i < 3 * m->nsite; i++) printf("%.4f\n", d->site_xpos[i]); 
-		//	//for (int i = 0; i < m->nsensordata; i++) printf(" d->sensordata[%d]        : %.4f\n", i, d->sensordata[i]);
-		//	//for (int i = 0; i < 3 * m->nsite; i++) printf(" d->site_xpos[%d]        : %.4f\n", i, d->site_xpos[i]);
-		//	//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.8f\n", i, d->qpos[i]);
-		//	//for (int i = 0; i < m->nv; i++) printf(" d->qvel[%d]        : %.8f\n", i, d->qvel[i]);
-		//	NFinal = false;
-		//}
+		// print N_final to be the target for the analytical shape control
+		if (NFinal == true) {
+			for (int i = 0; i < 3 * m->nsite; i++) printf("%.4f\n", d->site_xpos[i]); 
+			//for (int i = 0; i < m->nsensordata; i++) printf(" d->sensordata[%d]        : %.4f\n", i, d->sensordata[i]);
+			//for (int i = 0; i < 3 * m->nsite; i++) printf(" d->site_xpos[%d]        : %.4f\n", i, d->site_xpos[i]);
+			//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.8f\n", i, d->qpos[i]);
+			//for (int i = 0; i < m->nv; i++) printf(" d->qvel[%d]        : %.8f\n", i, d->qvel[i]);
+			NFinal = false;
+		}
 	}
 	else mju_copy(d->ctrl, &ctrl_nominal[step_index_nominal * actuatornum], m->nu);
 	ctrlLimit(d->ctrl, m->nu);
@@ -2185,10 +2185,10 @@ void renderOpenloop(GLFWwindow* window)
 	// render scene
 	mjr_render(rect, &scn_openloop, &con_openloop);
 
-	// show pause/loading label
-	if (!settings.run || settings.loadrequest)
-		mjr_overlay(mjFONT_BIG, mjGRID_TOPRIGHT, smallrect,
-			settings.loadrequest ? "loading" : "pause", NULL, &con_openloop);
+	//// show pause/loading label
+	//if (!settings.run || settings.loadrequest)
+	//	mjr_overlay(mjFONT_BIG, mjGRID_TOPRIGHT, smallrect,
+	//		settings.loadrequest ? "loading" : "pause", NULL, &con_openloop);
 
 	// show info
 	if (settings.info)
@@ -2211,10 +2211,10 @@ void renderClosedloop(GLFWwindow* window)
 	// render scene
 	mjr_render(rect, &scn_closedloop, &con_closedloop);
 
-	// show pause/loading label
-	if (!settings.run || settings.loadrequest)
-		mjr_overlay(mjFONT_BIG, mjGRID_TOPRIGHT, smallrect,
-			settings.loadrequest ? "loading" : "pause", NULL, &con_closedloop);
+	//// show pause/loading label
+	//if (!settings.run || settings.loadrequest)
+	//	mjr_overlay(mjFONT_BIG, mjGRID_TOPRIGHT, smallrect,
+	//		settings.loadrequest ? "loading" : "pause", NULL, &con_closedloop);
 
 	// show info
 	if (settings.info)
@@ -2303,6 +2303,7 @@ void simulate(void)
 						//for (int i = 0; i < m->nq; i++) d->qpos[i] = -PI / 36;
 						//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.2f\n", i, d->qpos[i]);
 						//printf("%f \n", d->qpos[20] - (d->qpos[9]+d->qpos[7] + d->qpos[10]));
+						//for (int i = 0; i < m->nv; i++) d->ctrl[i] = -5;
 						//mj_step(m, d);
 
                         // break on reset

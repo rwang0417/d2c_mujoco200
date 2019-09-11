@@ -224,11 +224,11 @@ int modelSelection(const char* model)
 		modelid = 7;
 		control_timestep = 0.006;
 		simulation_timestep = 0.006;
-		stepnum = 2500;
+		stepnum = 1500;
 		statenum = 16;
 		actuatornum = 22;
-		rolloutnum_train = 100;
-		ctrl_upperlimit = 0;
+		rolloutnum_train = 30;
+		ctrl_upperlimit = 100;
 		ctrl_lowerlimit = -100;
 		mjtNum temp[kMaxState][kMaxState] = { 0 };
 		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], statenum);

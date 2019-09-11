@@ -773,5 +773,10 @@ sysid2d 模型文件名，noise level，rollout数，模型名，线程数，最
 ## 09/06/2019
 ### Log:
 #### 1. latex figure 不加星号才是单列图，加了就会在整页的中间显示。
-#### 2. pre-stress！！！！！
+#### 2. pre-stress加在swimmer上是ok的，效果相比从零开始确实有提高，但还是训练不成功，游一半不往前了。
 #### 3. mujoco加skin！！！
+## 09/08/2019
+### Log:
+#### 1. 个人认为noise大但效果很好的原因一方面是每个string和jointdamping较大，再加上水的阻力，使noise能产生的state deviation减小，再加上timestep小，在有限的时间内即使noise大，state也不会偏太多，刚好还在可控区。
+#### 2. 6啊ppt就可以直接导出视频还能配音，最好用arial和times new roman的字体。
+#### 3. \setlength{\tabcolsep}{1.7mm}{}调table宽度，可以强行变窄。

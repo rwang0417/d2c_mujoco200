@@ -320,7 +320,7 @@ int main(int argc, const char** argv)
 	{
 		for (int i = 0; i < actuatornum * stepnum; i++)
 		{
-			fscanf(filestream3, "%s", data_buff);
+			fscanf(filestream3, "%s", data_buff); 
 			ctrl_init[i] = atof(data_buff);
 		}
 		fclose(filestream3);

@@ -20,7 +20,7 @@ params = {
     'xtick.labelsize': 15,
     'ytick.labelsize': 15,
     'text.usetex': True ,
-    'figure.figsize': [7, 5.5], # instead of 4.5, 4.5
+    'figure.figsize': [5.5, 5], # instead of 4.5, 4.5 now[7,5.5]
     'font.weight': 'bold',
     'axes.labelweight': 'bold',
     'ps.useafm' : True,
@@ -77,7 +77,6 @@ def energy(noisemax1=100,noisemax2=30,step=5):
             for i in range(len(data)):
                 data[i] = np.sqrt(data[i])
                 if data[i] > 10**5:
-                    print(data[i])
                     delval.append(data[i])
             for val in delval:
                 data.remove(val)
@@ -88,13 +87,14 @@ def energy(noisemax1=100,noisemax2=30,step=5):
     csy = np.std(y, axis=1)
     cmz = np.array(anamean)
     csz = np.array(anastd)
-    f5,=plt.plot(x1,cmy[0:int(noisemax1/step+1)],'orange',linewidth=3)
-    f6,=plt.plot(x2,cmz[0:int(noisemax2/step+1)],'seagreen',linewidth=3)
-    plt.fill_between(x1,cmy[0:int(noisemax1/step+1)]+csy[0:int(noisemax1/step+1)],cmy[0:int(noisemax1/step+1)]-csy[0:int(noisemax1/step+1)],alpha=0.5,color='orange')
-    plt.fill_between(x2,cmz[0:int(noisemax2/step+1)]+csz[0:int(noisemax2/step+1)],cmz[0:int(noisemax2/step+1)]-csz[0:int(noisemax2/step+1)],alpha=0.5,color='seagreen')
-    plt.xlabel('Std dev of perturbed noise (Percent of max. control)', fontsize=20)
-    plt.ylabel('Averaged L2 norm of episodic energy', fontsize=20)
-    plt.legend(['D2C closed-loop', 'MBC'])
+    f5,=plt.plot(x1,cmy[0:int(noisemax1/step+1)],'orange',linewidth=2) # D2C
+#    f6,=plt.plot(x2,cmz[0:int(noisemax2/step+1)],'seagreen',linewidth=2) # MBC
+    plt.fill_between(x1,cmy[0:int(noisemax1/step+1)]+csy[0:int(noisemax1/step+1)],cmy[0:int(noisemax1/step+1)]-csy[0:int(noisemax1/step+1)],alpha=0.5,color='orange') # D2C
+#    plt.fill_between(x2,cmz[0:int(noisemax2/step+1)]+csz[0:int(noisemax2/step+1)],cmz[0:int(noisemax2/step+1)]-csz[0:int(noisemax2/step+1)],alpha=0.5,color='seagreen') # MBC
+    plt.xlabel('Std dev of perturbed noise (Percent of max. control)', fontsize=16)
+    plt.ylabel('Averaged L2 norm of episodic energy', fontsize=16)
+#    plt.legend(['D2C closed-loop', 'MBC'],loc='upper left')
+    plt.legend(['D2C closed-loop'],loc='upper left') # change legend accordingly
     plt.tight_layout()
     plt.grid(color='.910', linewidth=1.5)
     
@@ -160,7 +160,7 @@ def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
 def clopcompare():    
     pointnum=21
     testnum=400
-    noisemaxz=30
+    noisemaxz=20
     step=5
     y=np.array(np.loadtxt('clopdata.txt'))
     clerr1=[0 for i in range(int(y.shape[0]/2))]
@@ -192,7 +192,7 @@ def clopcompare():
     
     # plot performance compare data and success rate
     sind=0
-    eind=21
+    eind=5
     perfdata=np.transpose(np.loadtxt('clopbar.txt'))
     f5,=plt.plot(perfdata[4][sind:eind],perfdata[0,sind:eind],'orange', linewidth=3)
     f6,=plt.plot(perfdata[4][sind:eind],perfdata[2,sind:eind],'dodgerblue', linewidth=3)
