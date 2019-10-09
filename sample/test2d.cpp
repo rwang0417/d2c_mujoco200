@@ -15,8 +15,8 @@
 
 //-------------------------------- global -----------------------------------------------
 // constants
-extern const int kMaxStep = 1510;   // max step number for one rollout
-extern const int kMaxState = 40;	// max (state dimension, actuator number)
+extern const int kMaxStep = 3000;   // max step number for one rollout
+extern const int kMaxState = 60;	// max (state dimension, actuator number)
 
 const int kTestNum = 400;	        // number of monte-carlo runs
 const int kMaxGeom = 5000;          // preallocated geom array in mjvScene
@@ -27,7 +27,8 @@ const double refreshfactor = 0.5;   // fraction of refresh available for simulat
 extern int integration_per_step;
 extern int stepnum;
 extern int actuatornum;
-extern int statenum;
+extern int quatnum;
+extern int dof;
 extern int modelid;
 extern mjtNum control_timestep;
 extern mjtNum simulation_timestep;
@@ -1174,7 +1175,6 @@ void loadmodel(void)
 	mj_forward(m, d);
 	mj_forward(m, d_closedloop);
 	mj_forward(m, d_openloop);
-	mju_add(state_nominal[0], state_nominal[0], d->qpos, m->nq);
 
 	// re-create scene and context
 	mjv_makeScene(m, &scn_openloop, kMaxGeom);
@@ -1780,14 +1780,13 @@ void simulateNominal(void)
 {
 	static mjtNum state_error[kMaxState];
 	
-
 	if (step_index_nominal == 0) {
-		modelInit(m, d, state_nominal[0], statenum);
+		modelInit(m, d, state_nominal[0], dof, quatnum);
 	}
 	if (step_index_nominal >= stepnum)
 	{
-		mju_sub(state_error,  state_target, d->qpos, m->nq);
-		mju_sub(&state_error[m->nq], &state_target[m->nq], d->qvel, m->nv);
+		mju_sub(state_error, state_target, d->qpos, dof + quatnum);
+		mju_sub(&state_error[dof + quatnum], &state_target[dof + quatnum], d->qvel, dof);
 		if (modelid == 0) {
 			state_error[0] = -(PI - fabs(d->qpos[0] - PI))*((PI - d->qpos[0] > 0) - (PI - d->qpos[0] < 0));
 		}
@@ -1816,7 +1815,7 @@ bool simulateClosedloop(void)
 	static mjtNum state_error[kMaxState], ctrl_feedback[kMaxState], ctrl_temp[kMaxState];
 
 	if (step_index_closedloop == 0) {
-		modelInit(m, d_closedloop, state_nominal[0], statenum);
+		modelInit(m, d_closedloop, state_nominal[0], dof, quatnum);
 		cost_closedloop = 0;
 		energy = 0;
 	}
@@ -1836,8 +1835,8 @@ bool simulateClosedloop(void)
 		}
 	}
 	else {
-		mju_sub(state_error, state_nominal[step_index_closedloop], d_closedloop->qpos, int(statenum / 2));
-		mju_sub(&state_error[int(statenum / 2)], &state_nominal[step_index_closedloop][int(statenum / 2)], d_closedloop->qvel, int(statenum / 2));
+		mju_sub(state_error, state_nominal[step_index_closedloop], d_closedloop->qpos, dof + quatnum);
+		mju_sub(&state_error[dof + quatnum], &state_nominal[step_index_closedloop][dof + quatnum], d_closedloop->qvel, dof);
 		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index_closedloop], state_error, kMaxState, kMaxState);
 		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
 	}
@@ -1857,7 +1856,7 @@ bool simulateOpenloop(void)
 	static mjtNum state_error[kMaxState];
 
 	if (step_index_openloop == 0) {
-		modelInit(m, d_openloop, state_nominal[0], statenum);
+		modelInit(m, d_openloop, state_nominal[0], dof, quatnum);
 		cost_openloop = 0;
 	}
 	if (step_index_openloop >= stepnum)
@@ -1888,16 +1887,16 @@ mjtNum terminalError(mjtNum ptb, const char *type)
 	mjtNum state_error[kMaxState], ctrl_feedback[kMaxState];
 
 	mj_resetData(m, d_closedloop);
-	mju_copy(d_closedloop->qpos, state_nominal[0], int(statenum / 2));
-	mju_copy(d_closedloop->qvel, &state_nominal[0][int(statenum / 2)], int(statenum / 2));
+	mju_copy(d_closedloop->qpos, state_nominal[0], dof+quatnum);
+	mju_copy(d_closedloop->qvel, &state_nominal[0][dof+quatnum], dof);
 	mj_forward(m, d_closedloop);
 	for (int e = 0; e < stepnum * actuatornum; e++) ctrl_openloop[e] = ctrl_nominal[e] + ptb * ctrl_max * randGauss(0, 1);
 
 	for (int step_index = 0; step_index < stepnum; step_index++) {
 		if (_strcmpi(type, "openloop") == 0) mju_copy(d_closedloop->ctrl, &ctrl_openloop[step_index * actuatornum], m->nu);
 		else {
-			mju_sub(state_error, state_nominal[step_index], d_closedloop->qpos, int(statenum / 2));
-			mju_sub(&state_error[int(statenum / 2)], &state_nominal[step_index][int(statenum / 2)], d_closedloop->qvel, int(statenum / 2));
+			mju_sub(state_error, state_nominal[step_index], d_closedloop->qpos, dof + quatnum);
+			mju_sub(&state_error[dof + quatnum], &state_nominal[step_index][dof + quatnum], d_closedloop->qvel, dof);
 			mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index], state_error, kMaxState, kMaxState);
 			mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index * actuatornum], ctrl_feedback, m->nu);
 		}
@@ -2379,7 +2378,7 @@ void init(void)
 	{
 		for (int i1 = 0; i1 < stepnum; i1++) {
 			for (int i2 = 0; i2 < actuatornum; i2++) {
-				for (int i = 0; i < statenum; i++) {
+				for (int i = 0; i < 2*dof+quatnum; i++) {
 					fscanf(filestream1, "%s", data_buff);
 					tracker_feedback_gain[i1][i2][i] = atof(data_buff);
 				}
@@ -2411,7 +2410,7 @@ void init(void)
 				QT = atof(data_buff);
 			}
 		}
-		for (int i = 0; i < statenum; i++)
+		for (int i = 0; i < 2*dof+quatnum; i++)
 		{
 			QTm[i][i] = 1 * QT;
 			Qm[i][i] = 1 * Q;

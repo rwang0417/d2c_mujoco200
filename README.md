@@ -30,17 +30,18 @@ The details of the D2C algorithm can be found in <https://arxiv.org/abs/1904.083
 Tensegrity
 
 - bin: the output dir for executable files. The .lib and .dll files are also here.
-- data: the workspace for the examples. The models, training parameters and results are saved here. Also, to run the programs in the local folder, the MuJoCo key file, the .dll and .lib files should be put in the same folder here as the executable files. For example, in the folder data\Dbar\
-  - cost0.txt: the 'nominal' cost values during training in thread 0
-  - converge.txt: gradient recorded for convergence checking
-  - dbar.xml: MuJoCo model file
-  - lnr.txt: the result of system identification in the form of [At : Bt]
-  - parameters.txt: cost parameters and training parameters for the open-loop training step. The parameters should be in the order of diag(Q), diag(R), diag(QT), std of Gaussian perturbation and update stepsize
-  - result0.txt: the optimal control sequence from the open-loop training step
-  - TK.txt: the LQR feedback gains
-  - clopdata.txt: data used to compare the D2C open-loop policy and the D2C closed-loop policy by episodic cost
-  - perfcheck.txt: data used to check the terminal distance from the target with the D2C closed-loop policy applied
+- data: the workspace for the examples. The models, training parameters and results are saved here. Also, to run the programs in the local folder, the MuJoCo key file, the .dll and .lib files should be put in the same folder here as the executable files. For example, in the folder data\Dbar\ .
+  - cost0.txt: the 'nominal' cost values during training in thread 0.
+  - converge.txt: gradient recorded for convergence checking.
+  - dbar.xml: MuJoCo model file.
+  - lnr.txt: the result of system identification in the form of [At : Bt].
+  - parameters.txt: cost parameters and training parameters for the open-loop training step. The parameters should be in the order of diag(Q), diag(R), diag(QT), std of Gaussian perturbation and update stepsize.
+  - result0.txt: the optimal control sequence from the open-loop training step.
+  - TK.txt: the LQR feedback gains.
+  - clopdata.txt: data used to compare the D2C open-loop policy and the D2C closed-loop policy by episodic cost.
+  - perfcheck.txt: data used to check the terminal distance from the target with the D2C closed-loop policy applied.
   - energydata.txt: episodic energy data for the D2C closed-loop policy under different noise level. The energy is calculated as the L2-norm of the actuator control sequence.
+  - *.dll: runtime library need for .exe files.
 - doc: the backup MuJoCo key files, diary log file, Visual Studio setup guide(not translated yet), 3D tensegrity model generator and other files.
 - hardware: code and documents for hardware work.
 - include: the include dir for C++ projects. The MuJoCo header files, uitools lib, user lib(funclib.cpp, funclib.h) and other libraries are here.

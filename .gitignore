@@ -35,3 +35,5 @@ MUJOCO_LOG.TXT
 openloop/
 sysid2d/
 test2d/
+sysid3d/
+test3d/

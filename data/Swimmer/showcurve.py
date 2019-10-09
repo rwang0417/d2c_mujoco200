@@ -119,7 +119,7 @@ def clopcompare():
 #    nstart=0
 #    nend=30
     pointnum=21
-    testnum=500
+    testnum=400
     y=np.array(np.loadtxt('clopdata.txt'))
     clerr1=[0 for i in range(int(y.shape[0]/2))]
     operr1=[0 for i in range(int(y.shape[0]/2))]
@@ -136,13 +136,14 @@ def clopcompare():
     sind=0
     eind=13
     perfdata=np.transpose(np.loadtxt('clopbar.txt'))
-    f5,=plt.plot(perfdata[4][sind:eind],perfdata[0][sind:eind],'orange', linewidth=3)
+#    f5,=plt.plot(perfdata[4][sind:eind],perfdata[0][sind:eind],'orange', linewidth=3)
     f6,=plt.plot(perfdata[4][sind:eind],perfdata[2][sind:eind],'dodgerblue', linewidth=3)
-    plt.fill_between(perfdata[4][sind:eind],perfdata[0][sind:eind]-perfdata[1][sind:eind],perfdata[0][sind:eind]+perfdata[1][sind:eind],alpha=0.3,color='orange')
+#    plt.fill_between(perfdata[4][sind:eind],perfdata[0][sind:eind]-perfdata[1][sind:eind],perfdata[0][sind:eind]+perfdata[1][sind:eind],alpha=0.3,color='orange')
     plt.fill_between(perfdata[4][sind:eind],perfdata[2][sind:eind]-perfdata[3][sind:eind],perfdata[2][sind:eind]+perfdata[3][sind:eind],alpha=0.3,color='dodgerblue')
     plt.xlabel('Std dev of perturbed noise(Percent of max. control)', fontsize=20)
     plt.ylabel('Episodic cost', fontsize=20)
-    plt.legend(handles=[f5,f6,],labels=['Closed-loop','Open-loop'],loc='upper left')
+#    plt.legend(handles=[f5,f6,],labels=['Closed-loop','Open-loop'],loc='upper left')
+    plt.legend(handles=[f6,],labels=['Open-loop'],loc='upper left')
     plt.grid(color='.910', linewidth=1.5)
     plt.show()  
     

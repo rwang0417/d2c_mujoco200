@@ -22,7 +22,6 @@
 #include <chrono>
 #include <math.h> 
 #include <time.h>
-#include "Eigen/Geometry"
 #include "Eigen/LU"
 #include <iostream>
 
@@ -36,8 +35,6 @@ const int N1 = 30;
 const mjtNum PI = 3.141592653;
 
 /* Exported functions ------------------------------------------------------- */
-
-mjtNum mjc_costFunction(mjModel* m, mjData* d, mjtNum *ctrl, mjtNum nu, mjtNum *Q, mjtNum R);
 /**
 * @brief  Set the model to initial state
 * @note   none
@@ -48,7 +45,7 @@ mjtNum mjc_costFunction(mjModel* m, mjData* d, mjtNum *ctrl, mjtNum nu, mjtNum *
 * @retval none
 * @author rwang0417@tamu.edu
 */
-void modelInit(mjModel* m, mjData* d, mjtNum* state_init, int len);
+void modelInit(mjModel* m, mjData* d, mjtNum* state_init, int dof, int quatnum);
 
 /**
 * @brief  Generate Gaussian random value

@@ -16,8 +16,8 @@
 
 //-------------------------------- global variables -------------------------------------
 // constants
-extern const int kMaxStep = 1510;   // max step number for one rollout
-extern const int kMaxState = 40;	// max (state dimension, actuator number)
+extern const int kMaxStep = 3000;   // max step number for one rollout
+extern const int kMaxState = 60;	// max (state dimension, actuator number)
 const int kMaxThread = 64;
 const mjtNum kMaxUpdate = 0.1;
 
@@ -26,7 +26,8 @@ extern int rolloutnum_train;
 extern int integration_per_step;
 extern int stepnum;
 extern int actuatornum;
-extern int statenum;
+extern int quatnum;
+extern int dof;
 extern mjtNum control_timestep;
 extern mjtNum simulation_timestep;
 extern mjtNum ctrl_upperlimit;
@@ -35,10 +36,11 @@ extern mjtNum state_nominal[kMaxStep][kMaxState];
 extern mjtNum state_target[kMaxState];
 extern char testmode[30];
 
-
 // user data and other training settings
 mjtNum ctrl_current[kMaxThread][kMaxStep * kMaxState] = { 0 };
 mjtNum ctrl_init[kMaxStep * kMaxState] = { 0 };
+mjtNum gradient[kMaxThread][kMaxStep*kMaxState] = { 0 };
+mjtNum delta_u[kMaxThread][kMaxStep*kMaxState] = { 0 };
 FILE *filestream2, *filestream3;
 static int iteration_index[kMaxThread] = { 0 };
 char data_buff[30];
@@ -95,8 +97,7 @@ void train(int id, int niteration)
     static char str1[30];
     static char costfilename[30];
 	FILE *filestream1;
-	mjtNum gradient[kMaxStep*kMaxState] = { 0 };
-	mjtNum delta_u[kMaxStep*kMaxState] = { 0 };
+
     RowVectorXd nominal_cost(niteration);
 
     srand((unsigned)time(NULL) + id);
@@ -113,7 +114,7 @@ void train(int id, int niteration)
 		{
 			// nominal
 			nominal_cost(iteration_index) = 0;
-			modelInit(m, d[id], state_nominal[0], statenum);
+			modelInit(m, d[id], state_nominal[0], dof, quatnum);
 			for (int step_index = 0; step_index < stepnum; step_index++) {
 				for (int i = 0; i < actuatornum; i++) d[id]->ctrl[i] = ctrl_current[id][step_index * actuatornum + i];
 				nominal_cost(iteration_index) += stepCost(m, d[id], step_index);
@@ -124,12 +125,12 @@ void train(int id, int niteration)
             // calculate gradient and update control
             for (int rollout_index = 0; rollout_index < int(rolloutnum_train); rollout_index++)
             {
-                for (int i = 0; i < stepnum * actuatornum; i++) delta_u[i] = perturb_coefficient_train[id] * randGauss(0, 1);
+                for (int i = 0; i < stepnum * actuatornum; i++) delta_u[id][i] = perturb_coefficient_train[id] * randGauss(0, 1);
                 mjtNum rollout_cost = 0;
                 
-				modelInit(m, d[id], state_nominal[0], statenum);
+				modelInit(m, d[id], state_nominal[0], dof, quatnum);
                 for (int step_index = 0; step_index < stepnum; step_index++) {
-                    for (int i = 0; i < actuatornum; i++) d[id]->ctrl[i] = ctrl_current[id][step_index * actuatornum + i] + delta_u[step_index * actuatornum + i];
+                    for (int i = 0; i < actuatornum; i++) d[id]->ctrl[i] = ctrl_current[id][step_index * actuatornum + i] + delta_u[id][step_index * actuatornum + i];
                     rollout_cost += stepCost(m, d[id], step_index);
                     for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
                 }
@@ -138,10 +139,10 @@ void train(int id, int niteration)
                 // gradient
                 for (int i = 0; i < actuatornum * stepnum; i++)
                 {
-                    gradient[i] = gradient[i] * (1 - 1 / (rollout_index + 1.0)) + (rollout_cost - nominal_cost(iteration_index)) * delta_u[i] / ((rollout_index + 1.0)*perturb_coefficient_train[id]*perturb_coefficient_train[id]);
+                    gradient[id][i] = gradient[id][i] * (1 - 1 / (rollout_index + 1.0)) + (rollout_cost - nominal_cost(iteration_index)) * delta_u[id][i] / ((rollout_index + 1.0)*perturb_coefficient_train[id]*perturb_coefficient_train[id]);
                 }
                 if (id == 0) {
-                    sprintf(str1, "%3.3f", gradient[2]);
+                    sprintf(str1, "%3.3f", gradient[id][2]);
                     fwrite(str1, 5, 1, filestream2);
                     fputs(" ", filestream2);
                 }
@@ -151,10 +152,10 @@ void train(int id, int niteration)
             // update
             for (int i = 0; i < actuatornum * stepnum; i++)
             {
-                if (update_coefficient[id] * gradient[i] > kMaxUpdate) ctrl_current[id][i] -= kMaxUpdate;
-                else if (update_coefficient[id] * gradient[i] < -kMaxUpdate) ctrl_current[id][i] -= -kMaxUpdate;
-				else ctrl_current[id][i] -= update_coefficient[id] * gradient[i];
-                gradient[i] = 0;
+                if (update_coefficient[id] * gradient[id][i] > kMaxUpdate) ctrl_current[id][i] -= kMaxUpdate;
+                else if (update_coefficient[id] * gradient[id][i] < -kMaxUpdate) ctrl_current[id][i] -= -kMaxUpdate;
+				else ctrl_current[id][i] -= update_coefficient[id] * gradient[id][i];
+                gradient[id][i] = 0;
             }
 			ctrlLimit(ctrl_current[id], actuatornum * stepnum);
             
@@ -265,7 +266,7 @@ int main(int argc, const char** argv)
             mju_copy(d[id]->act,  m->key_act  + testkey*m->na, m->na);
         }
     }
-	mju_add(state_nominal[0], state_nominal[0], d[0]->qpos, m->nq); // get initial position from key pos
+	//mju_add(state_nominal[0], state_nominal[0], d[0]->qpos, m->nq); // get initial position from key pos
 	
 	// save gradient value to file for convergence checking
 	strcpy(datafilename, "converge.txt");
@@ -304,7 +305,7 @@ int main(int argc, const char** argv)
 				update_coefficient_init = atof(data_buff);
 			}
 		}
-		for (int i = 0; i < statenum; i++)
+		for (int i = 0; i < 2*dof+quatnum; i++)
 		{
 			QTm[i][i] = 1 * QT;
 			Qm[i][i] = 1 * Q;
@@ -341,9 +342,8 @@ int main(int argc, const char** argv)
     // run simulation, record total time
     thread th[kMaxThread];
     double starttime = gettm();
-	for (int id = 0; id < nthread; id++) {
+	for (int id = 0; id < nthread; id++)
 		th[id] = thread(train, id, niteration);
-	}
 	for (int id = 0; id < nthread; id++)
 		th[id].join();
     double tottime = gettm() - starttime;

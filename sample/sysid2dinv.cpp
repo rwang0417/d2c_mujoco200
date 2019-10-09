@@ -13,8 +13,8 @@
 
 //-------------------------------- global variables -------------------------------------
 // constants
-extern const int kMaxStep = 1510;   // max step number for one rollout
-extern const int kMaxState = 40;	// max (state dimension, actuator number)
+extern const int kMaxStep = 3000;   // max step number for one rollout
+extern const int kMaxState = 60;	// max (state dimension, actuator number)
 const int kTestNum = 100;	        // number of monte-carlo runs
 const int kMaxThread = 8;           // max thread number
 
@@ -22,7 +22,8 @@ const int kMaxThread = 8;           // max thread number
 extern int integration_per_step;
 extern int stepnum;
 extern int actuatornum;
-extern int statenum;
+extern int quatnum;
+extern int dof;		   
 extern int modelid;
 extern mjtNum control_timestep;
 extern mjtNum simulation_timestep;
@@ -32,6 +33,9 @@ extern char testmode[30];
 
 // user data and other training settings
 mjtNum matAB_check[kMaxStep][kMaxState][kMaxState + kMaxState] = { 0 };
+mjtNum dx_estimate[kMaxStep][kMaxState] = { 0 };
+mjtNum dx_input[kMaxStep][kMaxState + kMaxState] = { 0 };
+mjtNum dx_simulate[kMaxStep][kMaxState] = { 0 };											
 mjtNum ctrl_max = 0;
 mjtNum sysiderr = 0;
 mjtNum perturb_coefficient_sysid;
@@ -80,14 +84,10 @@ int finish(const char* msg = NULL, mjModel* m = NULL)
 // check the accuracy of the identified system
 void sysidCheck(mjModel* m, mjData* d)
 {
-	mjtNum dx_estimate[kMaxStep][kMaxState] = { 0 };
-	mjtNum dx_input[kMaxStep][kMaxState + kMaxState] = { 0 };
-	mjtNum dx_simulate[kMaxStep][kMaxState] = { 0 };
-
 	for (int t = 0; t < kTestNum; t++)
 	{
 		// generate perturbation
-		for (int i = 0; i < statenum + actuatornum; i++)
+		for (int i = 0; i < 2*dof + quatnum + actuatornum; i++)
 		{
 			for (int m = 0; m < stepnum; m++) dx_input[m][i] = 0.01 * ctrl_max * randGauss(0, 1);
 		}
@@ -97,9 +97,9 @@ void sysidCheck(mjModel* m, mjData* d)
 		// result from the real system
 		for (int step_index = 0; step_index < stepnum; step_index++)
 		{
-			mju_add(d->qpos, dx_input[step_index], state_nominal[step_index], int(statenum/2));
-			mju_add(d->qvel, &dx_input[step_index][int(statenum / 2)], &state_nominal[step_index][int(statenum / 2)], int(statenum / 2));
-			mju_add(d->ctrl, &dx_input[step_index][statenum], &ctrl_nominal[step_index * actuatornum], m->nu);
+			mju_add(d->qpos, dx_input[step_index], state_nominal[step_index], dof + quatnum);
+			mju_add(d->qvel, &dx_input[step_index][dof + quatnum], &state_nominal[step_index][dof + quatnum], dof);
+			mju_add(d->ctrl, &dx_input[step_index][2*dof + quatnum], &ctrl_nominal[step_index * actuatornum], m->nu);
 
 			// set values for dependent states
 			if (modelid == 4) {
@@ -141,10 +141,10 @@ void sysidCheck(mjModel* m, mjData* d)
 
 			for (int k = 0; k < integration_per_step; k++) mj_step(m, d);
 
-			mju_sub(dx_simulate[step_index], d->qpos, state_nominal[step_index + 1], int(statenum / 2));
-			mju_sub(&dx_simulate[step_index][int(statenum / 2)], d->qvel, &state_nominal[step_index + 1][int(statenum / 2)], int(statenum / 2));
+			mju_sub(dx_simulate[step_index], d->qpos, state_nominal[step_index + 1], dof + quatnum);
+			mju_sub(&dx_simulate[step_index][dof + quatnum], d->qvel, &state_nominal[step_index + 1][dof + quatnum], dof);
 		}
-		for (int y = 0; y < statenum; y++)
+		for (int y = 0; y < 2*dof + quatnum; y++)
 		{
 			for (int h = 0; h < stepnum; h++)
 			{
@@ -152,15 +152,15 @@ void sysidCheck(mjModel* m, mjData* d)
 			}
 		}
 	}
-	sysiderr = sysiderr / (1.0*kTestNum*stepnum*statenum);
+	sysiderr = sysiderr / (1.0*kTestNum*stepnum*(2*dof + quatnum));
 }
 
 // thread function
 void sysid(int id, int nroll, int nthd)
 {
-	MatrixXd delta_x1(nroll, statenum + actuatornum);
-	MatrixXd delta_x2(statenum, nroll);
-	MatrixXd matAB(statenum, statenum + actuatornum);
+	MatrixXd delta_x1(nroll, 2*dof + quatnum + actuatornum);
+	MatrixXd delta_x2(2*dof + quatnum, nroll);
+	MatrixXd matAB(2*dof + quatnum, 2*dof + quatnum + actuatornum);				 
 	mjtNum printfraction = 0.2;
 
 	// clear statistics
@@ -174,12 +174,12 @@ void sysid(int id, int nroll, int nthd)
 	{
 		for (int rollout_index = 0; rollout_index < nroll; rollout_index++)
 		{
-			for (int y = 0; y < statenum + actuatornum; y++) delta_x1(rollout_index, y) = perturb_coefficient_sysid * ctrl_max * randGauss(0, 1);
+			for (int y = 0; y < 2*dof + quatnum + actuatornum; y++) delta_x1(rollout_index, y) = perturb_coefficient_sysid * ctrl_max * randGauss(0, 1);
 
 			// plus
-			for (int y = 0; y < int(statenum / 2); y++) d[id]->qpos[y] = state_nominal[step_index][y] + delta_x1(rollout_index, y);
-			for (int y = 0; y < int(statenum / 2); y++) d[id]->qvel[y] = state_nominal[step_index][y + int(statenum / 2)] + delta_x1(rollout_index, y + int(statenum / 2));
-			for (int y = 0; y < actuatornum; y++) d[id]->ctrl[y] = ctrl_nominal[step_index * actuatornum + y] + delta_x1(rollout_index, statenum + y);
+			for (int y = 0; y < dof + quatnum; y++) d[id]->qpos[y] = state_nominal[step_index][y] + delta_x1(rollout_index, y);
+			for (int y = 0; y < dof; y++) d[id]->qvel[y] = state_nominal[step_index][y + dof + quatnum] + delta_x1(rollout_index, y + dof + quatnum);
+			for (int y = 0; y < actuatornum; y++) d[id]->ctrl[y] = ctrl_nominal[step_index * actuatornum + y] + delta_x1(rollout_index, 2*dof + quatnum + y);
 
 			// set values for dependent states
 			if (modelid == 4) {
@@ -188,7 +188,7 @@ void sysid(int id, int nroll, int nthd)
 				d[id]->qvel[2] = -d[id]->qvel[1];
 				d[id]->qvel[3] = d[id]->qvel[1];
 			}
-			if (modelid == 8) {
+			else if (modelid == 8) {
 				d[id]->qpos[6] = d[id]->qpos[0] + d[id]->qpos[1];
 				d[id]->qpos[7] = -d[id]->qpos[1];
 				d[id]->qpos[8] = d[id]->qpos[1] + d[id]->qpos[3] + d[id]->qpos[4];
@@ -199,7 +199,7 @@ void sysid(int id, int nroll, int nthd)
 				d[id]->qvel[8] = d[id]->qvel[1] + d[id]->qvel[3] + d[id]->qvel[4];
 				d[id]->qvel[9] = -d[id]->qvel[4];
 			}
-			if (modelid == 9) {
+			else if (modelid == 9) {
 				d[id]->qpos[14] = d[id]->qpos[0] + d[id]->qpos[1];
 				d[id]->qpos[15] = -d[id]->qpos[1];
 				d[id]->qpos[16] = d[id]->qpos[1] + d[id]->qpos[3] + d[id]->qpos[4];
@@ -221,13 +221,13 @@ void sysid(int id, int nroll, int nthd)
 
 			for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
 
-			for (int y = 0; y < int(statenum / 2); y++) delta_x2(y, rollout_index) = d[id]->qpos[y];
-			for (int y = 0; y < int(statenum / 2); y++) delta_x2(y + int(statenum / 2), rollout_index) = d[id]->qvel[y];
+			for (int y = 0; y < dof + quatnum; y++) delta_x2(y, rollout_index) = d[id]->qpos[y];
+			for (int y = 0; y < dof; y++) delta_x2(y + dof + quatnum, rollout_index) = d[id]->qvel[y];
 
 			// minus
-			for (int y = 0; y < int(statenum / 2); y++) d[id]->qpos[y] = state_nominal[step_index][y] - delta_x1(rollout_index, y);
-			for (int y = 0; y < int(statenum / 2); y++) d[id]->qvel[y] = state_nominal[step_index][y + int(statenum / 2)] - delta_x1(rollout_index, y + int(statenum / 2));
-			for (int y = 0; y < actuatornum; y++) d[id]->ctrl[y] = ctrl_nominal[step_index * actuatornum + y] - delta_x1(rollout_index, statenum + y);
+			for (int y = 0; y < dof + quatnum; y++) d[id]->qpos[y] = state_nominal[step_index][y] - delta_x1(rollout_index, y);
+			for (int y = 0; y < dof; y++) d[id]->qvel[y] = state_nominal[step_index][y + dof + quatnum] - delta_x1(rollout_index, y + dof + quatnum);
+			for (int y = 0; y < actuatornum; y++) d[id]->ctrl[y] = ctrl_nominal[step_index * actuatornum + y] - delta_x1(rollout_index, 2*dof + quatnum + y);
 
 			if (modelid == 4) {
 				d[id]->qpos[2] = -d[id]->qpos[1];
@@ -235,7 +235,7 @@ void sysid(int id, int nroll, int nthd)
 				d[id]->qvel[2] = -d[id]->qvel[1];
 				d[id]->qvel[3] = d[id]->qvel[1];
 			}
-			if (modelid == 8) {
+			else if (modelid == 8) {
 				d[id]->qpos[6] = d[id]->qpos[0] + d[id]->qpos[1];
 				d[id]->qpos[7] = -d[id]->qpos[1];
 				d[id]->qpos[8] = d[id]->qpos[1] + d[id]->qpos[3] + d[id]->qpos[4];
@@ -246,7 +246,7 @@ void sysid(int id, int nroll, int nthd)
 				d[id]->qvel[8] = d[id]->qvel[1] + d[id]->qvel[3] + d[id]->qvel[4];
 				d[id]->qvel[9] = -d[id]->qvel[4];
 			}
-			if (modelid == 9) {
+			else if (modelid == 9) {
 				d[id]->qpos[14] = d[id]->qpos[0] + d[id]->qpos[1];
 				d[id]->qpos[15] = -d[id]->qpos[1];
 				d[id]->qpos[16] = d[id]->qpos[1] + d[id]->qpos[3] + d[id]->qpos[4];
@@ -268,11 +268,11 @@ void sysid(int id, int nroll, int nthd)
 
 			for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
 
-			for (int y = 0; y < int(statenum / 2); y++) delta_x2(y, rollout_index) -= d[id]->qpos[y];
-			for (int y = 0; y < int(statenum / 2); y++) delta_x2(y + int(statenum / 2), rollout_index) -= d[id]->qvel[y];
+			for (int y = 0; y < dof + quatnum; y++) delta_x2(y, rollout_index) -= d[id]->qpos[y];
+			for (int y = 0; y < dof; y++) delta_x2(y + dof + quatnum, rollout_index) -= d[id]->qvel[y];
 		}
 		matAB = (delta_x2*delta_x1*((delta_x1.transpose()*delta_x1).inverse())) / 2;
-		for (int h = 0; h < statenum; h++) for (int d = 0; d < statenum + actuatornum; d++) matAB_check[step_index][h][d] = matAB(h, d);
+		for (int h = 0; h < 2*dof + quatnum; h++) for (int d = 0; d < 2*dof + quatnum + actuatornum; d++) matAB_check[step_index][h][d] = matAB(h, d);
 
 		// print '.' every printfraction of nrollout for thread 0
 		if (id == 0 && step_index >= stepnum / nthd * printfraction)
@@ -400,7 +400,7 @@ int main(int argc, const char** argv)
 	for (int id = 0; id < nthread; id++)
 		th[id].join();
     double tottime = gettm() - starttime;
-	//sysidCheck(m, d[0]);
+	sysidCheck(m, d[0]);
 
     // all-thread summary
     if( nthread>1 )
@@ -443,9 +443,9 @@ int main(int argc, const char** argv)
 	{
 		for (int i = 0; i < stepnum; i++)
 		{
-			for (int h = 0; h < statenum; h++)
+			for (int h = 0; h < 2*dof + quatnum; h++)
 			{
-				for (int d = 0; d < statenum + actuatornum; d++)
+				for (int d = 0; d < 2*dof + quatnum + actuatornum; d++)
 				{
 					sprintf(data_buff, "%4.8f", matAB_check[i][h][d]);
 					fwrite(data_buff, 10, 1, filestream3);

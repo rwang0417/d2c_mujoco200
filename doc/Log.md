@@ -633,7 +633,7 @@ test2d dbarmotor.xml dbar modeltest 0.5
 ## 07/07/2019
 ### Log:
 #### 1. 外部变量在main里写extern声明但不定义（初始化），在lib.cpp里不加extern再声明一遍，可以初始化。如果是用来声明数组的size的常量需要在两个文件都初始化，但只有main里的会起作用。
-#### 2. 凉了555maxstep不能设大，否则training不能跑，直接在train前面退出了。。。感觉是d[64]这个太坑了，每个d都是一个大的数据结构，64个就很多，所以如果需要改就把64改小吧。
+#### 2. 凉了555maxstep不能设大，否则training不能跑，直接在train前面退出了。。。感觉是d[64]这个太坑了，每个d都是一个大的数据结构，64个就很多，所以如果需要改就把64改小吧。并不是这个问题。。。。。其实是大数组不能在函数里面定义，必须定义成全局。
 #### 3. openloop cheetah.xml 100， 100是迭代数也就是gradient更新的次数，如果文件名不是模型名，后面需要加模型名，后面还可以加thread数，不加默认1个thread，现在多个thread就更之前开多个cmd窗口一起运行check reproducibility一样，再后面是profile开关。
 #### 4. sysid2d pendulum.xml 100
 100是迭代数，后面还可以加thread数，不加默认1个thread，多线程这里的iteration是总数，每个rollout互相之间是并行。
@@ -780,3 +780,27 @@ sysid2d 模型文件名，noise level，rollout数，模型名，线程数，最
 #### 1. 个人认为noise大但效果很好的原因一方面是每个string和jointdamping较大，再加上水的阻力，使noise能产生的state deviation减小，再加上timestep小，在有限的时间内即使noise大，state也不会偏太多，刚好还在可控区。
 #### 2. 6啊ppt就可以直接导出视频还能配音，最好用arial和times new roman的字体。
 #### 3. \setlength{\tabcolsep}{1.7mm}{}调table宽度，可以强行变窄。
+## 09/20/2019
+### Log:
+#### 1. 不能用单位三维向量表示姿态，因为以它自己为轴的旋转无法表示。
+## 09/23/2019
+### Log:
+#### 1. 给quaternion加小扰动然后normalize，旋转是smooth连续的。
+#### 2. 先加噪声到nominal的quaternions上，然后做normalization，再用结果减去nominal，就得到了实际加的dx，把这个dx加到nominal的quaternions上赋值给qpos做integration，计算也用这个dx。暂时ok，需要测试。
+#### 3. maxstep大了不能运行的原因是大数组不能定义在函数里面，必须在外面定义成全局变量。
+## 09/24/2019
+### Log:
+#### 1. 接上条，sysid3dcheck的误差大约最好的是2.85左右，很大，在小范围调节扰动的方差或quaternions扰动的方差影响不大，把整体扰动或quaternions扰动方差调的很大算出来误差会变得特别大。
+#### 2. 现在fish在noise小于7%可以work，openloop差的比较远，效果很明显，可能是max control比较大所以只能承受小点的percentage。
+#### 3. 给quaternions赋值会自己变的问题是因为loadmodel的时候写了一个state_nominal+=d->qpos，本来是想在设置了初始state key的时候把设置的初始值变成相对的而不是覆盖，结果导致这个错误，在openloop和test里有，现在都注释了。
+#### 4. 不知道到底是不是work了，把quaternions的feedback设成0，结果只变坏一点点，把其他的feedback设成0，结果变坏很多。。。看来还是不行。
+## 09/26/2019
+### Log:
+#### 1. 同样setup，模拟相同step数，RK4比Euler要慢大约2.5倍。
+#### 2. 同样setup，RK4能在20% noise下work，Euler大约8%。
+## 10/04/2019
+### Log:
+#### 1. 无噪声mbc能量最小大约是d2c的4倍，继续减小damping ratio和natural frequency就不能reach target了。
+## 10/09/2019
+### Log:
+#### 1. 之前3d的sysid有问题，不能用加减相同扰动的方法。改掉之后full feedback不如完全没有quaternions，如果去掉第三个quat，效果会比较好。但是sysidcheck去掉它error会变大10%。

@@ -1,0 +1,269 @@
+<mujoco model="Tensegrity_6bar (v2.1)">
+	<compiler angle="degree" coordinate="global" inertiafromgeom="true"/>
+
+	<option timestep="0.01" iterations="50" integrator="RK4" solver="PGS"  >
+		<flag passive="disable" />
+	</option>
+
+	<default>
+		<joint armature="1" damping="1"/>
+    <geom conaffinity="1" condim="4" contype="1" material="geom" margin="0.001" rgba="0. 0.5 0.99 1"/>
+		<site type="sphere" size="0.005"/>
+    <tendon limited="true" range="0.1 0.8" width="0.005" rgba="0.99 0. 0. 1"  stiffness="1" damping="0.5"/>
+		<general gear="10000" biastype="affine" biasprm="0 0 0" dyntype="filter" dynprm="5 0 0" gainprm="1 0 0" ctrllimited="true" ctrlrange="-2. 0." />
+	</default>
+
+	<asset>
+			<texture builtin="gradient" height="100" rgb1=".4 .5 .6" rgb2="0 0 0" type="skybox" width="100"/>
+			<!-- <texture builtin="gradient" height="100" rgb1="1 1 1" rgb2="0 0 0" type="skybox" width="100"/>-->
+			<texture builtin="flat" height="1278" mark="cross" markrgb="1 1 1" name="texgeom" random="0.01" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" type="cube" width="127"/>
+			<texture builtin="checker" height="100" name="texplane" rgb1="0 0 0" rgb2="0.8 0.8 0.8" type="2d" width="100"/>
+			<material name="MatPlane" reflectance="0.5" shininess="1" specular="1" texrepeat="60 60" texture="texplane"/>
+			<material name="geom" texture="texgeom" texuniform="true"/>
+	</asset>
+
+	<worldbody>
+
+		<light cutoff="100" diffuse="1 1 1" dir="-0 0 -1.3" directional="true" exponent="1" pos="0 0 1.3" specular=".1 .1 .1"/>
+    <geom condim="3" friction="1 1 1" material="MatPlane" name="floor" pos="0 0 0" rgba="0.8 0.9 0.8 1" size="20 20 0.125" type="plane"/>
+
+		<!-- ======= RODS ======= -->
+
+		<body name="rod0_1" pos="0 0 0">
+      <geom name="r01"  fromto="0.554168  0.181788  0.638605 -0.191882  -0.227347  0.0405941"  density="1000" type="cylinder" size="0.014" />
+      <joint name="move0_1" type="free"/>
+			<body name="rod0_1_child1">
+				<geom name="r01_child1" pos="0.554168  0.181788  0.638605" density="5000" mass="5" type="sphere"  size="0.03" friction="10 0.005 0.0001"/>
+				<site name="s0" pos="0.554168  0.181788  0.638605"/>
+				<joint type="ball" pos="0.554168  0.181788  0.638605"/>
+			</body>
+			<body name="rod0_1_child2">
+				<geom name="r01_child2" pos="-0.191882  -0.227347  0.0405941" density="5000" mass="5" type="sphere"  size="0.03" friction="10 0.005 0.0001"/>
+				<site name="s1" pos="-0.191882  -0.227347  0.0405941" />
+				<joint type="ball" pos="-0.191882  -0.227347  0.0405941"/>
+			</body>
+		</body>
+
+    <body name="rod2_3" pos="0 0 0">
+        <geom name="r23"  fromto="-0.186509 -0.448923  0.63765 -0.186517  0.409422 0.050415" density="1000" type="cylinder"  size="0.014"/>
+        <joint name="move2_3" type="free"/>
+				<body name="rod2_3_child1">
+					<geom name="r23_child1" pos="-0.186509 -0.448923  0.63765" density="5000" mass="5" type="sphere"  size="0.03" friction="10 0.005 0.0001"/>
+        	<site name="s2" pos="-0.186509 -0.448923  0.63765"/>
+					<joint type="ball" pos="-0.186509 -0.448923  0.63765"/>
+				</body>
+				<body name="rod2_3_child2">
+					<geom name="r23_child2" pos="-0.186517  0.409422  0.050415" density="5000" mass="5" type="sphere"  size="0.03" friction="10 0.005 0.0001"/>
+					<site name="s3" pos="-0.186517  0.409422  0.050415" />
+					<joint type="ball" pos="-0.186517  0.409422  0.050415"/>
+				</body>
+    </body>
+
+    <body name="rod4_5" pos="0 0 0">
+        <geom name="r45"  fromto="0.362289 -0.342679   0.332473 -0.362286   0.0785728  0.938215"  density="1000" type="cylinder" size="0.014"/>
+        <joint name="move4_5" type="free"/>
+				<body name="rod4_5_child1">
+					<geom name="r45_child1" pos="0.362289 -0.342679  0.332473" density="5000" mass="5" type="sphere"  size="0.03" friction="10 0.005 0.0001"/>
+					<site name="s4" pos="0.362289 -0.342679  0.332473"/>
+					<joint type="ball" pos="0.362289 -0.342679  0.332473"/>
+				</body>
+				<body name="rod4_5_child2">
+					<geom name="r45_child2" pos="-0.362286   0.0785728  0.938215" density="5000" mass="5" type="sphere"  size="0.03" friction="10 0.005 0.0001"/>
+					<site name="s5" pos="-0.362286   0.0785728  0.938215"/>
+					<joint type="ball" pos="-0.362286   0.0785728  0.938215"/>
+				</body>
+    </body>
+
+    <body name="rod6_7" pos="0 0 0" >
+        <geom name="r67"  fromto="-0.55417   -0.0167216  0.348465 0.191881  0.392414  0.936476" density="1000" type="cylinder"  size="0.014"/>
+        <joint name="move6_7" type="free" />
+				<body name="rod6_7_child1">
+					<geom name="r67_child1" pos="-0.55417   -0.0167216  0.348465" density="5000" mass="5" type="sphere"  size="0.03" friction="10 0.005 0.0001"/>
+					<site name="s6" pos="-0.55417   -0.0167216  0.348465"/>
+					<joint type="ball" pos="-0.55417   -0.0167216  0.348465"/>
+				</body>
+				<body name="rod6_7_child2">
+					<geom name="r67_child2" pos="0.191881  0.392414  0.936476" density="5000" mass="5" type="sphere"  size="0.03" friction="10 0.005 0.0001"/>
+					<site name="s7" pos="0.191881  0.392414  0.936476"/>
+					<joint type="ball" pos="0.191881  0.392414  0.936476"/>
+				</body>
+    </body>
+
+    <body name="rod8_9" pos="0 0 0" >
+        <geom name="r89"  fromto="0.186516 -0.244355  0.936655 0.186508  0.613989  0.349421" density="1000" type="cylinder"  size="0.014"/>
+        <joint name="move8_9" type="free"/>
+				<body name="rod8_9_child1">
+					<geom name="r89_child1" pos="0.186516 -0.244355  0.936655" density="5000" mass="5" type="sphere"  size="0.03" friction="10 0.005 0.0001"/>
+					<site name="s8" pos="0.186516 -0.244355  0.936655"/>
+					<joint type="ball" pos="0.186516 -0.244355  0.936655"/>
+				</body>
+				<body name="rod8_9_child2">
+					<geom name="r89_child2" pos="0.186508  0.613989  0.349421" density="5000" mass="5" type="sphere"  size="0.03" friction="10 0.005 0.0001"/>
+					<site name="s9" pos="0.186508  0.613989  0.349421"/>
+					<joint type="ball" pos="0.186508  0.613989  0.349421"/>
+				</body>
+    </body>
+
+    <body name="rod10_11" pos="0 0 0" >
+        <geom name="r1011"  fromto="0.362285    0.0864934   0.03885547 -0.36229   0.507745   0.654597"  density="1000" type="cylinder"  size="0.014"/>
+        <joint name="move10_11" type="free"/>
+				<body name="rod10_11_child1">
+					<geom name="r1011_child1" pos="0.362285    0.0864934   0.03885547" density="5000" mass="5" type="sphere"  size="0.03" friction="10 0.005 0.0001"/>
+					<site name="s10" pos="0.362285    0.0864934   0.03885547"/>
+					<joint type="ball" pos="0.362285    0.0864934   0.03885547"/>
+				</body>
+				<body name="rod10_11_child2">
+					<geom name="r1011_child2" pos="-0.36229   0.507745   0.654597" density="5000" mass="5" type="sphere"  size="0.03" friction="10 0.005 0.0001"/>
+					<site name="s11" pos="-0.36229   0.507745   0.654597"/>
+					<joint type="ball" pos="-0.36229   0.507745   0.654597"/>
+				</body>
+    </body>
+
+	</worldbody>
+
+	<!-- <contact>
+		<exclude body1="rod0_1" body2="rod0_1_child1"/>
+		<exclude body1="rod0_1" body2="rod0_1_child2"/>
+		<exclude body1="rod2_3" body2="rod2_3_child1"/>
+		<exclude body1="rod2_3" body2="rod2_3_child2"/>
+		<exclude body1="rod4_5" body2="rod4_5_child1"/>
+		<exclude body1="rod4_5" body2="rod4_5_child2"/>
+		<exclude body1="rod6_7" body2="rod6_7_child1"/>
+		<exclude body1="rod6_7" body2="rod6_7_child2"/>
+		<exclude body1="rod8_9" body2="rod8_9_child1"/>
+		<exclude body1="rod8_9" body2="rod8_9_child2"/>
+		<exclude body1="rod10_11" body2="rod10_11_child1"/>
+		<exclude body1="rod10_11" body2="rod10_11_child2"/>
+	</contact> -->
+    <!-- TENDONS -->
+
+	<tendon>
+        <spatial name="td_0">
+            <site site="s0"/>
+            <site site="s10"/>
+        </spatial>
+        <spatial  name="td_1">
+            <site site="s1"/>
+            <site site="s4"/>
+        </spatial>
+        <spatial  name="td_2">
+            <site site="s2"/>
+            <site site="s6"/>
+        </spatial>
+        <spatial  name="td_3">
+            <site site="s3"/>
+            <site site="s1"/>
+        </spatial>
+        <spatial  name="td_4">
+            <site site="s4"/>
+            <site site="s8"/>
+        </spatial>
+        <spatial  name="td_5">
+            <site site="s5"/>
+            <site site="s2"/>
+        </spatial>
+        <spatial  name="td_6">
+            <site site="s6"/>
+            <site site="s5"/>
+        </spatial>
+        <spatial  name="td_7">
+            <site site="s7"/>
+            <site site="s11"/>
+        </spatial>
+        <spatial  name="td_8">
+            <site site="s8"/>
+            <site site="s7"/>
+        </spatial>
+        <spatial  name="td_9">
+            <site site="s9"/>
+            <site site="s0"/>
+        </spatial>
+        <spatial  name="td_10">
+            <site site="s10"/>
+            <site site="s9"/>
+        </spatial>
+        <spatial  name="td_11">
+            <site site="s11"/>
+            <site site="s3"/>
+        </spatial>
+        <spatial  name="td_12" rgba="0 .5 .3 1" range="0.1 0.6">
+            <site site="s0"/>
+            <site site="s8"/>
+        </spatial>
+        <spatial  name="td_13" rgba="0 .5 .3 1" range="0.1 0.6">
+            <site site="s0"/>
+            <site site="s4"/>
+        </spatial>
+        <spatial  name="td_14" rgba="0 .5 .3 1" range="0.1 0.6">
+            <site site="s10"/>
+            <site site="s1"/>
+        </spatial>
+        <spatial  name="td_15" rgba="0 .5 .3 1" range="0.1 0.6">
+            <site site="s10"/>
+            <site site="s3"/>
+        </spatial>
+        <spatial  name="td_16" rgba="0 .5 .3 1" range="0.1 0.6">
+            <site site="s9"/>
+            <site site="s11"/>
+        </spatial>
+        <spatial  name="td_17" rgba="0 .5 .3 1" range="0.1 0.6">
+            <site site="s9"/>
+            <site site="s7"/>
+        </spatial>
+        <spatial  name="td_18" rgba="0 .5 .3 1" range="0.1 0.6" >
+            <site site="s2"/>
+            <site site="s4"/>
+        </spatial>
+        <spatial  name="td_19" rgba="0 .5 .3 1" range="0.1 0.6">
+            <site site="s2"/>
+            <site site="s1"/>
+        </spatial>
+        <spatial  name="td_20" rgba="0 .5 .3 1" range="0.1 0.6">
+            <site site="s6"/>
+            <site site="s3"/>
+        </spatial>
+        <spatial  name="td_21" rgba="0 .5 .3 1" range="0.1 0.6">
+            <site site="s6"/>
+            <site site="s11"/>
+        </spatial>
+        <spatial  name="td_22" rgba="0 .5 .3 1" range="0.1 0.6">
+            <site site="s5"/>
+            <site site="s7"/>
+        </spatial>
+        <spatial  name="td_23" rgba="0 .5 .3 1" range="0.1 0.6">
+            <site site="s5"/>
+            <site site="s8"/>
+
+        </spatial>
+	</tendon>
+
+    <!-- ACTUATION -->
+
+    <actuator>
+
+			<general name="motor_td_0" tendon="td_0" />
+			<general name="motor_td_1" tendon="td_1" />
+			<general name="motor_td_2" tendon="td_2" />
+			<general name="motor_td_3" tendon="td_3" />
+			<general name="motor_td_4" tendon="td_4" />
+			<general name="motor_td_5" tendon="td_5" />
+      <general name="motor_td_6" tendon="td_6"/>
+      <general name="motor_td_7" tendon="td_7"/>
+      <general name="motor_td_8" tendon="td_8"/>
+      <general name="motor_td_9" tendon="td_9"/>
+      <general name="motor_td_10" tendon="td_10"/>
+      <general name="motor_td_11" tendon="td_11"/>
+        <!-- <general tendon="td_12"/>
+        <general tendon="td_13"/>
+        <general tendon="td_14"/>
+        <general tendon="td_15"/>
+        <general tendon="td_16"/>
+        <general tendon="td_17"/>
+        <general tendon="td_18"/>
+        <general tendon="td_19"/>
+        <general tendon="td_20"/>
+        <general tendon="td_21"/>
+        <general tendon="td_22"/>
+        <general tendon="td_23"/> -->
+	</actuator>
+</mujoco>
