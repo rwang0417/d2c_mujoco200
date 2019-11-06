@@ -1804,7 +1804,7 @@ void simulateNominal(void)
 		}
 	}
 	else mju_copy(d->ctrl, &ctrl_nominal[step_index_nominal * actuatornum], m->nu);
-	ctrlLimit(d->ctrl, m->nu);
+	ctrlLimit(d->ctrl, m->nu);//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.8f\n", i, d->qpos[i]);
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d);
 	step_index_nominal++;
 }
@@ -1836,7 +1836,7 @@ bool simulateClosedloop(void)
 	}
 	else {
 		mju_sub(state_error, state_nominal[step_index_closedloop], d_closedloop->qpos, dof + quatnum);
-		mju_sub(&state_error[dof + quatnum], &state_nominal[step_index_closedloop][dof + quatnum], d_closedloop->qvel, dof);// for (int i = 6; i < 7; i++) state_error[i] = 0;
+		mju_sub(&state_error[dof + quatnum], &state_nominal[step_index_closedloop][dof + quatnum], d_closedloop->qvel, dof); for (int i = 0; i < 4; i++) state_error[i] = 0;
 		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index_closedloop], state_error, kMaxState, kMaxState);
 		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
 	}
@@ -1844,7 +1844,7 @@ bool simulateClosedloop(void)
 	mju_add(ctrl_temp, &ctrl_nominal[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
 	ctrlLimit(ctrl_temp, m->nu);
 	energy += mju_dot(ctrl_temp, ctrl_temp, m->nu);
-	cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
+	cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop); //printf("%f, ", d_closedloop->efc_force[3]);
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
 	step_index_closedloop++;
 	return 0;
@@ -1921,6 +1921,12 @@ mjtNum terminalError(mjtNum ptb, const char *type)
 		return sqrt((d_closedloop->site_xpos[75] - d_closedloop->site_xpos[9]) * (d_closedloop->site_xpos[75] - d_closedloop->site_xpos[9]) + (d_closedloop->site_xpos[77] - d_closedloop->site_xpos[11]) * (d_closedloop->site_xpos[77] - d_closedloop->site_xpos[11]));
 	else if (modelid == 10)
 		return sqrt((d_closedloop->geom_xpos[11] - d_closedloop->geom_xpos[5]) * (d_closedloop->geom_xpos[11] - d_closedloop->geom_xpos[5]) + (d_closedloop->geom_xpos[10] - d_closedloop->geom_xpos[4]) * (d_closedloop->geom_xpos[10] - d_closedloop->geom_xpos[4]) + (d_closedloop->geom_xpos[9] - d_closedloop->geom_xpos[3]) * (d_closedloop->geom_xpos[9] - d_closedloop->geom_xpos[3]));
+	else if (modelid == 11)
+		return sqrt((d_closedloop->site_xpos[6] - d_closedloop->site_xpos[30]) * (d_closedloop->site_xpos[6] - d_closedloop->site_xpos[30]) + (d_closedloop->site_xpos[7] - d_closedloop->site_xpos[31]) * (d_closedloop->site_xpos[7] - d_closedloop->site_xpos[31]) + (d_closedloop->site_xpos[8] - d_closedloop->site_xpos[32]) * (d_closedloop->site_xpos[8] - d_closedloop->site_xpos[32]));
+	else if (modelid == 12)
+		return sqrt((d_closedloop->site_xpos[3] - d_closedloop->site_xpos[15]) * (d_closedloop->site_xpos[3] - d_closedloop->site_xpos[15]) + (d_closedloop->site_xpos[4] - d_closedloop->site_xpos[16]) * (d_closedloop->site_xpos[4] - d_closedloop->site_xpos[16]) + (d_closedloop->site_xpos[5] - d_closedloop->site_xpos[17]) * (d_closedloop->site_xpos[5] - d_closedloop->site_xpos[17]));
+	else if (modelid == 13)
+		return sqrt((d_closedloop->geom_xpos[6] - 0.6) * (d_closedloop->geom_xpos[6] - 0.6) + (d_closedloop->geom_xpos[7] + 0.6) * (d_closedloop->geom_xpos[7] + 0.6));
 	return 0;
 }
 
@@ -2282,10 +2288,10 @@ void simulate(void)
                 else
                 {
                     // step while simtime lags behind cputime, and within safefactor
-                    while((d_openloop->time - simsync)<(glfwGetTime() - cpusync) && (d_closedloop->time - simsync)<(glfwGetTime() - cpusync) && (d->time-simsync)<(glfwGetTime()-cpusync) &&
-                           (glfwGetTime()-tmstart)<refreshfactor/vmode.refreshRate )
-                    {
-                        // clear old perturbations, apply new
+					while ((d_openloop->time - simsync) < (glfwGetTime() - cpusync) && (d_closedloop->time - simsync) < (glfwGetTime() - cpusync) && (d->time - simsync) < (glfwGetTime() - cpusync) &&
+						(glfwGetTime() - tmstart) < refreshfactor / vmode.refreshRate)
+					{
+						// clear old perturbations, apply new
 						mju_zero(d->xfrc_applied, 6 * m->nbody);
 						mjv_applyPerturbPose(m, d, &pert, 0);  // move mocap bodies only
 						mjv_applyPerturbForce(m, d, &pert);
@@ -2296,8 +2302,8 @@ void simulate(void)
 						mjv_applyPerturbPose(m, d_openloop, &pert, 0);
 						mjv_applyPerturbForce(m, d_openloop, &pert);
 
-                        // run mj_step
-                        mjtNum prevtm = d->time;
+						// run mj_step
+						mjtNum prevtm = d->time;
 						simulateNominal();
 						simulateOpenloop();
 						simulateClosedloop();
@@ -2315,9 +2321,26 @@ void simulate(void)
 						//for (int i = 3; i < 7; i++) d->qpos[i] = state_nominal[0][i]; 
 						//printf("%f ", d->qpos[3]- state_nominal[0][3]); printf("%f ", d->qpos[4] - state_nominal[0][4]); printf("%f ", d->qpos[5] - state_nominal[0][5]); printf("%f\n", d->qpos[6] - state_nominal[0][6]);
 						//printf("%f ", state_nominal[0][3]); printf("%f ", state_nominal[0][4]); printf("%f ", state_nominal[0][5]); printf("%f\n", state_nominal[0][6]);
-						//mj_step(m, d); mj_forward(m, d);
+						//d->efc_force[0] += 10; 
+						//mj_step(m, d); mj_forward(m, d); 
+						//printf("%f, ", d->efc_force[0]);
 						//printf("%f ", d->xquat[4]); printf("%f ", d->xquat[5]); printf("%f ", d->xquat[6]); printf("%f\n", d->xquat[7]);
-
+						//mjtNum temp1[kMaxState] = { 0.9534626,0.0953463,0,0.2860388, 0.9534626,0.0953463,0,0.2860388, 0.92123,0.20498,0.33023,0.01662, 0.9534626,0.0953463,0, 0.92123,0.20498,0.33023 };
+						//for (int y = 0; y < 4; y++) d->qpos[y] = temp1[y];
+						//for (int y = 4; y < 8; y++) d->qpos[y+4] = temp1[y];
+						//for (int y = 8; y < 12; y++) d->qpos[y+8] = temp1[y];
+						//for (int y = 0; y < 3; y++) d->qvel[y] = temp1[y + dof + quatnum];
+						//for (int y = 3; y < 6; y++) d->qvel[y+3] = temp1[y + dof + quatnum];
+						//mj_step(m, d); 
+						////mj_forward(m, d);
+						//for (int i = 8; i < 12; i++) printf(" d->qpos[%d]        : %.5f\n", i, d->qpos[i]);
+						//for (int i = 0; i < 3; i++) printf(" d->qvel[%d]        : %.5f\n", i, d->qvel[i]);
+						//static int c = 0;
+						//if (c == 0) { d->ctrl[0] = -1; d->ctrl[1] = -2.41; d->ctrl[2] = -1; d->ctrl[3] = -1; }
+						//else { d->ctrl[0] = -1; d->ctrl[1] = -2.42; d->ctrl[2] = -1; d->ctrl[3] = -1; }
+						//c++;
+						//mj_step(m, d);
+						
                         // break on reset
                         if( d->time<prevtm )
                             break;
@@ -2597,7 +2620,7 @@ int main(int argc, const char** argv)
 		glfwMakeContextCurrent(window);
 		render(window);
     }
-	//for (int i = 0; i < 3 * m->nsite; i++) printf(" d->site_xpos[%d]   : %.2f\n", i, d->site_xpos[i]);
+	
     // stop simulation thread
     settings.exitrequest = 1;
     simthread.join();

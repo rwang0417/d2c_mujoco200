@@ -804,3 +804,29 @@ sysid2d 模型文件名，noise level，rollout数，模型名，线程数，最
 ## 10/09/2019
 ### Log:
 #### 1. 之前3d的sysid有问题，不能用加减相同扰动的方法。改掉之后full feedback不如完全没有quaternions，如果去掉第三个quat，效果会比较好。但是sysidcheck去掉它error会变大10%。
+#### 2. 还是应该多上传github，方便出错了回滚。
+#### 3. latex加空行可以用vspace命令，\vspace{10 mm}。
+## 10/10/2019
+### Log:
+#### 1. 用0.002的timestep，sysid的时候增大noise反而error小，但是闭环feedback特别大，不行。
+#### 2. contact force归在constraint force里面，d->efc_force, dimension是nefc。contact force perturb不起作用。
+## 10/14/2019
+### Log:
+#### 1. The ball type creates a ball joint with three rotational degrees of freedom. The rotation is represented as a unit quaternion. The quaternion (1,0,0,0) corresponds to the initial configuration in which the model is defined. Any other quaternion is interpreted as a 3D rotation relative to this initial configuration. The rotation is around the point defined by the pos attribute below. If a body has a ball joint, it cannot have other rotational joints (ball or hinge). Combining ball joints with slide joints in the same body is allowed.
+#### 2. This attribute specifies the axis of rotation for hinge joints and the direction of translation for slide joints. It is ignored for free and ball joints. The vector specified here is automatically normalized to unit length as long as its length is greater than 10E-14; otherwise a compile error is generated.
+#### 3. The joint limits. Limits can be imposed on all joint types except for free joints. For hinge and ball joints, the range is specified in degrees or radians depending on the coordinate attribute of compiler. For ball joints, the limit is imposed on the angle of rotation (relative to the the reference configuration) regardless of the axis of rotation. Only the second range parameter is used for ball joints; the first range parameter should be set to 0. See the Limit section in the Computation chapter for more information.
+#### 4. state赋值只赋一部分，剩下的不会自己满足geometry并保持给值的不变。不过给完一部分的值之后step一步然后再重复赋值step，一段时间后剩下的值就会稳定并保证给值了的变量的值是所给的。在这个过程中，剩下的值是从它们原本的值逐渐变到满足geometry的值。
+## 10/16/2019
+### Log:
+#### 1. 3d dbar 9个自由dof，有3个自由quaternions。
+## 10/17/2019
+### Log:
+#### 1. 有了constraint连接之后，非自由的速度不好算，也不能通过强行赋值然后step来让值converge到想设的值，速度设定的话位置没法设定，一定会变，感觉还是得手动计算值然后填入。
+## 11/04/2019
+### Log:
+#### 1. qmc acc 2018的算法，相比bob之前lti系统的qmc，简化了很多，失去了一些guarantee，不再是match前多少个markov parameters而是least square。
+#### 2. ltv的主要区别和需要修改的地方，observability和controllability grammian里面不再是A的几次方而是AkAk-1连乘这样，收集数据时一定要按照每一步对应来收集，每一步的A，B，C矩阵size要一致，才可以做state propagation。可以看data matrix Dk的e-value，理论上来说，所有e-value要求是非负的，但是实际上不一定真的都满足，所以去掉负的e-value，看下所有的step正的且值比较大的e-value有多少个，然后依据这个值来取svd后ABC的size。前面建立Hankel matrix和covariance matrix的时候取的q需要保证rank是n，稍微取大点就行，影响不是很大。apply delta u的时候，要保证delta u足够小，系统偏离nominal不太远才可以。
+#### 3. coordinate transformation是在得到ABCD后想将其与true system的ABCD比较是否一致时需要做的，在原本的TVERA由于前面几步和中间方法不同，需要merge才能propagate，所以也需要转换坐标，而且算Tk必须知道true system信息才可以，但acc的方法中不需要这样，可以直接用算出来的ABCD做state propagation，得到的Y会match simulation的Y。
+#### 4. block shift需要在算数据的时候多算一行的，然后去掉第一行，因为最后一行数据不会凭空产生。
+#### 5. 目前初始的delta x取0，每次rollout都从nominal x0开始。
+#### 6. pendulum的结果，比较estimation的Y和simulation的Y，趋势一样，值有一些偏差，没有ls的效果好，而且结果有一定随机性，有一些state可能会非常不好。

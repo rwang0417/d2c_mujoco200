@@ -18,9 +18,9 @@
 
   <statistic center="0 0 .7" extent="2"/>
 
-  <option timestep="0.005" iterations="50" integrator="Euler" solver="Newton" tolerance="1e-10" gravity="0 0 -9.81" viscosity="0.0"/>
+  <option timestep="0.002" iterations="50" integrator="Euler" solver="Newton" tolerance="1e-10" gravity="0 0 -9.81" viscosity="0.0"/>
   
-  <size njmax="50" nconmax="40" nstack="1500"/>
+  <size njmax="1000" nconmax="60" nstack="1500"/>
   
   <worldbody>
     <geom name="ground" type="plane" conaffinity="1" pos="98 0 0" size="100 .8 .5" material="grid"/>

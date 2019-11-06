@@ -1,4 +1,4 @@
-<mujoco model="t1d1">
+<mujoco model="t2d1">
     <include file="./common/visual.xml"/>
     <include file="./common/skybox.xml"/>
     <include file="./common/materials.xml"/>

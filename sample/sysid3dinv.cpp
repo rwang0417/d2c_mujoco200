@@ -95,11 +95,29 @@ void sysidCheck(mjModel* m, mjData* d)
 		}
 
 		// result from the identified system
-		for (int j = 0; j < stepnum; j++) {
-			for (int y = 0; y < 4; y++) temp0[y] = 0.0005 * randGauss(0, 1) + state_nominal[j][y + 3];
-			mju_normalize4(temp0);
-			for (int y = 0; y < 4; y++) dx_input[j][y + 3] = temp0[y] - state_nominal[j][y + 3]; 
-			//mju_mulMatVec(dx_estimate[j], *matAB_check[j], dx_input[j], kMaxState, kMaxState + kMaxState);
+		if (modelid == 10) {
+			for (int j = 0; j < stepnum; j++) {
+				for (int y = 0; y < 4; y++) temp0[y] = 0.0005 * randGauss(0, 1) + state_nominal[j][y + 3];
+				mju_normalize4(temp0);
+				for (int y = 0; y < 4; y++) dx_input[j][y + 3] = temp0[y] - state_nominal[j][y + 3];
+				//mju_mulMatVec(dx_estimate[j], *matAB_check[j], dx_input[j], kMaxState, kMaxState + kMaxState);
+			}
+		}
+		else if (modelid == 11) {
+			for (int j = 0; j < stepnum; j++) {
+				for (int q = 0; q < quatnum; q++) {
+					for (int y = 0; y < 4; y++) temp0[y] = 0.0005 * randGauss(0, 1) + state_nominal[j][y + 4 * q];
+					mju_normalize4(temp0);
+					for (int y = 0; y < 4; y++) dx_input[j][y + 4 * q] = temp0[y] - state_nominal[j][y + 4 * q];
+				}
+			}
+		}
+		else if (modelid == 12) {
+			for (int j = 0; j < stepnum; j++) {
+				for (int y = 0; y < 4; y++) temp0[y] = 0.0001 * randGauss(0, 1) + state_nominal[j][y];
+				mju_normalize4(temp0);
+				for (int y = 0; y < 4; y++) dx_input[j][y] = temp0[y] - state_nominal[j][y];
+			}
 		}
 
 		// result from the real system
@@ -135,11 +153,34 @@ void sysidCheck(mjModel* m, mjData* d)
 				d->qvel[20] = d->qvel[7] + d->qvel[9] + d->qvel[10];
 				d->qvel[21] = -d->qvel[10];
 			}
+			else if (modelid == 11) {
+				for (int r = 0; r < 30; r++)
+				{
+					for (int y = 0; y < 4; y++) d->qpos[y] = state_nominal[step_index][y] + dx_input[step_index][y];
+					for (int y = 4; y < 8; y++) d->qpos[y + 4] = state_nominal[step_index][y] + dx_input[step_index][y];
+					for (int y = 8; y < 12; y++) d->qpos[y + 8] = state_nominal[step_index][y] + dx_input[step_index][y];
+					for (int y = 0; y < 3; y++) d->qvel[y] = state_nominal[step_index][y + dof + quatnum] + dx_input[step_index][y + dof + quatnum];
+					for (int y = 3; y < 6; y++) d->qvel[y + 3] = state_nominal[step_index][y + dof + quatnum] + dx_input[step_index][y + dof + quatnum];
+					for (int y = 6; y < 9; y++) d->qvel[y + 6] = state_nominal[step_index][y + dof + quatnum] + dx_input[step_index][y + dof + quatnum];
+					for (int y = 0; y < actuatornum; y++) d->ctrl[y] = 0;
+					mj_step(m, d);
+				}
+				mju_add(d->ctrl, &dx_input[step_index][2 * dof + quatnum], &ctrl_nominal[step_index * actuatornum], m->nu);
+			}
 
 			for (int k = 0; k < integration_per_step; k++) mj_step(m, d);
 
 			mju_sub(dx_simulate[step_index], d->qpos, state_nominal[step_index + 1], dof + quatnum);
 			mju_sub(&dx_simulate[step_index][dof + quatnum], d->qvel, &state_nominal[step_index + 1][dof + quatnum], dof);
+
+			if (modelid == 11) {
+				for (int y = 0; y < 4; y++) dx_simulate[step_index][y] = d->qpos[y] - state_nominal[step_index + 1][y];
+				for (int y = 4; y < 8; y++) dx_simulate[step_index][y] = d->qpos[y + 4] - state_nominal[step_index + 1][y];
+				for (int y = 8; y < 12; y++) dx_simulate[step_index][y] = d->qpos[y + 8] - state_nominal[step_index + 1][y];
+				for (int y = 0; y < 3; y++) dx_simulate[step_index][y + dof + quatnum] = d->qvel[y] - state_nominal[step_index + 1][y + dof + quatnum];
+				for (int y = 3; y < 6; y++) dx_simulate[step_index][y + dof + quatnum] = d->qvel[y + 3] - state_nominal[step_index + 1][y + dof + quatnum];
+				for (int y = 6; y < 9; y++) dx_simulate[step_index][y + dof + quatnum] = d->qvel[y + 6] - state_nominal[step_index + 1][y + dof + quatnum];
+			}
 		}
 
 		for (int j = 0; j < stepnum; j++) {
@@ -181,9 +222,23 @@ void sysid(int id, int nroll, int nthd)
 			for (int y = 0; y < 2 * dof + quatnum + actuatornum; y++) delta_x1(rollout_index, y) = perturb_coefficient_sysid * ctrl_max * randGauss(0, 1);
 
 			// special process for quaternions
-			for (int y = 0; y < 4; y++) temp0[y] = ctrl_max * perturb_coefficient_sysid * randGauss(0, 1) + state_nominal[step_index][y + 3];
-			mju_normalize4(temp0);
-			for (int y = 0; y < 4; y++) delta_x1(rollout_index, y + 3) = temp0[y] - state_nominal[step_index][y + 3];
+			if (modelid == 10) {
+				for (int y = 0; y < 4; y++) temp0[y] = ctrl_max * perturb_coefficient_sysid * randGauss(0, 1) + state_nominal[step_index][y + 3];
+				mju_normalize4(temp0);
+				for (int y = 0; y < 4; y++) delta_x1(rollout_index, y + 3) = temp0[y] - state_nominal[step_index][y + 3];
+			}
+			else if (modelid == 11) {
+				for (int q = 0; q < quatnum; q++) {
+					for (int y = 0; y < 4; y++) temp0[y] = perturb_coefficient_sysid * ctrl_max * randGauss(0, 1) + state_nominal[step_index][y + 4 * q];
+					mju_normalize4(temp0);
+					for (int y = 0; y < 4; y++) delta_x1(rollout_index, y + 4 * q) = temp0[y] - state_nominal[step_index][y + 4 * q];
+				}
+			}
+			else if (modelid == 12) {
+				for (int y = 0; y < 4; y++) temp0[y] = ctrl_max * perturb_coefficient_sysid * randGauss(0, 1) + state_nominal[step_index][y];
+				mju_normalize4(temp0);
+				for (int y = 0; y < 4; y++) delta_x1(rollout_index, y) = temp0[y] - state_nominal[step_index][y];
+			}
 
 			// plus
 			for (int y = 0; y < dof + quatnum; y++) d[id]->qpos[y] = state_nominal[step_index][y] + delta_x1(rollout_index, y);
@@ -216,11 +271,35 @@ void sysid(int id, int nroll, int nthd)
 				d[id]->qvel[20] = d[id]->qvel[7] + d[id]->qvel[9] + d[id]->qvel[10];
 				d[id]->qvel[21] = -d[id]->qvel[10];
 			}
+			else if (modelid == 11) {
+				for (int r = 0; r < 30; r++)
+				{
+					for (int y = 0; y < 4; y++) d[id]->qpos[y] = state_nominal[step_index][y] + delta_x1(rollout_index, y);
+					for (int y = 4; y < 8; y++) d[id]->qpos[y + 4] = state_nominal[step_index][y] + delta_x1(rollout_index, y);
+					for (int y = 8; y < 12; y++) d[id]->qpos[y + 8] = state_nominal[step_index][y] + delta_x1(rollout_index, y);
+					mju_zero(d[id]->qvel, m->nv);
+					mju_zero(d[id]->ctrl, m->nu);
+					mj_step(m, d[id]);
+				}///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+				for (int y = 0; y < 3; y++) d[id]->qvel[y] = state_nominal[step_index][y + dof + quatnum] + delta_x1(rollout_index, y + dof + quatnum);
+				for (int y = 3; y < 6; y++) d[id]->qvel[y + 3] = state_nominal[step_index][y + dof + quatnum] + delta_x1(rollout_index, y + dof + quatnum);
+				for (int y = 6; y < 9; y++) d[id]->qvel[y + 6] = state_nominal[step_index][y + dof + quatnum] + delta_x1(rollout_index, y + dof + quatnum);
+				for (int y = 0; y < actuatornum; y++) d[id]->ctrl[y] = ctrl_nominal[step_index * actuatornum + y] + delta_x1(rollout_index, 2 * dof + quatnum + y);
+			}
 
 			for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
 
 			for (int y = 0; y < dof + quatnum; y++) delta_x2(y, rollout_index) = d[id]->qpos[y] - state_nominal[step_index + 1][y];
 			for (int y = 0; y < dof; y++) delta_x2(y + dof + quatnum, rollout_index) = d[id]->qvel[y] - state_nominal[step_index + 1][y + dof + quatnum];
+
+			if (modelid == 11) {
+				for (int y = 0; y < 4; y++) delta_x2(y, rollout_index) = d[id]->qpos[y] - state_nominal[step_index + 1][y];
+				for (int y = 4; y < 8; y++) delta_x2(y, rollout_index) = d[id]->qpos[y + 4] - state_nominal[step_index + 1][y];
+				for (int y = 8; y < 12; y++) delta_x2(y, rollout_index) = d[id]->qpos[y + 8] - state_nominal[step_index + 1][y];
+				for (int y = 0; y < 3; y++) delta_x2(y + dof + quatnum, rollout_index) = d[id]->qvel[y] - state_nominal[step_index + 1][y + dof + quatnum];
+				for (int y = 3; y < 6; y++) delta_x2(y + dof + quatnum, rollout_index) = d[id]->qvel[y + 3] - state_nominal[step_index + 1][y + dof + quatnum];
+				for (int y = 6; y < 9; y++) delta_x2(y + dof + quatnum, rollout_index) = d[id]->qvel[y + 6] - state_nominal[step_index + 1][y + dof + quatnum];
+			}
 
 			//// minus
 			//for (int y = 0; y < dof + quatnum; y++) d[id]->qpos[y] = state_nominal[step_index][y] - delta_x1(rollout_index, y);

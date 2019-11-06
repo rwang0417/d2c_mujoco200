@@ -1,0 +1,62 @@
+<mujoco model="dbar">
+    <include file="./common/visual.xml"/>
+    <include file="./common/skybox.xml"/>
+    <include file="./common/materials.xml"/>
+    
+    <option timestep="0.01" iterations="50" solver="Newton" integrator="Euler" tolerance="1e-10" gravity = "0 0 0" collision="predefined" viscosity="0"/>
+
+    <size njmax="200" nconmax="100" nstack="2000"/>
+
+    <visual>
+        <rgba haze=".15 .25 .35 1"/>
+    </visual>
+
+    <default>
+        <joint type="ball" pos="0 0 0" limited="false" damping="0"/>
+        <motor ctrllimited="false" ctrlrange="-1 1"/>
+		<tendon stiffness="0" damping=".2"/>
+		<geom size="0.02" mass="1"/>
+		<site size="0.04"/>
+    </default>
+
+    <worldbody>
+        <light directional="true" diffuse=".8 .8 .8" specular=".2 .2 .2" pos="0 0 5" dir="0 0 -1"/>
+
+        <site name="s0" pos="0 0 0"/>
+
+        <body name="bar1" pos="0 0 0">
+            <geom type="capsule" fromto="0 0 0  1 0 1" material="self"/>
+			<site name="b1e" pos="1 0 1"/>
+			<joint name="bottom1"/>
+        </body>
+
+		<body pos="0 0 0">
+			<geom name="floor" pos="0 0 0" size="0 0 1" type="plane" material="grid"/>
+			<site name="s1" pos="1.73205 1 0"/>
+			<site name="s2" pos="-1.73205 1 0"/>
+            <site name="s3" pos="0 -2 0"/>
+			<site name="target" pos="-1 1 1" size="0.08" rgba="1 0 0 .3"/>
+		</body>
+    </worldbody>
+
+    <tendon>
+        <spatial name="S1" width="0.02">
+            <site site="s1"/>
+            <site site="b1e"/>
+        </spatial>
+		<spatial name="S2" width="0.02">
+            <site site="b1e"/>
+            <site site="s2"/>
+        </spatial>
+		<spatial name="S3" width="0.02">
+            <site site="b1e"/>
+            <site site="s3"/>
+        </spatial>
+    </tendon>   
+
+    <actuator>
+        <motor tendon="S1" gear="1"/>
+        <motor tendon="S2" gear="1"/>
+		<motor tendon="S3" gear="1"/>
+    </actuator>
+</mujoco>
