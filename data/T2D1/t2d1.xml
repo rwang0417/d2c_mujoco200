@@ -136,7 +136,7 @@
 			<geom name="floor" pos="0 0 0" size="0 0 1" type="plane" material="grid"/>
 			<site name="f1" pos="-4 0 0"/>
 			<site name="f3" pos="4 0 0"/>
-			<site name="target" pos="-0.6 0 5.4" size="0.08" rgba="1 0 0 .3"/>
+			<site name="target" pos="-0.6 0 5.4" size="0.1" rgba="1 0 0 .3"/>
 		</body>
     </worldbody>
 	

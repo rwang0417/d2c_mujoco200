@@ -48,6 +48,8 @@ Tensegrity
 - sample
   - Analytical_Control.m: model-based shape control code for tensegrity models(Dbar, T1D1, T2D1), generates force density and force on each string.
   - shape_control.m: main function for the model-based shape control.
+  - tenseg_class_k_convert.m: supplementary model-based shape control code for class k tensegrity models.
+  - tenseg_plot.m: functions for plotting the tensegrity structure used in the model-based shape control.
   - mexstep.c: the Matlab wrapper. Use this file to call MuJoCo from Matlab.
   - tvlqr.m: LQR feedback gain calculation.
   - toplqr.m: top stabilizer gain calculation.

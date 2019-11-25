@@ -34,6 +34,5 @@ MUJOCO_LOG.TXT
 *.pdb
 openloop/
 sysid2d/
-test2d/
 sysid3d/
-test3d/
+test/

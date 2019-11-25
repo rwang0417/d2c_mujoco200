@@ -830,3 +830,23 @@ sysid2d 模型文件名，noise level，rollout数，模型名，线程数，最
 #### 4. block shift需要在算数据的时候多算一行的，然后去掉第一行，因为最后一行数据不会凭空产生。
 #### 5. 目前初始的delta x取0，每次rollout都从nominal x0开始。
 #### 6. pendulum的结果，比较estimation的Y和simulation的Y，趋势一样，值有一些偏差，没有ls的效果好，而且结果有一定随机性，有一些state可能会非常不好。
+## 11/06/2019
+### Log:
+#### 1. 3d的tensegrity模型因为有constraint，导致非自由的joint angle和自由angle之间关系要通过几何计算出来，由于建模的树结构，自由的angle不连在一起，需要特殊处理把他们放一起。
+#### 2. QMC加大q会提升准确度，swimmer3效果很不好，只有前100趋势差不多能follow真实系统，没有ls准确。
+## 11/11/2019
+### Log:
+#### 1. 矩阵exp和标量exp不一样，不是每个元素分别求exp，而是矩阵的幂级数，计算时是矩阵相乘。
+## 11/17/2019
+### Log:
+#### 1. 一根bar通过两个joint与地相连，第二个joint是自动连接在第一个joint上的，也就是说，joint1转后，joint2轴会跟着转，但转joint2，joint1轴不变，符合实际。
+#### 2. joint的axis属性所设置的轴是在体坐标系下的，会随连接的体而转动。
+## 11/19/2019
+### Log:
+#### 1. camera并不能决定初始时模型的朝向。
+#### 2. material文件里material grid的texrepeat越大方格越密。
+#### 3. 写review response，文章里的改动用蓝色，对reviewer的response用蓝色，提到文章中的修改用蓝色加加粗。
+## 11/23/2019
+### Log:
+#### 1. matlab可以直接调用exe。
+#### 2. 复制扩充矩阵用repmat。

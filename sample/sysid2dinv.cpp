@@ -99,7 +99,7 @@ void sysidCheck(mjModel* m, mjData* d)
 		{
 			mju_add(d->qpos, dx_input[step_index], state_nominal[step_index], dof + quatnum);
 			mju_add(d->qvel, &dx_input[step_index][dof + quatnum], &state_nominal[step_index][dof + quatnum], dof);
-			mju_add(d->ctrl, &dx_input[step_index][2*dof + quatnum], &ctrl_nominal[step_index * actuatornum], m->nu);
+			mju_add(d->ctrl, &dx_input[step_index][2 * dof + quatnum], &ctrl_nominal[step_index * actuatornum], m->nu); 
 
 			// set values for dependent states
 			if (modelid == 4) {
@@ -108,7 +108,7 @@ void sysidCheck(mjModel* m, mjData* d)
 				d->qvel[2] = -d->qvel[1];
 				d->qvel[3] = d->qvel[1];
 			}
-			if (modelid == 8) {
+			else if (modelid == 8) {
 				d->qpos[6] = d->qpos[0] + d->qpos[1];
 				d->qpos[7] = -d->qpos[1];
 				d->qpos[8] = d->qpos[1] + d->qpos[3] + d->qpos[4];
@@ -119,7 +119,7 @@ void sysidCheck(mjModel* m, mjData* d)
 				d->qvel[8] = d->qvel[1] + d->qvel[3] + d->qvel[4];
 				d->qvel[9] = -d->qvel[4];
 			}
-			if (modelid == 9) {
+			else if (modelid == 9) {
 				d->qpos[14] = d->qpos[0] + d->qpos[1];
 				d->qpos[15] = -d->qpos[1];
 				d->qpos[16] = d->qpos[1] + d->qpos[3] + d->qpos[4];
@@ -138,11 +138,42 @@ void sysidCheck(mjModel* m, mjData* d)
 				d->qvel[20] = d->qvel[7] + d->qvel[9] + d->qvel[10];
 				d->qvel[21] = -d->qvel[10];
 			}
+			else if (modelid == 14) {
+				d->qpos[18] = dx_input[step_index][13] + state_nominal[step_index][13]; 
+				d->qpos[21] = dx_input[step_index][14] + state_nominal[step_index][14];
+				d->qvel[18] = dx_input[step_index][29] + state_nominal[step_index][29];
+				d->qvel[21] = dx_input[step_index][30] + state_nominal[step_index][30];
+
+				d->qpos[13] = -d->qpos[1];
+				d->qpos[19] = -d->qpos[1];
+				d->qpos[14] = -d->qpos[2];
+				d->qpos[20] = -d->qpos[2];
+				d->qpos[16] = -d->qpos[6];
+				d->qpos[22] = -d->qpos[6];
+				d->qpos[17] = -d->qpos[7];
+				d->qpos[23] = -d->qpos[7];
+
+				d->qvel[13] = -d->qvel[1];
+				d->qvel[19] = -d->qvel[1];
+				d->qvel[14] = -d->qvel[2];
+				d->qvel[20] = -d->qvel[2];
+				d->qvel[16] = -d->qvel[6];
+				d->qvel[22] = -d->qvel[6];
+				d->qvel[17] = -d->qvel[7];
+				d->qvel[23] = -d->qvel[7];
+			}
 
 			for (int k = 0; k < integration_per_step; k++) mj_step(m, d);
 
 			mju_sub(dx_simulate[step_index], d->qpos, state_nominal[step_index + 1], dof + quatnum);
 			mju_sub(&dx_simulate[step_index][dof + quatnum], d->qvel, &state_nominal[step_index + 1][dof + quatnum], dof);
+
+			if (modelid == 14) {
+				dx_simulate[step_index][13] = d->qpos[18] - state_nominal[step_index + 1][13];
+				dx_simulate[step_index][14] = d->qpos[21] - state_nominal[step_index + 1][14];
+				dx_simulate[step_index][29] = d->qvel[18] - state_nominal[step_index + 1][29];
+				dx_simulate[step_index][30] = d->qvel[21] - state_nominal[step_index + 1][30];
+			}
 		}
 		for (int y = 0; y < 2*dof + quatnum; y++)
 		{
@@ -218,11 +249,42 @@ void sysid(int id, int nroll, int nthd)
 				d[id]->qvel[20] = d[id]->qvel[7] + d[id]->qvel[9] + d[id]->qvel[10];
 				d[id]->qvel[21] = -d[id]->qvel[10];
 			}
+			else if (modelid == 14) {
+				d[id]->qpos[18] = delta_x1(rollout_index, 13) + state_nominal[step_index][13];
+				d[id]->qpos[21] = delta_x1(rollout_index, 14) + state_nominal[step_index][14];
+				d[id]->qvel[18] = delta_x1(rollout_index, 29) + state_nominal[step_index][29];
+				d[id]->qvel[21] = delta_x1(rollout_index, 30) + state_nominal[step_index][30];
 
+				d[id]->qpos[13] = -d[id]->qpos[1];
+				d[id]->qpos[19] = -d[id]->qpos[1];
+				d[id]->qpos[14] = -d[id]->qpos[2];
+				d[id]->qpos[20] = -d[id]->qpos[2];
+				d[id]->qpos[16] = -d[id]->qpos[6];
+				d[id]->qpos[22] = -d[id]->qpos[6];
+				d[id]->qpos[17] = -d[id]->qpos[7];
+				d[id]->qpos[23] = -d[id]->qpos[7];
+
+				d[id]->qvel[13] = -d[id]->qvel[1];
+				d[id]->qvel[19] = -d[id]->qvel[1];
+				d[id]->qvel[14] = -d[id]->qvel[2];
+				d[id]->qvel[20] = -d[id]->qvel[2];
+				d[id]->qvel[16] = -d[id]->qvel[6];
+				d[id]->qvel[22] = -d[id]->qvel[6];
+				d[id]->qvel[17] = -d[id]->qvel[7];
+				d[id]->qvel[23] = -d[id]->qvel[7];
+			}
+			mj_forward(m, d[id]);//////////////////////////////////////////////////
 			for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
 
 			for (int y = 0; y < dof + quatnum; y++) delta_x2(y, rollout_index) = d[id]->qpos[y];
 			for (int y = 0; y < dof; y++) delta_x2(y + dof + quatnum, rollout_index) = d[id]->qvel[y];
+
+			if (modelid == 14) {
+				delta_x2(13, rollout_index) = d[id]->qpos[18];
+				delta_x2(14, rollout_index) = d[id]->qpos[21];
+				delta_x2(29, rollout_index) = d[id]->qvel[18];
+				delta_x2(30, rollout_index) = d[id]->qvel[21];
+			}
 
 			// minus
 			for (int y = 0; y < dof + quatnum; y++) d[id]->qpos[y] = state_nominal[step_index][y] - delta_x1(rollout_index, y);
@@ -265,11 +327,42 @@ void sysid(int id, int nroll, int nthd)
 				d[id]->qvel[20] = d[id]->qvel[7] + d[id]->qvel[9] + d[id]->qvel[10];
 				d[id]->qvel[21] = -d[id]->qvel[10];
 			}
+			else if (modelid == 14) {
+				d[id]->qpos[18] = state_nominal[step_index][13] - delta_x1(rollout_index, 13);
+				d[id]->qpos[21] = state_nominal[step_index][14] - delta_x1(rollout_index, 14);
+				d[id]->qvel[18] = state_nominal[step_index][29] - delta_x1(rollout_index, 29);
+				d[id]->qvel[21] = state_nominal[step_index][30] - delta_x1(rollout_index, 30);
 
+				d[id]->qpos[13] = -d[id]->qpos[1];
+				d[id]->qpos[19] = -d[id]->qpos[1];
+				d[id]->qpos[14] = -d[id]->qpos[2];
+				d[id]->qpos[20] = -d[id]->qpos[2];
+				d[id]->qpos[16] = -d[id]->qpos[6];
+				d[id]->qpos[22] = -d[id]->qpos[6];
+				d[id]->qpos[17] = -d[id]->qpos[7];
+				d[id]->qpos[23] = -d[id]->qpos[7];
+
+				d[id]->qvel[13] = -d[id]->qvel[1];
+				d[id]->qvel[19] = -d[id]->qvel[1];
+				d[id]->qvel[14] = -d[id]->qvel[2];
+				d[id]->qvel[20] = -d[id]->qvel[2];
+				d[id]->qvel[16] = -d[id]->qvel[6];
+				d[id]->qvel[22] = -d[id]->qvel[6];
+				d[id]->qvel[17] = -d[id]->qvel[7];
+				d[id]->qvel[23] = -d[id]->qvel[7];
+			}
+			mj_forward(m, d[id]);//////////////////////////////////////////////////
 			for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
 
 			for (int y = 0; y < dof + quatnum; y++) delta_x2(y, rollout_index) -= d[id]->qpos[y];
 			for (int y = 0; y < dof; y++) delta_x2(y + dof + quatnum, rollout_index) -= d[id]->qvel[y];
+
+			if (modelid == 14) {
+				delta_x2(13, rollout_index) -= d[id]->qpos[18];
+				delta_x2(14, rollout_index) -= d[id]->qpos[21];
+				delta_x2(29, rollout_index) -= d[id]->qvel[18];
+				delta_x2(30, rollout_index) -= d[id]->qvel[21];
+			}
 		}
 		matAB = (delta_x2*delta_x1*((delta_x1.transpose()*delta_x1).inverse())) / 2;
 		for (int h = 0; h < 2*dof + quatnum; h++) for (int d = 0; d < 2*dof + quatnum + actuatornum; d++) matAB_check[step_index][h][d] = matAB(h, d);

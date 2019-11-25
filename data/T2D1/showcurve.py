@@ -58,7 +58,7 @@ def latexplot(timefactor=3.4324,filtered=False):
 #        plt.legend(['Original'])
     plt.tight_layout()    
 
-def energy(noisemax1=100,noisemax2=20,step=5):
+def energy(noisemax1=100,noisemax2=30,step=5):
     y=np.sqrt(np.loadtxt('energydata.txt'))
     x1=np.arange(0,noisemax1+1,step)
     x2=np.arange(0,noisemax2+1,step)
@@ -85,14 +85,15 @@ def energy(noisemax1=100,noisemax2=20,step=5):
     csy = np.std(y, axis=1)
     cmz = np.array(anamean)
     csz = np.array(anastd)
-#    f5,=plt.plot(x1,cmy[0:int(noisemax1/step+1)],'orange',linewidth=2) # D2C
-    f6,=plt.plot(x2,cmz[0:int(noisemax2/step+1)],'seagreen',linewidth=2) # MBC
-#    plt.fill_between(x1,cmy[0:int(noisemax1/step+1)]+csy[0:int(noisemax1/step+1)],cmy[0:int(noisemax1/step+1)]-csy[0:int(noisemax1/step+1)],alpha=0.5,color='orange') # D2C
-    plt.fill_between(x2,cmz[0:int(noisemax2/step+1)]+csz[0:int(noisemax2/step+1)],cmz[0:int(noisemax2/step+1)]-csz[0:int(noisemax2/step+1)],alpha=0.5,color='seagreen') # MBC
+    f5,=plt.plot(x1,cmy[0:int(noisemax1/step+1)],'orange',linewidth=2) # D2C
+#    f6,=plt.plot(x2,cmz[0:int(noisemax2/step+1)],'seagreen',linewidth=2) # MBC
+    plt.fill_between(x1,cmy[0:int(noisemax1/step+1)]+csy[0:int(noisemax1/step+1)],cmy[0:int(noisemax1/step+1)]-csy[0:int(noisemax1/step+1)],alpha=0.5,color='orange') # D2C
+#    plt.fill_between(x2,cmz[0:int(noisemax2/step+1)]+csz[0:int(noisemax2/step+1)],cmz[0:int(noisemax2/step+1)]-csz[0:int(noisemax2/step+1)],alpha=0.5,color='seagreen') # MBC
     plt.xlabel('Std dev of perturbed noise (Percent of max. control)', fontsize=16)
-    plt.ylabel('Averaged L2 norm of input', fontsize=16)
-#    plt.legend(['D2C closed-loop', 'MBC'],loc='upper left')
-    plt.legend(['phi=5, theta=25'],loc='upper left') # change legend accordingly
+    plt.ylabel('Averaged L2 norm of episodic inputs', fontsize=16)
+#    plt.legend(['D2C closed-loop','MBC'],loc='upper left')
+    plt.legend(['D2C closed-loop'],loc='upper left')
+#    plt.legend(['phi=5, theta=25'],loc='upper left') # change legend accordingly
     plt.tight_layout()
     plt.grid(color='.910', linewidth=1.5)
     
