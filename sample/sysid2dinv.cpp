@@ -7,9 +7,9 @@
         https://www.roboti.us/resourcelicense.txt
 */
 
-#include "windows.h"
+#include <windows.h>
 #include <thread>
-#include <funclib.h>
+#include "funclib.h"
 
 //-------------------------------- global variables -------------------------------------
 // constants
@@ -28,8 +28,8 @@ extern int modelid;
 extern mjtNum control_timestep;
 extern mjtNum simulation_timestep;
 extern mjtNum state_nominal[kMaxStep][kMaxState];
+extern mjtNum state_target[kMaxState];
 extern mjtNum ctrl_nominal[kMaxStep * kMaxState];
-extern char testmode[30];
 
 // user data and other training settings
 mjtNum matAB_check[kMaxStep][kMaxState][kMaxState + kMaxState] = { 0 };
@@ -46,7 +46,9 @@ char datafilename[100];
 char modelfilename[100];
 char username[30];
 char modelname[30];
+char sysmode[30];
 char keyfilepre[20] = "";
+char resultfilename[30] = "lnr.txt";
 
 // model and per-thread data
 mjModel* m = NULL;
@@ -385,7 +387,7 @@ int main(int argc, const char** argv)
 {
     // print help if arguments are missing
     if( argc<3 || argc>7 )
-        return finish("\n Usage:  sysid2d modelfile noiselevel rolloutnumber [modeltype [nthread [profile]]]\n");
+        return finish("\n Usage:  sysid2d modelfile noiselevel rolloutnumber [modeltype [nthread [sysmode [profile]]]]\n");
 
     // activate MuJoCo Pro license (this must be *your* activation key)
 	DWORD usernamesize = 30;
@@ -418,14 +420,22 @@ int main(int argc, const char** argv)
 		if (sscanf(argv[4], "%d", &nthread) != 1)
 			return finish("Invalid nthread argument");
 		if (argc > 5)
-			if (sscanf(argv[5], "%d", &profile) != 1)
-				return finish("Invalid profile argument");
+			if (sscanf(argv[5], "%s", &sysmode) != 1)
+				if (sscanf(argv[5], "%d", &profile) != 1)
+					return finish("Invalid sysmode or profile argument");
+		if (argc > 6)
+				if (sscanf(argv[6], "%d", &profile) != 1)
+					return finish("Invalid profile argument");
 	}
 	else if (argc > 5) {
 		if (sscanf(argv[5], "%d", &nthread) != 1)
 			return finish("Invalid nthread argument");
 		if (argc > 6)
-			if (sscanf(argv[6], "%d", &profile) != 1)
+			if (sscanf(argv[6], "%s", &sysmode) != 1)
+				if (sscanf(argv[6], "%d", &profile) != 1)
+					return finish("Invalid sysmode or profile argument");
+		if (argc > 7)
+			if (sscanf(argv[7], "%d", &profile) != 1)
 				return finish("Invalid profile argument");
 	}
 
@@ -470,6 +480,14 @@ int main(int argc, const char** argv)
 		fclose(filestream3);
 	}
 	else printf("Could not open file: result.txt\n");
+
+	if (_strcmpi(sysmode, "top") == 0) {
+		nthread = 1;
+		stepnum = 1;
+		strcpy(resultfilename, "lnr_top.txt");
+		mju_copy(state_nominal[0], state_target, 2 * dof + quatnum);
+		mju_zero(ctrl_nominal, kMaxStep * kMaxState);
+	}
 
     // install timer callback for profiling if requested
     tm_start = chrono::system_clock::now();
@@ -531,7 +549,7 @@ int main(int argc, const char** argv)
     }
 
 	// save result to file
-	strcpy(datafilename, "lnr.txt");
+	strcpy(datafilename, resultfilename);
 	if ((filestream3 = fopen(datafilename, "wt+")) != NULL)
 	{
 		for (int i = 0; i < stepnum; i++)
@@ -556,7 +574,7 @@ int main(int argc, const char** argv)
 		fwrite(data_buff, 6, 1, filestream3);
 		fclose(filestream3);
 	}
-	else printf("Could not open file: lnr.txt\n");
+	else printf("Could not open file: %s...\n", resultfilename);
 	
     // free per-thread data
     for( int id=0; id<nthread; id++ )

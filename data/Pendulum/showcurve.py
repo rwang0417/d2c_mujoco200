@@ -20,7 +20,7 @@ params = {
     'xtick.labelsize': 15,
     'ytick.labelsize': 15,
     'text.usetex': True ,
-    'figure.figsize': [7, 5], # instead of 4.5, 4.5
+    'figure.figsize': [8, 6], # instead of 4.5, 4.5
     'font.weight': 'bold',
     'axes.labelweight': 'bold',
     'ps.useafm' : True,

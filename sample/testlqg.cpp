@@ -7,13 +7,20 @@
         https://www.roboti.us/resourcelicense.txt
 */
 
-#include "windows.h"
-#include "uitools.h"
+#include <windows.h>
 #include <thread>
 #include <mutex>
-#include <funclib.h>
+#include <mat.h>
+#include "uitools.h"
+#include "funclib.h"
 
 //-------------------------------- global -----------------------------------------------
+// structure
+struct MatData {
+	double *data;
+	const size_t *dimension;
+	int dimension_num;
+};
 // constants
 extern const int kMaxStep = 3000;   // max step number for one rollout
 extern const int kMaxState = 60;	// max (state dimension, actuator number)
@@ -55,6 +62,7 @@ mjtNum cost_closedloop = 0, cost_openloop = 0;
 mjtNum energy = 0;
 mjtNum tracker_feedback_gain[kMaxStep][kMaxState][kMaxState] = { 0 };
 FILE *filestream1, *filestream2;
+MatData MX1, MU, MY, ML, T_CON, BATCH_SIZE;
 char testmode[30];
 char data_buff[30];
 char keyfilename[100];
@@ -66,6 +74,7 @@ char keyfilepre[20]  = "";
 int step_index_nominal = 0;
 int step_index_openloop = 0;
 int step_index_closedloop = 0;
+int batch_size;
 bool NFinal = false;
 
 // abstract visualization
@@ -1775,6 +1784,24 @@ void uiEvent(mjuiState* state)
 }
 
 //--------------------------- control and testing ---------------------------------------
+// read data from .mat file
+void matRead(const char* filename, const char *varname, MatData *dataptr)
+{
+	MATFile *matfile = NULL;
+	mxArray *mxarray = NULL;
+
+	if ((matfile = matOpen(filename, "r")) != NULL)
+	{
+		mxarray = matGetVariable(matfile, varname);
+		if (mxarray == NULL) printf("cannot find variable %s...", varname);
+		dataptr->data = (double*)mxGetData(mxarray);
+		dataptr->dimension = mxGetDimensions(mxarray);
+		dataptr->dimension_num = mxGetNumberOfDimensions(mxarray);
+		matClose(matfile);
+	}
+	else printf("cannot open file %s...", filename);
+}
+
 // simulate the nominal trajectory
 void simulateNominal(void)
 {
@@ -1789,9 +1816,12 @@ void simulateNominal(void)
 		mju_sub(&state_error[dof + quatnum], &state_target[dof + quatnum], d->qvel, dof);
 		if (modelid == 0) {
 			state_error[0] = -(PI - fabs(d->qpos[0] - PI))*((PI - d->qpos[0] > 0) - (PI - d->qpos[0] < 0));
+		}	
+		else if (modelid == 15) {
+			state_error[1] = (PI - fabs(d->qpos[1]))*((d->qpos[1] < 0) - (d->qpos[1] > 0));
 		}
 		mju_mulMatVec(d->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
-		mj_forward(m, d);
+		//mj_forward(m, d);
 
 		// print N_final to be the target for the analytical shape control
 		if (NFinal == true) {
@@ -1804,7 +1834,7 @@ void simulateNominal(void)
 		}
 	}
 	else mju_copy(d->ctrl, &ctrl_nominal[step_index_nominal * actuatornum], m->nu);
-	ctrlLimit(d->ctrl, m->nu);
+	ctrlLimit(d->ctrl, m->nu);//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.8f\n", i, d->qpos[i]);
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d);
 	step_index_nominal++;
 }
@@ -1813,6 +1843,15 @@ void simulateNominal(void)
 bool simulateClosedloop(void)
 {
 	static mjtNum state_error[kMaxState], ctrl_feedback[kMaxState], ctrl_temp[kMaxState];
+	static MatrixXd x1 = MatrixXd::Zero(ML.dimension[1], 1);
+	static MatrixXd x2 = MatrixXd::Zero(ML.dimension[1], 1);
+	MatrixXd u_temp = MatrixXd::Zero(ML.dimension[0], 1);
+	MatrixXd y_cl = MatrixXd::Zero(MY.dimension[1], 1);
+	MatrixXd MX1_step(MX1.dimension[0], MX1.dimension[1]);
+	MatrixXd MY_step(MY.dimension[0], MY.dimension[1]);
+	MatrixXd MU_step(MU.dimension[0], MU.dimension[1]);
+	MatrixXd ML_step(ML.dimension[0], ML.dimension[1]);
+	MatrixXd T_CON_step(T_CON.dimension[0], T_CON.dimension[1]);
 
 	if (step_index_closedloop == 0) {
 		modelInit(m, d_closedloop, state_nominal[0], dof, quatnum);
@@ -1822,12 +1861,16 @@ bool simulateClosedloop(void)
 
 	if (step_index_closedloop >= stepnum)
 	{
-		mju_sub(state_error, state_target, d_closedloop->qpos, m->nq);
-		mju_sub(&state_error[m->nq], &state_target[m->nq], d_closedloop->qvel, m->nv);
-		if (modelid == 0) {
+		mju_sub(state_error, state_target, d_closedloop->qpos, dof + quatnum);
+		mju_sub(&state_error[dof + quatnum], &state_target[dof + quatnum], d_closedloop->qvel, dof);
+        if (modelid == 0) {
 			state_error[0] = -(PI - fabs(d_closedloop->qpos[0] - PI))*((PI - d_closedloop->qpos[0] > 0) - (PI - d_closedloop->qpos[0] < 0));
 		}
-		mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
+		else if (modelid == 15) {
+			state_error[1] = (PI - fabs(d_closedloop->qpos[1]))*((d_closedloop->qpos[1] < 0) - (d_closedloop->qpos[1] > 0));
+		}
+		mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState); 
+		ctrlLimit(d_closedloop->ctrl, m->nu);
 		if (_strcmpi(testmode, "policy_compare") == 0) {
 			cost_closedloop += stepCost(m, d_closedloop, stepnum);
 			step_index_closedloop = 0; 
@@ -1835,18 +1878,41 @@ bool simulateClosedloop(void)
 		}
 	}
 	else {
-		mju_sub(state_error, state_nominal[step_index_closedloop], d_closedloop->qpos, dof + quatnum);
-		mju_sub(&state_error[dof + quatnum], &state_nominal[step_index_closedloop][dof + quatnum], d_closedloop->qvel, dof);
-		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index_closedloop], state_error, kMaxState, kMaxState);
-		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
+		for (int i = 0; i < ML.dimension[1]; i++)
+			for (int j = 0; j < ML.dimension[0]; j++)
+				ML_step(j, i) = ML.data[step_index_closedloop*ML.dimension[0] * ML.dimension[1] + i * ML.dimension[0] + j];
+		for (int i = 0; i < MX1.dimension[1]; i++)
+			for (int j = 0; j < MX1.dimension[0]; j++)
+				MX1_step(j, i) = MX1.data[step_index_closedloop*MX1.dimension[0] * MX1.dimension[1] + i * MX1.dimension[0] + j];
+		for (int i = 0; i < MY.dimension[1]; i++)
+			for (int j = 0; j < MY.dimension[0]; j++)
+				MY_step(j, i) = MY.data[step_index_closedloop*MY.dimension[0] * MY.dimension[1] + i * MY.dimension[0] + j];
+		for (int i = 0; i < MU.dimension[1]; i++)
+			for (int j = 0; j < MU.dimension[0]; j++)
+				MU_step(j, i) = MU.data[step_index_closedloop*MU.dimension[0] * MU.dimension[1] + i * MU.dimension[0] + j];
+		u_temp = ML_step*x1;
+		for (int i = 0; i < actuatornum; i++) d_closedloop->ctrl[i] = ctrl_openloop[step_index_closedloop * actuatornum + i] + u_temp(i, 1);
+
+		ctrlLimit(d_closedloop->ctrl, m->nu);
+		//mju_add(ctrl_temp, &ctrl_nominal[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
+		//ctrlLimit(ctrl_temp, m->nu);
+		//energy += mju_dot(ctrl_temp, ctrl_temp, m->nu);
+		cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
 	}
-	ctrlLimit(d_closedloop->ctrl, m->nu);
-	mju_add(ctrl_temp, &ctrl_nominal[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
-	ctrlLimit(ctrl_temp, m->nu);
-	energy += mju_dot(ctrl_temp, ctrl_temp, m->nu);
-	cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
 	step_index_closedloop++;
+	mju_sub(state_error, state_nominal[step_index_closedloop], d_closedloop->qpos, dof + quatnum);
+	mju_sub(&state_error[dof + quatnum], &state_nominal[step_index_closedloop][dof + quatnum], d_closedloop->qvel, dof);
+	for (int i = 0; i < 2 * dof + quatnum; i++)y_cl(i, 1) = state_error[i];
+	x2 = MX1_step * x1 + MU_step * u_temp + MY_step * y_cl;
+	x1 = x2;
+	if (((step_index_closedloop - 1) % batch_size) == 0)
+	{
+		for (int i = 0; i < T_CON.dimension[1]; i++)
+			for (int j = 0; j < T_CON.dimension[0]; j++)
+				T_CON_step(j, i) = T_CON.data[(step_index_closedloop-1)/batch_size* T_CON.dimension[0] * T_CON.dimension[1] + i * T_CON.dimension[0] + j];
+		x1 = T_CON_step * x2;
+	}
 	return 0;
 }
 
@@ -1863,19 +1929,25 @@ bool simulateOpenloop(void)
 	{
 		mju_sub(state_error, state_target, d_openloop->qpos, m->nq);
 		mju_sub(&state_error[m->nq], &state_target[m->nq], d_openloop->qvel, m->nv);
-		if (modelid == 0) {
+        if (modelid == 0) {
 			state_error[0] = -(PI - fabs(d_openloop->qpos[0] - PI))*((PI - d_openloop->qpos[0] > 0) - (PI - d_openloop->qpos[0] < 0));
 		}
+		else if (modelid == 15) {
+			state_error[1] = (PI - fabs(d_openloop->qpos[1]))*((d_openloop->qpos[1] < 0) - (d_openloop->qpos[1] > 0));
+		}
 		mju_mulMatVec(d_openloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
+		ctrlLimit(d_openloop->ctrl, m->nu);
 		if (_strcmpi(testmode, "policy_compare") == 0) {
 			cost_openloop += stepCost(m, d_openloop, stepnum);
 			step_index_openloop = 0;
 			return 1;
 		}
 	}
-	else mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index_openloop * actuatornum], m->nu);
-	ctrlLimit(d_openloop->ctrl, m->nu);
-	cost_openloop += stepCost(m, d_openloop, step_index_openloop);
+	else {
+		mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index_openloop * actuatornum], m->nu);
+		ctrlLimit(d_openloop->ctrl, m->nu);
+		cost_openloop += stepCost(m, d_openloop, step_index_openloop);
+	}
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_openloop);
 	step_index_openloop++;
 	return 0;
@@ -1887,8 +1959,8 @@ mjtNum terminalError(mjtNum ptb, const char *type)
 	mjtNum state_error[kMaxState], ctrl_feedback[kMaxState];
 
 	mj_resetData(m, d_closedloop);
-	mju_copy(d_closedloop->qpos, state_nominal[0], dof+quatnum);
-	mju_copy(d_closedloop->qvel, &state_nominal[0][dof+quatnum], dof);
+	mju_copy(d_closedloop->qpos, state_nominal[0], dof + quatnum);
+	mju_copy(d_closedloop->qvel, &state_nominal[0][dof + quatnum], dof);
 	mj_forward(m, d_closedloop);
 	for (int e = 0; e < stepnum * actuatornum; e++) ctrl_openloop[e] = ctrl_nominal[e] + ptb * ctrl_max * randGauss(0, 1);
 
@@ -1902,11 +1974,12 @@ mjtNum terminalError(mjtNum ptb, const char *type)
 		}
 		for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
 	}
+	
 	if (modelid == 0)
 		return sqrt(angleModify(modelid, d_closedloop->qpos[0])*angleModify(modelid, d_closedloop->qpos[0]) + d_closedloop->qvel[0] * d_closedloop->qvel[0]);
 	else if (modelid == 2)
 		return sqrt((d_closedloop->geom_xpos[6] - 0.6) * (d_closedloop->geom_xpos[6] - 0.6) + (d_closedloop->geom_xpos[7] + 0.6) * (d_closedloop->geom_xpos[7] + 0.6));
-	else if (modelid == 4)
+	else if (modelid == 4)			   
 		return sqrt(d_closedloop->site_xpos[19] * d_closedloop->site_xpos[19] + (d_closedloop->site_xpos[20] - 2.5) * (d_closedloop->site_xpos[20] - 2.5));
 	else if (modelid == 5)
 		return sqrt((d_closedloop->site_xpos[30] - d_closedloop->site_xpos[0]) * (d_closedloop->site_xpos[30] - d_closedloop->site_xpos[0]) + (d_closedloop->site_xpos[32] - d_closedloop->site_xpos[2]) * (d_closedloop->site_xpos[32] - d_closedloop->site_xpos[2]));
@@ -1915,9 +1988,17 @@ mjtNum terminalError(mjtNum ptb, const char *type)
 	else if (modelid == 7)
 		return sqrt((d_closedloop->qpos[0] - d_closedloop->site_xpos[0]) * (d_closedloop->qpos[0] - d_closedloop->site_xpos[0]) + (d_closedloop->qpos[1] - d_closedloop->site_xpos[1]) * (d_closedloop->qpos[1] - d_closedloop->site_xpos[1]));
 	else if (modelid == 8)
-		return sqrt((d_closedloop->site_xpos[39] - d_closedloop->site_xpos[9]) * (d_closedloop->site_xpos[39] - d_closedloop->site_xpos[9]) + (d_closedloop->site_xpos[41] - d_closedloop->site_xpos[11]) * (d_closedloop->site_xpos[41] - d_closedloop->site_xpos[11]));
+		return sqrt((d_closedloop->site_xpos[39] - d_closedloop->site_xpos[9]) * (d_closedloop->site_xpos[39] - d_closedloop->site_xpos[9]) + (d_closedloop->site_xpos[41] - d_closedloop->site_xpos[11]) * (d_closedloop->site_xpos[41] - d_closedloop->site_xpos[11]));													   
 	else if (modelid == 9)
 		return sqrt((d_closedloop->site_xpos[75] - d_closedloop->site_xpos[9]) * (d_closedloop->site_xpos[75] - d_closedloop->site_xpos[9]) + (d_closedloop->site_xpos[77] - d_closedloop->site_xpos[11]) * (d_closedloop->site_xpos[77] - d_closedloop->site_xpos[11]));
+	else if (modelid == 10)
+		return sqrt((d_closedloop->geom_xpos[11] - d_closedloop->geom_xpos[5]) * (d_closedloop->geom_xpos[11] - d_closedloop->geom_xpos[5]) + (d_closedloop->geom_xpos[10] - d_closedloop->geom_xpos[4]) * (d_closedloop->geom_xpos[10] - d_closedloop->geom_xpos[4]) + (d_closedloop->geom_xpos[9] - d_closedloop->geom_xpos[3]) * (d_closedloop->geom_xpos[9] - d_closedloop->geom_xpos[3]));
+	else if (modelid == 11)
+		return sqrt((d_closedloop->site_xpos[6] - d_closedloop->site_xpos[30]) * (d_closedloop->site_xpos[6] - d_closedloop->site_xpos[30]) + (d_closedloop->site_xpos[7] - d_closedloop->site_xpos[31]) * (d_closedloop->site_xpos[7] - d_closedloop->site_xpos[31]) + (d_closedloop->site_xpos[8] - d_closedloop->site_xpos[32]) * (d_closedloop->site_xpos[8] - d_closedloop->site_xpos[32]));
+	else if (modelid == 12)
+		return sqrt((d_closedloop->site_xpos[3] - d_closedloop->site_xpos[15]) * (d_closedloop->site_xpos[3] - d_closedloop->site_xpos[15]) + (d_closedloop->site_xpos[4] - d_closedloop->site_xpos[16]) * (d_closedloop->site_xpos[4] - d_closedloop->site_xpos[16]) + (d_closedloop->site_xpos[5] - d_closedloop->site_xpos[17]) * (d_closedloop->site_xpos[5] - d_closedloop->site_xpos[17]));
+	else if (modelid == 13)
+		return sqrt((d_closedloop->geom_xpos[6] - 0.6) * (d_closedloop->geom_xpos[6] - 0.6) + (d_closedloop->geom_xpos[7] + 0.6) * (d_closedloop->geom_xpos[7] + 0.6));
 	return 0;
 }
 
@@ -2023,7 +2104,7 @@ void modelTest(void)
 }
 
 // run a certain mode
-void modeSelection(const char* mode)
+void testModeSelection(const char* mode)
 {
 	strcpy(testmode, mode);
 	if (_strcmpi(testmode, "policy_compare") == 0) {
@@ -2279,10 +2360,10 @@ void simulate(void)
                 else
                 {
                     // step while simtime lags behind cputime, and within safefactor
-                    while((d_openloop->time - simsync)<(glfwGetTime() - cpusync) && (d_closedloop->time - simsync)<(glfwGetTime() - cpusync) && (d->time-simsync)<(glfwGetTime()-cpusync) &&
-                           (glfwGetTime()-tmstart)<refreshfactor/vmode.refreshRate )
-                    {
-                        // clear old perturbations, apply new
+					while ((d_openloop->time - simsync) < (glfwGetTime() - cpusync) && (d_closedloop->time - simsync) < (glfwGetTime() - cpusync) && (d->time - simsync) < (glfwGetTime() - cpusync) &&
+						(glfwGetTime() - tmstart) < refreshfactor / vmode.refreshRate)
+					{
+						// clear old perturbations, apply new
 						mju_zero(d->xfrc_applied, 6 * m->nbody);
 						mjv_applyPerturbPose(m, d, &pert, 0);  // move mocap bodies only
 						mjv_applyPerturbForce(m, d, &pert);
@@ -2293,8 +2374,8 @@ void simulate(void)
 						mjv_applyPerturbPose(m, d_openloop, &pert, 0);
 						mjv_applyPerturbForce(m, d_openloop, &pert);
 
-                        // run mj_step
-                        mjtNum prevtm = d->time;
+						// run mj_step
+						mjtNum prevtm = d->time;
 						simulateNominal();
 						simulateOpenloop();
 						simulateClosedloop();
@@ -2303,8 +2384,35 @@ void simulate(void)
 						//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.2f\n", i, d->qpos[i]);
 						//printf("%f \n", d->qpos[20] - (d->qpos[9]+d->qpos[7] + d->qpos[10]));
 						//for (int i = 0; i < m->nv; i++) d->ctrl[i] = -5;
+						//mjtNum tempq[4] = { 0 };
+						//for (int i = 0; i < 4; i++) tempq[i] = d->qpos[3+i]+randGauss(0, 0.00005);
+						//mju_normalize4(tempq);
+						//for (int i = 0; i < 4; i++) d->qpos[3 + i] = tempq[i];
+						//mj_step(m, d); printf("%f ", d->qpos[3]); printf("%f ", d->qpos[4]); printf("%f ", d->qpos[5]); printf("%f\n", d->qpos[6]);
+						//for (int i = 0; i < 4; i++) d->xquat[4 + i] = state_nominal[0][3+i];
+						//for (int i = 3; i < 7; i++) d->qpos[i] = state_nominal[0][i]; 
+						//printf("%f ", d->qpos[3]- state_nominal[0][3]); printf("%f ", d->qpos[4] - state_nominal[0][4]); printf("%f ", d->qpos[5] - state_nominal[0][5]); printf("%f\n", d->qpos[6] - state_nominal[0][6]);
+						//printf("%f ", state_nominal[0][3]); printf("%f ", state_nominal[0][4]); printf("%f ", state_nominal[0][5]); printf("%f\n", state_nominal[0][6]);
+						//d->efc_force[0] += 10; 
+						//mj_step(m, d); mj_forward(m, d); 
+						//printf("%f, ", d->efc_force[0]);
+						//printf("%f ", d->xquat[4]); printf("%f ", d->xquat[5]); printf("%f ", d->xquat[6]); printf("%f\n", d->xquat[7]);
+						//mjtNum temp1[kMaxState] = { 0.9534626,0.0953463,0,0.2860388, 0.9534626,0.0953463,0,0.2860388, 0.92123,0.20498,0.33023,0.01662, 0.9534626,0.0953463,0, 0.92123,0.20498,0.33023 };
+						//for (int y = 0; y < 4; y++) d->qpos[y] = temp1[y];
+						//for (int y = 4; y < 8; y++) d->qpos[y+4] = temp1[y];
+						//for (int y = 8; y < 12; y++) d->qpos[y+8] = temp1[y];
+						//for (int y = 0; y < 3; y++) d->qvel[y] = temp1[y + dof + quatnum];
+						//for (int y = 3; y < 6; y++) d->qvel[y+3] = temp1[y + dof + quatnum];
+						//mj_step(m, d); 
+						////mj_forward(m, d);
+						//for (int i = 8; i < 12; i++) printf(" d->qpos[%d]        : %.5f\n", i, d->qpos[i]);
+						//for (int i = 0; i < 3; i++) printf(" d->qvel[%d]        : %.5f\n", i, d->qvel[i]);
+						//static int c = 0;
+						//if (c == 0) { d->ctrl[0] = -1; d->ctrl[1] = -2.41; d->ctrl[2] = -1; d->ctrl[3] = -1; }
+						//else { d->ctrl[0] = -1; d->ctrl[1] = -2.42; d->ctrl[2] = -1; d->ctrl[3] = -1; }
+						//c++;
 						//mj_step(m, d);
-
+						
                         // break on reset
                         if( d->time<prevtm )
                             break;
@@ -2418,6 +2526,15 @@ void init(void)
 		fclose(filestream1);
 	}
 	else printf("Could not open file: parameters.txt\n");
+
+	matRead("feedback2c.mat", "MX1", &MX1);
+	matRead("feedback2c.mat", "MU", &MU);
+	matRead("feedback2c.mat", "MY", &MY);
+	matRead("feedback2c.mat", "ML", &ML);
+	matRead("feedback2c.mat", "T_CON", &T_CON);
+	matRead("feedback2c.mat", "BATCH_SIZE", &BATCH_SIZE);
+
+	batch_size = BATCH_SIZE.data[0];
 
 	// init GLFW, set timer callback (milliseconds)
 	if (!glfwInit())
@@ -2539,9 +2656,9 @@ int main(int argc, const char** argv)
 	loadmodel();
 	stateNominal(m, d);
 
-	if (argc > 2) if (sscanf(argv[2], "%lf", &perturb_coefficient_test) != 1) modeSelection(argv[2]);
+	if (argc > 2) if (sscanf(argv[2], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[2]);
 
-	if (argc > 3) if (sscanf(argv[3], "%lf", &perturb_coefficient_test) != 1) modeSelection(argv[3]);
+	if (argc > 3) if (sscanf(argv[3], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[3]);
 
 	if (argc > 4) sscanf(argv[4], "%lf", &perturb_coefficient_test);
 	for (int e = 0; e < stepnum * actuatornum; e++)
@@ -2584,7 +2701,7 @@ int main(int argc, const char** argv)
 		glfwMakeContextCurrent(window);
 		render(window);
     }
-	//for (int i = 0; i < 3 * m->nsite; i++) printf(" d->site_xpos[%d]   : %.2f\n", i, d->site_xpos[i]);
+	
     // stop simulation thread
     settings.exitrequest = 1;
     simthread.join();

@@ -1,0 +1,50 @@
+<mujoco model="string">
+    <include file="./common/visual.xml"/>
+    <include file="./common/skybox.xml"/>
+    <include file="./common/materials.xml"/>
+    
+    <option timestep="0.01" iterations="50" integrator="RK4" solver="Newton" tolerance="1e-10" gravity="0 0 -1" collision="predefined" viscosity="0.0"/>
+
+    <size njmax="200" nconmax="100" nstack="3000"/>
+
+    <visual>
+        <rgba haze=".15 .25 .35 1"/>
+    </visual>
+
+    <default>
+        <joint type="hinge" pos="0 0 0" limited="false" range="-180 180" damping="0"/>
+        <motor ctrllimited="false" ctrlrange="-1 1" gear="1"/>
+		<tendon stiffness="1" damping="0" width="0.01"/>
+		<geom material="self"/>
+		<site size="0.1"/>
+    </default>
+
+    <worldbody>
+        <light directional="true" diffuse=".8 .8 .8" specular=".2 .2 .2" pos="0 0 5" dir="0 0 -1"/>
+
+        <body pos="0 0 0">
+            <geom type="sphere" mass="1200" size="0.5"/>
+            <site name="f0" pos="0 0 0"/>
+        </body>
+
+        <body pos="1 1 1">
+            <geom type="sphere" mass="1" size="0.5"/>
+            <site name="fb" pos="0 0 0"/>
+            <joint type="free"/>
+        </body>
+		
+		<body pos="0 0 0">
+			<geom name="floor" pos="0 0 0" size="0 0 1" type="plane" material="grid"/>
+			<site name="fl" pos="-8.735285622388856 15.129958516603422 0"/>
+			<site name="fm" pos="-8.735285622388856 -15.129958516603422 0"/>
+            <site name="fr" pos="17.470571244777712 0 0"/>
+		</body>
+    </worldbody>
+
+    <tendon>
+        <spatial name="S1">
+            <site site="f0"/>
+            <site site="fb"/>
+        </spatial>
+    </tendon>   
+</mujoco>

@@ -7,11 +7,11 @@
         https://www.roboti.us/resourcelicense.txt
 */
 
-#include "windows.h"
-#include "uitools.h"
+#include <windows.h>
 #include <thread>
 #include <mutex>
-#include <funclib.h>
+#include "uitools.h"
+#include "funclib.h"
 
 //-------------------------------- global -----------------------------------------------
 // constants
@@ -1791,10 +1791,10 @@ void simulateNominal(void)
 			state_error[0] = -(PI - fabs(d->qpos[0] - PI))*((PI - d->qpos[0] > 0) - (PI - d->qpos[0] < 0));
 		}	
 		else if (modelid == 15) {
-			state_error[1] = (PI - fabs(d->qpos[1]))*((d->qpos[1] < 0) - (d->qpos[1] > 0));
+			state_error[1] = -(PI - fabs(d->qpos[1]))*((d->qpos[1] < 0) - (d->qpos[1] > 0));
 		}
 		mju_mulMatVec(d->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
-		mj_forward(m, d);
+		//mj_forward(m, d);
 
 		// print N_final to be the target for the analytical shape control
 		if (NFinal == true) {
@@ -1825,15 +1825,16 @@ bool simulateClosedloop(void)
 
 	if (step_index_closedloop >= stepnum)
 	{
-		mju_sub(state_error, state_target, d_closedloop->qpos, m->nq);
-		mju_sub(&state_error[m->nq], &state_target[m->nq], d_closedloop->qvel, m->nv);
+		mju_sub(state_error, state_target, d_closedloop->qpos, dof + quatnum);
+		mju_sub(&state_error[dof + quatnum], &state_target[dof + quatnum], d_closedloop->qvel, dof);
         if (modelid == 0) {
 			state_error[0] = -(PI - fabs(d_closedloop->qpos[0] - PI))*((PI - d_closedloop->qpos[0] > 0) - (PI - d_closedloop->qpos[0] < 0));
 		}
 		else if (modelid == 15) {
-			state_error[1] = (PI - fabs(d_closedloop->qpos[1]))*((d_closedloop->qpos[1] < 0) - (d_closedloop->qpos[1] > 0));
+			state_error[1] = -(PI - fabs(d_closedloop->qpos[1]))*((d_closedloop->qpos[1] < 0) - (d_closedloop->qpos[1] > 0));
 		}
-		mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
+		mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState); 
+		ctrlLimit(d_closedloop->ctrl, m->nu);
 		if (_strcmpi(testmode, "policy_compare") == 0) {
 			cost_closedloop += stepCost(m, d_closedloop, stepnum);
 			step_index_closedloop = 0; 
@@ -1851,12 +1852,12 @@ bool simulateClosedloop(void)
 		}
 		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index_closedloop], state_error, kMaxState, kMaxState);
 		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
+		ctrlLimit(d_closedloop->ctrl, m->nu);
+		mju_add(ctrl_temp, &ctrl_nominal[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
+		ctrlLimit(ctrl_temp, m->nu);
+		energy += mju_dot(ctrl_temp, ctrl_temp, m->nu);
+		cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
 	}
-	ctrlLimit(d_closedloop->ctrl, m->nu);
-	mju_add(ctrl_temp, &ctrl_nominal[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
-	ctrlLimit(ctrl_temp, m->nu);
-	energy += mju_dot(ctrl_temp, ctrl_temp, m->nu);
-	cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
 	step_index_closedloop++;
 	return 0;
@@ -1879,18 +1880,21 @@ bool simulateOpenloop(void)
 			state_error[0] = -(PI - fabs(d_openloop->qpos[0] - PI))*((PI - d_openloop->qpos[0] > 0) - (PI - d_openloop->qpos[0] < 0));
 		}
 		else if (modelid == 15) {
-			state_error[1] = (PI - fabs(d_openloop->qpos[1]))*((d_openloop->qpos[1] < 0) - (d_openloop->qpos[1] > 0));
+			state_error[1] = -(PI - fabs(d_openloop->qpos[1]))*((d_openloop->qpos[1] < 0) - (d_openloop->qpos[1] > 0));
 		}
 		mju_mulMatVec(d_openloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
+		ctrlLimit(d_openloop->ctrl, m->nu);
 		if (_strcmpi(testmode, "policy_compare") == 0) {
 			cost_openloop += stepCost(m, d_openloop, stepnum);
 			step_index_openloop = 0;
 			return 1;
 		}
 	}
-	else mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index_openloop * actuatornum], m->nu);
-	ctrlLimit(d_openloop->ctrl, m->nu);
-	cost_openloop += stepCost(m, d_openloop, step_index_openloop);
+	else {
+		mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index_openloop * actuatornum], m->nu);
+		ctrlLimit(d_openloop->ctrl, m->nu);
+		cost_openloop += stepCost(m, d_openloop, step_index_openloop);
+	}
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_openloop);
 	step_index_openloop++;
 	return 0;
@@ -2047,7 +2051,7 @@ void modelTest(void)
 }
 
 // run a certain mode
-void modeSelection(const char* mode)
+void testModeSelection(const char* mode)
 {
 	strcpy(testmode, mode);
 	if (_strcmpi(testmode, "policy_compare") == 0) {
@@ -2590,9 +2594,9 @@ int main(int argc, const char** argv)
 	loadmodel();
 	stateNominal(m, d);
 
-	if (argc > 2) if (sscanf(argv[2], "%lf", &perturb_coefficient_test) != 1) modeSelection(argv[2]);
+	if (argc > 2) if (sscanf(argv[2], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[2]);
 
-	if (argc > 3) if (sscanf(argv[3], "%lf", &perturb_coefficient_test) != 1) modeSelection(argv[3]);
+	if (argc > 3) if (sscanf(argv[3], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[3]);
 
 	if (argc > 4) sscanf(argv[4], "%lf", &perturb_coefficient_test);
 	for (int e = 0; e < stepnum * actuatornum; e++)

@@ -3,7 +3,7 @@
     <include file="./common/skybox.xml"/>
     <include file="./common/materials.xml"/>
     
-    <option timestep="0.01" iterations="50" solver="Newton" tolerance="1e-10" gravity="0 0 0" collision="predefined" viscosity="0.0"/>
+    <option timestep="0.01" iterations="50" integrator="RK4" solver="Newton" tolerance="1e-10" gravity="0 0 -9.8/6" collision="predefined" viscosity="0.0"/>
 
     <size njmax="200" nconmax="100" nstack="3000"/>
 
@@ -12,9 +12,9 @@
     </visual>
 
     <default>
-        <joint type="hinge" pos="0 0 0" limited="false" range="-180 180" damping="0.2"/>
+        <joint type="hinge" pos="0 0 0" limited="false" range="-180 180" damping="10"/>
         <motor ctrllimited="false" ctrlrange="-1 1" gear="1"/>
-		<tendon stiffness="0" damping="0.2" width="0.01"/>
+		<tendon damping="10" width="0.01"/>
 		<geom material="self"/>
 		<site size="0.1"/>
     </default>
@@ -81,6 +81,7 @@
                     <body name="mbar5" pos="-1.057961884250790 -1.832443735993672 12">
                         <geom name="mbar5" type="capsule" fromto="0 0 0  1.057961884250790 1.832443735993672 12" mass="42.263078141279" size="0.0271297069723425"/>
                         <joint name="mj5" axis="1.832443735993672 -1.057961884250790 0"/>
+                        <site name="mb5e" pos="1.057961884250790 1.832443735993672 12"/>
                     </body>
 				</body>
             </body>
@@ -102,6 +103,11 @@
                     <body name="rbar5" pos="2.115923768501580 0 12">
                         <geom name="rbar5" type="capsule" fromto="0 0 0  -2.115923768501580 0 12" mass="42.263078141279" size="0.0271297069723425"/>
                         <joint name="rj5" axis="0 1 0"/>
+                        <site name="rb5e" pos="-2.115923768501580 0 12"/>
+                        <body pos="-2.115923768501580 0 12">
+                            <geom type="sphere" mass="1000" size="0.5"/>
+                            <site pos="0 0 0"/>
+                        </body>
                     </body>
 				</body>
             </body>
@@ -123,85 +129,85 @@
 	</equality>
 
     <tendon>
-        <spatial name="S1">
+        <spatial name="S1" stiffness="482.821396771479">
             <site site="f0"/>
             <site site="lb2e"/>
         </spatial>
-		<spatial name="S2">
+		<spatial name="S2" stiffness="9490.86920867426">
             <site site="rb1e"/>
             <site site="lb1e"/>
         </spatial>
-        <spatial name="S3">
+        <spatial name="S3" stiffness="9490.86920867427">
             <site site="mb1e"/>
             <site site="lb1e"/>
         </spatial>
-        <spatial name="S4">
+        <spatial name="S4" stiffness="9490.86920867426">
             <site site="mb1e"/>
             <site site="rb1e"/>
         </spatial>
-		<spatial name="S5">
+		<spatial name="S5" stiffness="482.821396771479">
             <site site="lb2e"/>
             <site site="lb5e"/>
         </spatial>
-		<spatial name="S6">
+		<spatial name="S6" stiffness="9490.51781761302">
             <site site="rb4e"/>
             <site site="lb4e"/>
         </spatial>
-        <spatial name="S7">
+        <spatial name="S7" stiffness="9490.51781761302">
             <site site="mb4e"/>
             <site site="lb4e"/>
         </spatial>
-        <spatial name="S8">
+        <spatial name="S8" stiffness="9490.51781761302">
             <site site="mb4e"/>
             <site site="rb4e"/>
         </spatial>
-        <spatial name="S9">
+        <spatial name="S9" stiffness="453.703703703704">
             <site site="f0"/>
             <site site="lb3e"/>
         </spatial>
-        <spatial name="S10">
+        <spatial name="S10" stiffness="453.703703703714">
             <site site="f0"/>
             <site site="rb3e"/>
         </spatial>
-        <spatial name="S11">
+        <spatial name="S11" stiffness="453.703703703705">
             <site site="f0"/>
             <site site="mb3e"/>
         </spatial>
-        <spatial name="S12">
+        <spatial name="S12" stiffness="453.722483832316">
             <site site="lb5e"/>
             <site site="lb3e"/>
         </spatial>
-        <spatial name="S13">
+        <spatial name="S13" stiffness="453.722483832323">
             <site site="lb5e"/>
             <site site="rb3e"/>
         </spatial>
-        <spatial name="S14">
+        <spatial name="S14" stiffness="453.722483832317">
             <site site="lb5e"/>
             <site site="mb3e"/>
         </spatial>
-        <spatial name="S15">
+        <spatial name="S15" stiffness="765.878737195431">
             <site site="lb3e"/>
             <site site="rb3e"/>
         </spatial>
-        <spatial name="S16">
+        <spatial name="S16" stiffness="765.878737195432">
             <site site="lb3e"/>
             <site site="mb3e"/>
         </spatial>
-        <spatial name="S17">
+        <spatial name="S17" stiffness="765.878737195432">
             <site site="rb3e"/>
             <site site="mb3e"/>
         </spatial>
-        <spatial name="S18">
+        <spatial name="S18" stiffness="226.851851851857">
             <site site="fl"/>
-            <site site="lb3e"/>
+            <site site="lb5e"/>
         </spatial>
-        <spatial name="S19">
+        <spatial name="S19" stiffness="226.851851851856">
             <site site="fr"/>
-            <site site="rb3e"/>
+            <site site="rb5e"/>
         </spatial>
-        <spatial name="S20">
+        <spatial name="S20" stiffness="226.851851851852">
             <site site="fm"/>
-            <site site="mb3e"/>
+            <site site="mb5e"/>
         </spatial>
     </tendon>   
 

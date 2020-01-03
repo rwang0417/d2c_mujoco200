@@ -850,3 +850,42 @@ sysid2d 模型文件名，noise level，rollout数，模型名，线程数，最
 ### Log:
 #### 1. matlab可以直接调用exe。
 #### 2. 复制扩充矩阵用repmat。
+## 11/25/2019
+### Log:
+#### 1. matlab读取修改xml文件，出现什么什么null是正常的，字符串数组strings(m,n)，setattributes后面的值只能是字符串类型。
+## 12/06/2019
+### Log:
+#### 1. 在tower顶端放一个小球作为payload，可以把小球定义为最上层其中一根bar的子body，中间没有joint连接，不会造成质量集中在一根bar上力不均匀的问题，重力由中心线向下作用在整个结构上。
+#### 2. matlab用\代替inv，要把整个inverse以及后面的元素括起来，不然前面如果有乘别的矩阵就会先做乘法整体被求逆，造成维度不匹配。
+## 12/10/2019
+### Log:
+#### 1. 电调上电时不能断掉信号。
+#### 2. 电机beep是由电调控制的。
+## 12/26/2019
+### Log:
+#### 1. matlab lqg是stationary的，不直接适用于time varying的情况。
+#### 2. vs的命令行窗口在windows搜索里找，用的VS2015 x64 native tools command prompt，直接输入批处理文件名bld_ml64.bat就会自动用ml64执行里面的命令。
+## 12/27/2019
+### Log:
+#### 1. vs调用matlab的教程：https://zhuanlan.zhihu.com/p/23334508。先是将``` C:\Program Files\MATLAB\R2016a\extern\lib\win64; C:\Program Files\MATLAB\R2016a\bin\win64 ``` 加入系统变量，然后在vs工程属性中在 C++->常规->附加包含目录添加：``` C:\Program Files\MATLAB\R2016a\extern\include```,这里的路径应改为matlab的安装目录，在 链接器->常规->附加库目录 添加：```C:\Program Files\MATLAB\R2016a\extern\lib\win64\microsoft```，在链接器->输入->附加依赖库 添加：
+```
+libmat.lib
+libmx.lib
+libmex.lib
+libeng.lib
+```
+最后在cpp文件开头加入``` #include <mat.h>```
+## 12/28/2019
+### Log:
+#### 1. 包含头文件时，用户目录下的用双引号，系统目录下的用尖括号。
+#### 2. 好像是控制台工程程序算相对路径的起点是vcxproj文件所在目录，直接运行exe的那些起点好像就是exe。
+## 12/30/2019
+### Log:
+#### 1. 宏重定义，原因是在#include "glfw.h" 之前没有#include <windows.h>，mujoco包含glfw是在uitools.h里，不想改uitools文件所以在test.cpp前面#include <windows.h>。
+#### 2. windows.h的作用还有getusername这样的函数，所以几个工程的cpp都需要。
+#### 3. assert在release版本会默认忽略，只在debug起作用，所以文件是否正常打开这种测试还是使用if做错误检查。
+#### 4. sizeof的结果可以用于定义数组维度。
+## 01/02/2020
+### Log:
+#### 1. matlab的reshape排列出的矩阵，c读mat行和列是反的，要注意！！！！！！！！
+#### 2. 弄了一个比较简便的顶点处线性化的功能，配合matlab文件可以算出顶点stablizer的gain。在cartpole上实验成功，然后之前cartpole的角度修正少了一个负号，加上就work了。update了一下readme，把3d的描述加上了。

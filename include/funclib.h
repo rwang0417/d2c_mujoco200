@@ -20,7 +20,7 @@
 #include <string>
 #include <cstring>
 #include <chrono>
-#include <math.h> 
+#include <math.h>
 #include <time.h>
 #include "Eigen/LU"
 #include <iostream>
@@ -35,6 +35,17 @@ const int N1 = 30;
 const mjtNum PI = 3.141592653;
 
 /* Exported functions ------------------------------------------------------- */
+/**
+* @brief  Read data from .mat file
+* @note   none
+* @param  const char* filename: path of the .mat file
+*         const char *varname: name of the target variabl
+*         MatData *dataptr: pointer to the data
+* @retval none
+* @author rwang0417@tamu.edu
+*/
+//void matRead(const char* filename, const char *varname, MatData *dataptr);
+
 /**
 * @brief  Set the model to initial state
 * @note   none
@@ -106,10 +117,6 @@ mjtNum stepCost(mjModel* m, mjData* d, int step_index);
 * @author rwang0417@tamu.edu
 */
 void stateNominal(mjModel* m, mjData* d);
-
-mjtNum determinant(mjtNum *fh, mjtNum r);
-void transpose(mjtNum *res, mjtNum *mat, mjtNum rmat, mjtNum cmat = 0);
-void cofactor(mjtNum *res, mjtNum *arg, mjtNum r);
 
 void save_result(const char *_filename, mjtNum *u, mjtNum *u_init, mjtNum len, mjtNum *Q, mjtNum *QT, mjtNum *R, mjtNum *ptb_coef, mjtNum *step_coef, mjtNum ns, const char *_mode = "wt+");
 void fw_array(FILE *fstream, mjtNum *prt, mjtNum len = 1, const char *_name = "Array1: ");

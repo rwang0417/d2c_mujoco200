@@ -348,11 +348,11 @@ int modelSelection(const char* model)
 		rolloutnum_train = 40;
 		ctrl_upperlimit = 100;
 		ctrl_lowerlimit = -100;
-		mjtNum temp[kMaxState][kMaxState] = { 11.0396, 3.0658 };// { 5.4995, 1.2227 };
+		mjtNum temp[kMaxState][kMaxState] = { -2.984962660388648, -41.858411893836880, -4.889496008438448, -10.918155495786175 };
 		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], 2 * dof + quatnum);
 		mjtNum temp1[kMaxState] = { 0 };
 		mju_copy(state_nominal[0], temp1, 2 * dof + quatnum);
-		mjtNum temp2[kMaxState] = { 0, -PI, 0,0.0, };
+		mjtNum temp2[kMaxState] = { 0, -PI, 0, 0.0, };
 		mju_copy(state_target, temp2, 2 * dof + quatnum);
 		integration_per_step = (int)(control_timestep / simulation_timestep);
 		return 1;

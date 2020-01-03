@@ -55,11 +55,12 @@ Tensegrity
   - toplqr.m: top stabilizer gain calculation.
   - .cpp: source files for the d2c algorithm and result testing.
     - openloop.cpp: open-loop training code, generates optimal nominal control sequence.
-    - sysid2dinv.cpp: system identification code for 2D models. The least-square is solved using matrix inversion method. The max step number and state number are subject to array size limitation.
-    - sysid2dseq.cpp: system identification code for 2D models. The least-square is solved using iterative estimation method. The limitation for max step number and state number is less conservative.
-    - test2d.cpp: testing code for 2D models. This file can visualize the simulation, compare the open-loop policy with closed-loop policy, calculate episodic energy and terminal distance from the target, show the model information.
+    - sysid2dinv.cpp: system identification code for 2D models. The least-square is solved using matrix inversion method. Pretty fast using multi-threading.
+    - sysid2dseq.cpp: system identification code for 2D models. The least-square is solved using iterative estimation method. This method is faster for single thread but less accurate.
+    - sysid3dinv.cpp: system identification code for 3D models. The least-square is solved using matrix inversion method. 3D version of sysid2dinv.cpp.
+    - test.cpp: testing code for 2D and 3D models. This file can visualize the simulation, compare the open-loop policy with closed-loop policy, calculate episodic energy and terminal distance from the target, show the model information.
     - dataprocess.py: python functions for data analysis and plotting.
-  - openloop, sysid2d, test2d: Visual Studio projects.
+  - openloop, sysid2d, test: Visual Studio projects.
 
 
 ## Set up
@@ -70,7 +71,7 @@ Software Platform: Visual Studio 2017, Matlab 2019a, Python 3
 
 License Requirement: MuJoCo license from <https://www.roboti.us/license.html>.
 
-For openloop, sysid2d and test2d, set up a Visual Studio project for each of them and generate the executable files.
+For openloop, sysid2d, sysid3d and test, set up a Visual Studio project for each of them and generate the executable files.
 
 For the Matlab wrapper, first set up the c compiler by running `mex setup` in Matlab. Then compile mexstep.c by `mex mexstep.c mujoco200.lib mujoco200nogl.lib`.
 
@@ -81,9 +82,10 @@ For the Matlab wrapper, first set up the c compiler by running `mex setup` in Ma
 2. Write model-dependent parameters into funclib.cpp. Generate executable files: openloop.exe, sysid2d.exe and test2d.exe and put them into the workspace folder.
 3. Open a command window in the workspace folder and run the D2C algorithm
    1. openloop: `openloop modelname.xml iteration_number [modeltype] [thread_number]` Modeltype is usually the same as modelname. If not, it needs to be specified for the code to identify the model.
-   2. sysid2d: `sysid2d modelname.xml noise_level rollout_number [modeltype] [thread_number]` The standard deviation of perturbation is set as noise_level * Umax, where Umax is the maximum nominal control value from step 1.
-   3. LQR gain: Run tvlqr.m in Matlab. Make sure the model dependent parameters align with those in funclib.cpp.
-4. Test the result by running `test2d modelname.xml [modeltype] [mode] [noise_level]` in the command window. The options for mode are listed here:
+   2. sysid2d: `sysid2d modelname.xml noise_level rollout_number [modeltype] [thread_number] [sysmode]` The standard deviation of perturbation is set as noise_level * Umax, where Umax is the maximum nominal control value from step 1. If sysmode is set to "top", the code will generate the linearized system at the top position (pendulum, cartpole) and the thread number will be set to 1. The output file is "lnr_top.txt" for top position and "lnr.txt" otherwise. Run toplqr.m in Matlab to get the stablizer geedback gain at the top.
+   3. sysid3d: `sysid3d modelname.xml noise_level rollout_number [modeltype] [thread_number]` Same as sysid2d.
+   4. LQR gain: Run tvlqr.m in Matlab. Make sure the model dependent parameters align with those in funclib.cpp.
+4. Test the result by running `test modelname.xml [modeltype] [mode] [noise_level]` in the command window. The options for mode are listed here:
    - modeltest: simulate the model with no control input and display. Some model parameters will be printed on the command window.
    - policy_compare: generate data for the D2C open-loop policy and closed-loop policy comparison under different noise level. Also outputs the episodic energy data for the D2C Closed-loop policy.
    - performance_test: generate data of the distance from the target with the D2C closed-loop and open-loop policy applied under different noise level.

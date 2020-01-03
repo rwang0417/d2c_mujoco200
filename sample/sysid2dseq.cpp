@@ -7,9 +7,9 @@
         https://www.roboti.us/resourcelicense.txt
 */
 
-#include "windows.h"
+#include <windows.h>
 #include <thread>
-#include <funclib.h>
+#include "funclib.h"
 
 //-------------------------------- global variables -------------------------------------
 // constants
