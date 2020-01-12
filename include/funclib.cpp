@@ -352,7 +352,7 @@ int modelSelection(const char* model)
 		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], 2 * dof + quatnum);
 		mjtNum temp1[kMaxState] = { 0 };
 		mju_copy(state_nominal[0], temp1, 2 * dof + quatnum);
-		mjtNum temp2[kMaxState] = { 0, -PI, 0, 0.0, };
+		mjtNum temp2[kMaxState] = { 0, -PI, 0, 0 };
 		mju_copy(state_target, temp2, 2 * dof + quatnum);
 		integration_per_step = (int)(control_timestep / simulation_timestep);
 		return 1;

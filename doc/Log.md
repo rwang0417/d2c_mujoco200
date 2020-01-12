@@ -889,3 +889,15 @@ libeng.lib
 ### Log:
 #### 1. matlab的reshape排列出的矩阵，c读mat行和列是反的，要注意！！！！！！！！
 #### 2. 弄了一个比较简便的顶点处线性化的功能，配合matlab文件可以算出顶点stablizer的gain。在cartpole上实验成功，然后之前cartpole的角度修正少了一个负号，加上就work了。update了一下readme，把3d的描述加上了。
+## 01/08/2020
+### Log:
+#### 1. 修复了testlqg，x1需要每次重新开始rollout的时候置零，不然报错，无法reset，eigen包的矩阵访问index从0开始。
+## 01/10/2020
+### Log:
+#### 1. D一开始就设为0对sysid的影响。把H矩阵中对应D的项设为零，相当于把数值误差泄漏到D上的部分去掉，这样D就是0，符合理论，但是泄漏的误差没有补偿回其他的项，导致其他的项数值不准确，后面计算和svd的时候感觉像是在用残缺的数据。用swimmer测试，把D设为零误差是之前的十多倍，state曲线基本对不上，比不设为零差很多。
+#### 2. 一个batch， cartpole的closedloop变差多少。效果很好，不比batch=60差。
+#### 3. swimmer的batch起点，用nonzero init，noise必须非常小，因为timestep小导致state error非常小。随机数前面的系数小于e-6左右D的第一个矩阵就不会比后面的大很多。需要更小才可以让第一步error不比后面的step大很多。但是只要这个init很小，batch起始step的CD就会接近零，在那一步观察到的y就会接近是0，解决方法是利用每个batch多id的一步的CD，在一个batch结束时生成后一个batch起始步的y，然后在新batch起始步不生成y，就不会在plot y的时候每次换batch时y都置零，看着很奇怪，但是这样不影响ABCD。
+#### 4. 重新做了pendulum和cartpole有无transformation的对比，效果差别不大，有transformation稍微好一点点。
+#### 5. nonzero x init的意义在于让xx'更容易等于I，这个是acc2018 paper理论的一部分，如果x初始为0，那前几个CD会很小，A也会有更大误差，这个会影响每个batch的前几步，所以尽量还是不要用zero x init，即使初始值只能很小。
+#### 6. swimmer3闭环在前200步效果还可以，后面就跑飞了，10%noise。
+#### 7. 既然切换batch的时候CD仍然是0，需要用到前一batch的CD来生成y，是不是应该用前一batch的CD做闭环？对新batch前几步的A会不会有不好影响，可不可以也用上一个batch的？

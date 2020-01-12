@@ -1818,7 +1818,7 @@ void simulateNominal(void)
 			state_error[0] = -(PI - fabs(d->qpos[0] - PI))*((PI - d->qpos[0] > 0) - (PI - d->qpos[0] < 0));
 		}	
 		else if (modelid == 15) {
-			state_error[1] = (PI - fabs(d->qpos[1]))*((d->qpos[1] < 0) - (d->qpos[1] > 0));
+			state_error[1] = -(PI - fabs(d->qpos[1]))*((d->qpos[1] < 0) - (d->qpos[1] > 0));
 		}
 		mju_mulMatVec(d->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 		//mj_forward(m, d);
@@ -1844,7 +1844,7 @@ bool simulateClosedloop(void)
 {
 	static mjtNum state_error[kMaxState], ctrl_feedback[kMaxState], ctrl_temp[kMaxState];
 	static MatrixXd x1 = MatrixXd::Zero(ML.dimension[1], 1);
-	static MatrixXd x2 = MatrixXd::Zero(ML.dimension[1], 1);
+	MatrixXd x2 = MatrixXd::Zero(ML.dimension[1], 1);
 	MatrixXd u_temp = MatrixXd::Zero(ML.dimension[0], 1);
 	MatrixXd y_cl = MatrixXd::Zero(MY.dimension[1], 1);
 	MatrixXd MX1_step(MX1.dimension[0], MX1.dimension[1]);
@@ -1854,6 +1854,7 @@ bool simulateClosedloop(void)
 	MatrixXd T_CON_step(T_CON.dimension[0], T_CON.dimension[1]);
 
 	if (step_index_closedloop == 0) {
+		x1 = MatrixXd::Zero(ML.dimension[1], 1);
 		modelInit(m, d_closedloop, state_nominal[0], dof, quatnum);
 		cost_closedloop = 0;
 		energy = 0;
@@ -1867,7 +1868,7 @@ bool simulateClosedloop(void)
 			state_error[0] = -(PI - fabs(d_closedloop->qpos[0] - PI))*((PI - d_closedloop->qpos[0] > 0) - (PI - d_closedloop->qpos[0] < 0));
 		}
 		else if (modelid == 15) {
-			state_error[1] = (PI - fabs(d_closedloop->qpos[1]))*((d_closedloop->qpos[1] < 0) - (d_closedloop->qpos[1] > 0));
+			state_error[1] = -(PI - fabs(d_closedloop->qpos[1]))*((d_closedloop->qpos[1] < 0) - (d_closedloop->qpos[1] > 0));
 		}
 		mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState); 
 		ctrlLimit(d_closedloop->ctrl, m->nu);
@@ -1891,26 +1892,26 @@ bool simulateClosedloop(void)
 			for (int j = 0; j < MU.dimension[0]; j++)
 				MU_step(j, i) = MU.data[step_index_closedloop*MU.dimension[0] * MU.dimension[1] + i * MU.dimension[0] + j];
 		u_temp = ML_step*x1;
-		for (int i = 0; i < actuatornum; i++) d_closedloop->ctrl[i] = ctrl_openloop[step_index_closedloop * actuatornum + i] + u_temp(i, 1);
+		for (int i = 0; i < actuatornum; i++) d_closedloop->ctrl[i] = ctrl_openloop[step_index_closedloop * actuatornum + i] + u_temp(i, 0);
 
 		ctrlLimit(d_closedloop->ctrl, m->nu);
-		//mju_add(ctrl_temp, &ctrl_nominal[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
-		//ctrlLimit(ctrl_temp, m->nu);
-		//energy += mju_dot(ctrl_temp, ctrl_temp, m->nu);
+		for (int i = 0; i < actuatornum; i++) ctrl_temp[i] = ctrl_nominal[step_index_closedloop * actuatornum + i] + u_temp(i, 0);
+		ctrlLimit(ctrl_temp, m->nu);
+		energy += mju_dot(ctrl_temp, ctrl_temp, m->nu);
 		cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
 	}
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
 	step_index_closedloop++;
 	mju_sub(state_error, state_nominal[step_index_closedloop], d_closedloop->qpos, dof + quatnum);
 	mju_sub(&state_error[dof + quatnum], &state_nominal[step_index_closedloop][dof + quatnum], d_closedloop->qvel, dof);
-	for (int i = 0; i < 2 * dof + quatnum; i++)y_cl(i, 1) = state_error[i];
+	for (int i = 0; i < 2 * dof + quatnum; i++) y_cl(i, 0) = -state_error[i];
 	x2 = MX1_step * x1 + MU_step * u_temp + MY_step * y_cl;
 	x1 = x2;
-	if (((step_index_closedloop - 1) % batch_size) == 0)
+	if (((step_index_closedloop - 1) % batch_size) == 0 && step_index_closedloop > 1)
 	{
 		for (int i = 0; i < T_CON.dimension[1]; i++)
 			for (int j = 0; j < T_CON.dimension[0]; j++)
-				T_CON_step(j, i) = T_CON.data[(step_index_closedloop-1)/batch_size* T_CON.dimension[0] * T_CON.dimension[1] + i * T_CON.dimension[0] + j];
+				T_CON_step(j, i) = T_CON.data[((step_index_closedloop - 1) / batch_size - 1) * T_CON.dimension[0] * T_CON.dimension[1] + i * T_CON.dimension[0] + j];
 		x1 = T_CON_step * x2;
 	}
 	return 0;
@@ -1933,7 +1934,7 @@ bool simulateOpenloop(void)
 			state_error[0] = -(PI - fabs(d_openloop->qpos[0] - PI))*((PI - d_openloop->qpos[0] > 0) - (PI - d_openloop->qpos[0] < 0));
 		}
 		else if (modelid == 15) {
-			state_error[1] = (PI - fabs(d_openloop->qpos[1]))*((d_openloop->qpos[1] < 0) - (d_openloop->qpos[1] > 0));
+			state_error[1] = -(PI - fabs(d_openloop->qpos[1]))*((d_openloop->qpos[1] < 0) - (d_openloop->qpos[1] > 0));
 		}
 		mju_mulMatVec(d_openloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
 		ctrlLimit(d_openloop->ctrl, m->nu);
@@ -2054,7 +2055,7 @@ void policyCompare()
 		strcpy(datafilename, "energydata.txt");
 		if ((filestream2 = fopen(datafilename, "wt+")) != NULL)
 		{
-			for (double ptb = 0; ptb <= 1.00001; ptb += 0.05)
+			for (double ptb = 0; ptb <= 0.200001; ptb += 0.02)
 			{
 				for (int i = 0; i < kTestNum; i++)
 				{
