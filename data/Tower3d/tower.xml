@@ -3,7 +3,7 @@
     <include file="./common/skybox.xml"/>
     <include file="./common/materials.xml"/>
     
-    <option timestep="0.01" iterations="50" integrator="RK4" solver="Newton" tolerance="1e-10" gravity="0 0 -9.8/6" collision="predefined" viscosity="0.0"/>
+    <option timestep="0.01" iterations="50" integrator="RK4" solver="Newton" tolerance="1e-10" gravity="0 0 -1.63333" collision="predefined" viscosity="0.0"/>
 
     <size njmax="200" nconmax="100" nstack="3000"/>
 
@@ -105,7 +105,7 @@
                         <joint name="rj5" axis="0 1 0"/>
                         <site name="rb5e" pos="-2.115923768501580 0 12"/>
                         <body pos="-2.115923768501580 0 12">
-                            <geom type="sphere" mass="1000" size="0.5"/>
+                            <geom type="sphere" mass="6000" size="0.5"/>
                             <site pos="0 0 0"/>
                         </body>
                     </body>

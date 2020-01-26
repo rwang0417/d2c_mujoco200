@@ -634,7 +634,7 @@ test2d dbarmotor.xml dbar modeltest 0.5
 ### Log:
 #### 1. 外部变量在main里写extern声明但不定义（初始化），在lib.cpp里不加extern再声明一遍，可以初始化。如果是用来声明数组的size的常量需要在两个文件都初始化，但只有main里的会起作用。
 #### 2. 凉了555maxstep不能设大，否则training不能跑，直接在train前面退出了。。。感觉是d[64]这个太坑了，每个d都是一个大的数据结构，64个就很多，所以如果需要改就把64改小吧。并不是这个问题。。。。。其实是大数组不能在函数里面定义，必须定义成全局。
-#### 3. openloop cheetah.xml 100， 100是迭代数也就是gradient更新的次数，如果文件名不是模型名，后面需要加模型名，后面还可以加thread数，不加默认1个thread，现在多个thread就更之前开多个cmd窗口一起运行check reproducibility一样，再后面是profile开关。
+#### 3. openloop cheetah.xml 100， 100是迭代数也就是gradient更新的次数，如果文件名不是模型名，后面需要加模型名，后面还可以加thread数，不加默认1个thread，现在多个thread就更之前开多个cmd窗口一起运行check reproducibility一样，再后面是profile开关。openloop.cpp开头的宏定义TRAINING_NUM表示每个thread连续运行多少次training，这些training的cost会存在同一个文件里，多个thread就会有多个这样的文件。但是control value存的都是每个thread最后一次training得到的结果。
 #### 4. sysid2d pendulum.xml 100
 100是迭代数，后面还可以加thread数，不加默认1个thread，多线程这里的iteration是总数，每个rollout互相之间是并行。
 sysid2d finger.xml 0.005 20 finger 8
@@ -901,3 +901,24 @@ libeng.lib
 #### 5. nonzero x init的意义在于让xx'更容易等于I，这个是acc2018 paper理论的一部分，如果x初始为0，那前几个CD会很小，A也会有更大误差，这个会影响每个batch的前几步，所以尽量还是不要用zero x init，即使初始值只能很小。
 #### 6. swimmer3闭环在前200步效果还可以，后面就跑飞了，10%noise。
 #### 7. 既然切换batch的时候CD仍然是0，需要用到前一batch的CD来生成y，是不是应该用前一batch的CD做闭环？对新batch前几步的A会不会有不好影响，可不可以也用上一个batch的？
+## 01/13/2020
+### Log:
+#### 1. sysid的时候增大trial number到4000仍然结果不稳定。
+## 01/15/2020
+### Log:
+#### 1. 增大q到30，error有减小一些。match_q大了会明显变差。
+#### 2. 强行让D是0，不管是一开始把h(k,k)置零还是后面只把D设0，结果看起来没有什么差别。
+#### 3. B过大会让L过小，算出来闭环控制值非常小，和开环轨迹没区别，让noise大一些，大到id效果不变差，B会比较正常，闭环才有区别，比开环靠近nominal。增大rollout数影响很小。
+## 01/19/2020
+### Log:
+#### 1. tower的sysid结果很不好，下次试下qmc，以及ls缩小timestep。一个很大的问题是设置角度关系时，目前认为相等的角度实际上有误差，结果不准。
+## 01/20/2020
+### Log:
+#### 1. 按位与：a&b是把a和b都转换成二进制数然后再进行与的运算；
+逻辑与：a&&b就是当且仅当两个操作数均为 true时，其结果才为 true；只要有一个为零，a&&b就为零。
+## 01/23/2020
+### Log:
+#### 1. extern variable应该在没有extern的那边初始化，但是如果是常量好像两边都得赋值。
+## 01/26/2020
+### Log:
+#### 1. bin文件夹里面放的dll和lib是因为vs的库目录设置的是bin文件夹，然后bin文件夹也是输出exe文件的位置。实际上在exe运行时，exe同文件夹只需要dll就可以。

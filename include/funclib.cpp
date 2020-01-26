@@ -2,8 +2,8 @@
 ******************************************************************************
 * @file    funclib.cpp
 * @author  Ran Wang EDPLab@TAMU
-* @version V1.0
-* @date    2018-4-28
+* @version V2.0
+* @date    2020-1-26
 * @brief   This file provides the test functions to be integrated into the mujoco project.
 ******************************************************************************
 * <h2><center>&copy; COPYRIGHT EDPLab@TAMU</center></h2>
@@ -16,7 +16,7 @@
 
 /* Extern variables ---------------------------------------------------------*/
 // constants
-const int kMaxStep = 3000; // max step number for one rollout
+const int kMaxStep = 9000; // max step number for one rollout
 const int kMaxState = 60; // max (state dimension, actuator number)
 
 // model parameters and environment settings
@@ -159,13 +159,13 @@ int modelSelection(const char* model)
 		modelid = 4;
 		control_timestep = 0.01;
 		simulation_timestep = 0.01;
-		stepnum = 200;
+		stepnum = 200; 
 		dof = 2;
 		quatnum = 0;
 		actuatornum = 4;
 		rolloutnum_train = 10;
-		ctrl_upperlimit = 0;
-		ctrl_lowerlimit = -100;
+		ctrl_upperlimit = 1000;
+		ctrl_lowerlimit = -1000;
 		mjtNum temp[kMaxState][kMaxState] = { 0 };
 		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], 2*dof+quatnum);
 		integration_per_step = (int)(control_timestep / simulation_timestep);
@@ -305,9 +305,9 @@ int modelSelection(const char* model)
 	}
 	else if (_strcmpi(model, "swimmer3") == 0) {
 		modelid = 13;
-		control_timestep = 0.001;
-		simulation_timestep = 0.001;
-		stepnum = 100;
+		control_timestep = 0.005;
+		simulation_timestep = 0.005;
+		stepnum = 1600;
 		dof = 5;
 		quatnum = 0;
 		actuatornum = 2;
@@ -323,7 +323,7 @@ int modelSelection(const char* model)
 		modelid = 14;
 		control_timestep = 0.01;
 		simulation_timestep = 0.01;
-		stepnum = 300; // 300
+		stepnum = 10; // 300
 		dof = 16;
 		quatnum = 0;
 		actuatornum = 20;
@@ -517,7 +517,6 @@ void stateNominal(mjModel* m, mjData* d)
 *         mjtNum *ptb_coef: perturb coeficient;
 *         mjtNum *step_coef_init: initial value of step coeficient;
 * @retval none
-* @author rwang0417@tamu.edu
 */
 void get_para(const char *_filename, mjtNum ns, mjtNum *Q, mjtNum *QT, mjtNum *R, mjtNum *ptb_coef, mjtNum *step_coef_init)
 {
@@ -549,7 +548,6 @@ void get_para(const char *_filename, mjtNum ns, mjtNum *Q, mjtNum *QT, mjtNum *R
 *         "diag": only read the diagonal elements
 *         )
 * @retval none
-* @author rwang0417@tamu.edu
 */
 void fr_matrix(FILE *fstream, const char *_name, mjtNum *prt, mjtNum r, mjtNum c, const char *_mode)
 {
@@ -624,7 +622,6 @@ void fr_matrix(const char *_filename, const char *_name, mjtNum *prt, mjtNum r, 
 *         const char *_name: array name for match check
 *         mjtNum len = 0: array length
 * @retval none
-* @author rwang0417@tamu.edu
 */
 void fr_array(FILE *fstream, const char *_name, mjtNum *prt, mjtNum len)
 {
@@ -668,7 +665,6 @@ void fr_array(const char *_filename, const char *_name, mjtNum *prt, mjtNum len)
 *         mjtNum c = 0: matrix column number
 *         const char *_name = "Matrix1: ": matrix name
 * @retval none
-* @author rwang0417@tamu.edu
 */
 void fw_matrix(FILE *fstream, mjtNum *prt, mjtNum r, mjtNum c, const char *_name)
 {
@@ -726,7 +722,6 @@ void fw_matrix(const char *_filename, mjtNum *prt, mjtNum r, mjtNum c, const cha
 *         ) default = "wt+"
 *         const char *_name = "Array1: ": array name
 * @retval none
-* @author rwang0417@tamu.edu
 */
 void fw_array(FILE *fstream, mjtNum *prt, mjtNum len, const char *_name)
 {
@@ -778,7 +773,6 @@ void fw_array(const char *_filename, mjtNum *prt, mjtNum len, const char *_name,
 *         a: add content starts from the end of file; t: .txt file; b: binary file
 *         )
 * @retval none
-* @author rwang0417@tamu.edu
 */
 void save_result(const char *_filename, mjtNum *u, mjtNum *u_init, mjtNum len, mjtNum *Q, mjtNum *QT, mjtNum *R, mjtNum *ptb_coef, mjtNum *step_coef, mjtNum ns, const char *_mode)
 {

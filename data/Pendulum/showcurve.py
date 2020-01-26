@@ -115,7 +115,7 @@ def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
 def clopcompare():                   
     nstart=0
     nend=100
-    pointnum=21
+    pointnum=16
     testnum=400
     y=np.array(np.loadtxt('clopdata.txt'))
     clerr1=[0 for i in range(int(y.shape[0]/2))]
@@ -127,7 +127,7 @@ def clopcompare():
         operr1[i]=abs(y[2*i+1])
     with open('clopbar.txt', 'wt+') as f:
         for k in range(pointnum):
-            print(np.mean(clerr1[testnum*k:testnum*(k+1)]), np.std(clerr1[testnum*k:testnum*(k+1)]), np.mean(operr1[testnum*k:testnum*(k+1)]), np.std(operr1[testnum*k:testnum*(k+1)]), k*5, file=f)
+            print(np.mean(clerr1[testnum*k:testnum*(k+1)]), np.std(clerr1[testnum*k:testnum*(k+1)]), np.mean(operr1[testnum*k:testnum*(k+1)]), np.std(operr1[testnum*k:testnum*(k+1)]), k*2, file=f)
     
     # plot performance compare data and success rate
     sind=int(nstart/100*(pointnum-1))

@@ -2,8 +2,8 @@
 ******************************************************************************
 * @file    funclib.h
 * @author  Ran Wang EDPLab@TAMU
-* @version V1.0
-* @date    2018-4-28
+* @version V2.0
+* @date    2020-1-26
 * @brief   This file contains the test functions prototypes for the mujoco project
 ******************************************************************************
 * <h2><center>&copy; COPYRIGHT EDPLab@TAMU</center></h2>
@@ -42,7 +42,6 @@ const mjtNum PI = 3.141592653;
 *         const char *varname: name of the target variabl
 *         MatData *dataptr: pointer to the data
 * @retval none
-* @author rwang0417@tamu.edu
 */
 //void matRead(const char* filename, const char *varname, MatData *dataptr);
 
@@ -54,7 +53,6 @@ const mjtNum PI = 3.141592653;
 *         mjtNum* state_init: initial state vector
 *         int len: length of initial state vector
 * @retval none
-* @author rwang0417@tamu.edu
 */
 void modelInit(mjModel* m, mjData* d, mjtNum* state_init, int dof, int quatnum);
 
@@ -64,7 +62,6 @@ void modelInit(mjModel* m, mjData* d, mjtNum* state_init, int dof, int quatnum);
 * @param  mjtNum mean: mean
 *         mjtNum var: variance
 * @retval mjtNum: Gaussian random value
-* @author rwang0417@tamu.edu
 */
 mjtNum randGauss(mjtNum mean, mjtNum var);
 
@@ -74,7 +71,6 @@ mjtNum randGauss(mjtNum mean, mjtNum var);
 * @param  mjtNum ctrl: control vector
 *		  int num: control vector length
 * @retval none
-* @author rwang0417@tamu.edu
 */
 void ctrlLimit(mjtNum* ctrl, int num);
 
@@ -84,7 +80,6 @@ void ctrlLimit(mjtNum* ctrl, int num);
 * @param  int model: id of the model
 *         mjtNum angle: current angle value read from mujoco
 * @retval mjtNum: modified angle value
-* @author rwang0417@tamu.edu
 */
 mjtNum angleModify(int model, mjtNum angle);
 
@@ -93,7 +88,6 @@ mjtNum angleModify(int model, mjtNum angle);
 * @note   none
 * @param  const char* model: name of the model whose parameters to select
 * @retval int: 1 is succeed, 0 is fail to set the parameters
-* @author rwang0417@tamu.edu
 */
 int modelSelection(const char* model);
 
@@ -104,7 +98,6 @@ int modelSelection(const char* model);
 		  mjModel* m: mujoco model
 		  int step_index: the step number whose cost needs calculation
 * @retval mjtNum: cost value at the specific step
-* @author rwang0417@tamu.edu
 */
 mjtNum stepCost(mjModel* m, mjData* d, int step_index);
 
@@ -114,7 +107,6 @@ mjtNum stepCost(mjModel* m, mjData* d, int step_index);
 * @param  mjData* d: mujoco simulation data at the specific step
 		  mjModel* m: mujoco model
 * @retval none
-* @author rwang0417@tamu.edu
 */
 void stateNominal(mjModel* m, mjData* d);
 

@@ -156,9 +156,9 @@ def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
 
 
 def clopcompare():    
-    pointnum=21
+    pointnum=7
     testnum=400
-    noisemaxz=20
+    noisemaxz=10
     step=5
     y=np.array(np.loadtxt('clopdata.txt'))
     clerr1=[0 for i in range(int(y.shape[0]/2))]
@@ -167,18 +167,18 @@ def clopcompare():
     anastd=[]
     delval=[]
     
-    with open('costa.txt', 'r') as fca:
-        for line in fca:
-            data=list(map(float,line.split()))
-            for val in data:
-                if val > 10**7:
-                    delval.append(val)
-            for val in delval:
-                data.remove(val)
-            anamean.append(np.mean(data))
-            anastd.append(np.std(data))
-            mz=np.array(anamean)
-            stdz=np.array(anastd)
+#    with open('costa.txt', 'r') as fca:
+#        for line in fca:
+#            data=list(map(float,line.split()))
+#            for val in data:
+#                if val > 10**7:
+#                    delval.append(val)
+#            for val in delval:
+#                data.remove(val)
+#            anamean.append(np.mean(data))
+#            anastd.append(np.std(data))
+#            mz=np.array(anamean)
+#            stdz=np.array(anastd)
     
     # calculate error value and get the average by each test
     for i in range(int(y.shape[0]/2)):
@@ -186,21 +186,22 @@ def clopcompare():
         operr1[i]=abs(y[2*i+1])
     with open('clopbar.txt', 'wt+') as f:
         for k in range(pointnum):
-            print(np.mean(clerr1[testnum*k:testnum*(k+1)]), np.std(clerr1[testnum*k:testnum*(k+1)]), np.mean(operr1[testnum*k:testnum*(k+1)]), np.std(operr1[testnum*k:testnum*(k+1)]), k*5, file=f)
+            print(np.mean(clerr1[testnum*k:testnum*(k+1)]), np.std(clerr1[testnum*k:testnum*(k+1)]), np.mean(operr1[testnum*k:testnum*(k+1)]), np.std(operr1[testnum*k:testnum*(k+1)]), k*step, file=f)
     
     # plot performance compare data and success rate
     sind=0
-    eind=5
+    eind=30
     perfdata=np.transpose(np.loadtxt('clopbar.txt'))
     f5,=plt.plot(perfdata[4][sind:eind],perfdata[0,sind:eind],'orange', linewidth=3)
     f6,=plt.plot(perfdata[4][sind:eind],perfdata[2,sind:eind],'dodgerblue', linewidth=3)
-    f7,=plt.plot(np.arange(0,noisemaxz+1,step),mz[0:int(noisemaxz/step+1)],'seagreen', linewidth=3)
+#    f7,=plt.plot(np.arange(0,noisemaxz+1,step),mz[0:int(noisemaxz/step+1)],'seagreen', linewidth=3)
     plt.fill_between(perfdata[4][sind:eind],perfdata[0][sind:eind]-perfdata[1][sind:eind],perfdata[0][sind:eind]+perfdata[1][sind:eind],alpha=0.3,color='orange')
     plt.fill_between(perfdata[4][sind:eind],perfdata[2][sind:eind]-perfdata[3][sind:eind],perfdata[2][sind:eind]+perfdata[3][sind:eind],alpha=0.3,color='dodgerblue')
-    plt.fill_between(np.arange(0,noisemaxz+1,step),mz[0:int(noisemaxz/step+1)]-stdz[0:int(noisemaxz/step+1)],mz[0:int(noisemaxz/step+1)]+stdz[0:int(noisemaxz/step+1)],alpha=0.3,color='seagreen')
+#    plt.fill_between(np.arange(0,noisemaxz+1,step),mz[0:int(noisemaxz/step+1)]-stdz[0:int(noisemaxz/step+1)],mz[0:int(noisemaxz/step+1)]+stdz[0:int(noisemaxz/step+1)],alpha=0.3,color='seagreen')
     plt.xlabel('Std dev of perturbed noise(Percent of max. control)', fontsize=20)
     plt.ylabel('Episodic cost', fontsize=20)
-    plt.legend(handles=[f5,f6,f7],labels=['D2C closed-loop','D2C open-loop','MBC'],loc='upper left')
+#    plt.legend(handles=[f5,f6,f7],labels=['D2C closed-loop','D2C open-loop','MBC'],loc='upper left')
+    plt.legend(handles=[f5,f6],labels=['D2C closed-loop','D2C open-loop'],loc='upper left')
     plt.grid(color='.910', linewidth=1.5)
     plt.show()  
     

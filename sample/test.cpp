@@ -15,7 +15,7 @@
 
 //-------------------------------- global -----------------------------------------------
 // constants
-extern const int kMaxStep = 3000;   // max step number for one rollout
+extern const int kMaxStep = 9000;   // max step number for one rollout
 extern const int kMaxState = 60;	// max (state dimension, actuator number)
 
 const int kTestNum = 400;	        // number of monte-carlo runs
@@ -2386,8 +2386,6 @@ void simulate(void)
         mtx.unlock();
     }
 }
-
-
 
 //-------------------------------- init and main ----------------------------------------
 

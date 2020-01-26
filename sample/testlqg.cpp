@@ -22,7 +22,7 @@ struct MatData {
 	int dimension_num;
 };
 // constants
-extern const int kMaxStep = 3000;   // max step number for one rollout
+extern const int kMaxStep = 9000;   // max step number for one rollout
 extern const int kMaxState = 60;	// max (state dimension, actuator number)
 
 const int kTestNum = 400;	        // number of monte-carlo runs
@@ -62,7 +62,7 @@ mjtNum cost_closedloop = 0, cost_openloop = 0;
 mjtNum energy = 0;
 mjtNum tracker_feedback_gain[kMaxStep][kMaxState][kMaxState] = { 0 };
 FILE *filestream1, *filestream2;
-MatData MX1, MU, MY, ML, T_CON, BATCH_SIZE;
+MatData MX1, MU, MY, ML, MT_CON, BATCH_SIZE;
 char testmode[30];
 char data_buff[30];
 char keyfilename[100];
@@ -1851,7 +1851,7 @@ bool simulateClosedloop(void)
 	MatrixXd MY_step(MY.dimension[0], MY.dimension[1]);
 	MatrixXd MU_step(MU.dimension[0], MU.dimension[1]);
 	MatrixXd ML_step(ML.dimension[0], ML.dimension[1]);
-	MatrixXd T_CON_step(T_CON.dimension[0], T_CON.dimension[1]);
+	MatrixXd T_CON_step(MT_CON.dimension[0], MT_CON.dimension[1]);
 
 	if (step_index_closedloop == 0) {
 		x1 = MatrixXd::Zero(ML.dimension[1], 1);
@@ -1904,14 +1904,14 @@ bool simulateClosedloop(void)
 	step_index_closedloop++;
 	mju_sub(state_error, state_nominal[step_index_closedloop], d_closedloop->qpos, dof + quatnum);
 	mju_sub(&state_error[dof + quatnum], &state_nominal[step_index_closedloop][dof + quatnum], d_closedloop->qvel, dof);
-	for (int i = 0; i < 2 * dof + quatnum; i++) y_cl(i, 0) = -state_error[i];
+	for (int i = 0; i < 2 * dof + quatnum; i++) y_cl(i, 0) = -state_error[i];// +2 * randGauss(0, 1);
 	x2 = MX1_step * x1 + MU_step * u_temp + MY_step * y_cl;
 	x1 = x2;
 	if (((step_index_closedloop - 1) % batch_size) == 0 && step_index_closedloop > 1)
 	{
-		for (int i = 0; i < T_CON.dimension[1]; i++)
-			for (int j = 0; j < T_CON.dimension[0]; j++)
-				T_CON_step(j, i) = T_CON.data[((step_index_closedloop - 1) / batch_size - 1) * T_CON.dimension[0] * T_CON.dimension[1] + i * T_CON.dimension[0] + j];
+		for (int i = 0; i < MT_CON.dimension[1]; i++)
+			for (int j = 0; j < MT_CON.dimension[0]; j++)
+				T_CON_step(j, i) = MT_CON.data[((step_index_closedloop - 1) / batch_size - 1) * MT_CON.dimension[0] * MT_CON.dimension[1] + i * MT_CON.dimension[0] + j];
 		x1 = T_CON_step * x2;
 	}
 	return 0;
@@ -2055,7 +2055,7 @@ void policyCompare()
 		strcpy(datafilename, "energydata.txt");
 		if ((filestream2 = fopen(datafilename, "wt+")) != NULL)
 		{
-			for (double ptb = 0; ptb <= 0.200001; ptb += 0.02)
+			for (double ptb = 0; ptb <= 0.300001; ptb += 0.05)
 			{
 				for (int i = 0; i < kTestNum; i++)
 				{
@@ -2532,7 +2532,7 @@ void init(void)
 	matRead("feedback2c.mat", "MU", &MU);
 	matRead("feedback2c.mat", "MY", &MY);
 	matRead("feedback2c.mat", "ML", &ML);
-	matRead("feedback2c.mat", "T_CON", &T_CON);
+	matRead("feedback2c.mat", "MT_CON", &MT_CON);
 	matRead("feedback2c.mat", "BATCH_SIZE", &BATCH_SIZE);
 
 	batch_size = BATCH_SIZE.data[0];

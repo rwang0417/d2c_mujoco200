@@ -16,7 +16,7 @@
 
 //-------------------------------- global variables -------------------------------------
 // constants
-extern const int kMaxStep = 3000;   // max step number for one rollout
+extern const int kMaxStep = 9000;   // max step number for one rollout
 extern const int kMaxState = 60;	// max (state dimension, actuator number)
 const int kMaxThread = 64;
 const mjtNum kMaxUpdate = 0.1;
@@ -170,10 +170,8 @@ void train(int id, int niteration)
         }
         simtime[id] = gettm() - start;
         
-        // save result to file
-		snprintf(costfilename, sizeof(costfilename), "%s%d%s", "cost", id, ".txt");
-
 		// save nominal episodic cost of every iteration to file
+		snprintf(costfilename, sizeof(costfilename), "%s%d%s", "cost", id, ".txt");
 		char filemode[5] = "wt+";
 		if (TRAINING_NUM > 1) strcpy(filemode, "at+");
 		if ((filestream1 = fopen(costfilename, filemode)) != NULL) {
