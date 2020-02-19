@@ -1,9 +1,9 @@
 clear all;
 % mex mexstep.c mujoco150.lib
 %% Param
-NUM_SYS             = 10;    %System state number
-NUM_IN              = 10;    %Number of inputs
-STEP_MAX            = 200; %Total timestep
+NUM_SYS             = 4;    %System state number
+NUM_IN              = 1;    %Number of inputs
+STEP_MAX            = 30; %Total timestep
 %% Var
 sig_q = 10^3;
 sig_f = 10^4;

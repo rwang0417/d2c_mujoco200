@@ -18,7 +18,7 @@
 extern const int kMaxStep = 9000;   // max step number for one rollout
 extern const int kMaxState = 60;	// max (state dimension, actuator number)
 
-const int kTestNum = 400;	        // number of monte-carlo runs
+const int kTestNum = 1000;	        // number of monte-carlo runs
 const int kMaxGeom = 5000;          // preallocated geom array in mjvScene
 const double syncmisalign = 0.1;    // maximum time mis-alignment before re-sync
 const double refreshfactor = 0.5;   // fraction of refresh available for simulation
@@ -34,6 +34,7 @@ extern mjtNum control_timestep;
 extern mjtNum simulation_timestep;
 extern mjtNum state_nominal[kMaxStep][kMaxState];
 extern mjtNum ctrl_nominal[kMaxStep * kMaxState];
+extern mjtNum ctrl_openloop[kMaxStep * kMaxState];
 extern mjtNum state_target[kMaxState];
 extern mjtNum stabilizer_feedback_gain[kMaxState][kMaxState];
 extern mjtNum ctrl_upperlimit;
@@ -49,7 +50,6 @@ mjData* d = NULL;
 mjData* d_closedloop = NULL;
 mjData* d_openloop = NULL;
 mjtNum ctrl_max = 0;
-mjtNum ctrl_openloop[kMaxStep*kMaxState] = { 0 };
 mjtNum perturb_coefficient_test = 0;
 mjtNum cost_closedloop = 0, cost_openloop = 0;
 mjtNum energy = 0;
@@ -67,6 +67,7 @@ int step_index_nominal = 0;
 int step_index_openloop = 0;
 int step_index_closedloop = 0;
 bool NFinal = false;
+bool terminal_trigger = false;
 
 // abstract visualization
 mjvScene scn, scn_openloop, scn_closedloop;
@@ -1401,6 +1402,7 @@ void uiEvent(mjuiState* state)
 					step_index_nominal = 0;
 					step_index_closedloop = 0;
 					step_index_openloop = 0;
+					terminal_trigger = false;
                     mj_resetData(m, d);
                     mj_forward(m, d);
 					mj_resetData(m, d_openloop);
@@ -1777,24 +1779,13 @@ void uiEvent(mjuiState* state)
 //--------------------------- control and testing ---------------------------------------
 // simulate the nominal trajectory
 void simulateNominal(void)
-{
-	static mjtNum state_error[kMaxState];
-	
+{	
 	if (step_index_nominal == 0) {
-		modelInit(m, d, state_nominal[0], dof, quatnum);
+		modelInit(m, d, state_nominal[0]);
 	}
 	if (step_index_nominal >= stepnum)
 	{
-		mju_sub(state_error, state_target, d->qpos, dof + quatnum);
-		mju_sub(&state_error[dof + quatnum], &state_target[dof + quatnum], d->qvel, dof);
-		if (modelid == 0) {
-			state_error[0] = -(PI - fabs(d->qpos[0] - PI))*((PI - d->qpos[0] > 0) - (PI - d->qpos[0] < 0));
-		}	
-		else if (modelid == 15) {
-			state_error[1] = -(PI - fabs(d->qpos[1]))*((d->qpos[1] < 0) - (d->qpos[1] > 0));
-		}
-		mju_mulMatVec(d->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
-		//mj_forward(m, d);
+		terminalCtrl(m, d, step_index_nominal);
 
 		// print N_final to be the target for the analytical shape control
 		if (NFinal == true) {
@@ -1818,28 +1809,22 @@ bool simulateClosedloop(void)
 	static mjtNum state_error[kMaxState], ctrl_feedback[kMaxState], ctrl_temp[kMaxState];
 
 	if (step_index_closedloop == 0) {
-		modelInit(m, d_closedloop, state_nominal[0], dof, quatnum);
+		modelInit(m, d_closedloop, state_nominal[0]);
 		cost_closedloop = 0;
 		energy = 0;
 	}
 
-	if (step_index_closedloop >= stepnum)
+	if (terminal_trigger == false) terminal_trigger = terminalTrigger(m, d_closedloop, modelid, step_index_closedloop);
+	
+	if (terminal_trigger == true)
 	{
-		mju_sub(state_error, state_target, d_closedloop->qpos, dof + quatnum);
-		mju_sub(&state_error[dof + quatnum], &state_target[dof + quatnum], d_closedloop->qvel, dof);
-        if (modelid == 0) {
-			state_error[0] = -(PI - fabs(d_closedloop->qpos[0] - PI))*((PI - d_closedloop->qpos[0] > 0) - (PI - d_closedloop->qpos[0] < 0));
-		}
-		else if (modelid == 15) {
-			state_error[1] = -(PI - fabs(d_closedloop->qpos[1]))*((d_closedloop->qpos[1] < 0) - (d_closedloop->qpos[1] > 0));
-		}
-		mju_mulMatVec(d_closedloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState); 
-		ctrlLimit(d_closedloop->ctrl, m->nu);
-		if (_strcmpi(testmode, "policy_compare") == 0) {
+		terminalCtrl(m, d_closedloop, step_index_closedloop);
+		if (_strcmpi(testmode, "policy_compare") == 0 && step_index_closedloop >= stepnum) {
 			cost_closedloop += stepCost(m, d_closedloop, stepnum);
 			step_index_closedloop = 0; 
 			return 1;
 		}
+		cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
 	}
 	else {
 		mju_sub(state_error, state_nominal[step_index_closedloop], d_closedloop->qpos, dof + quatnum);
@@ -1858,7 +1843,11 @@ bool simulateClosedloop(void)
 		energy += mju_dot(ctrl_temp, ctrl_temp, m->nu);
 		cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
 	}
-	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
+	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop); //printf("%f\t%f\t%f\t%f\t%f\t%f\t%d\n", d->qpos[0], d_closedloop->qpos[0], d->qpos[1],  d_closedloop->qpos[1], d->qpos[2], d_closedloop->qpos[2], terminal_trigger);
+	// process noise including state noise
+	//mju_add(d_closedloop->qpos, d_closedloop->qpos, randGauss(0, 0.00023, dof + quatnum), dof + quatnum);
+	//mju_add(d_closedloop->qvel, d_closedloop->qvel, randGauss(0, 0.00023, dof), dof);
+	//mj_forward(m, d_closedloop);
 	step_index_closedloop++;
 	return 0;
 }
@@ -1866,24 +1855,13 @@ bool simulateClosedloop(void)
 // simulate with open-loop control policy under noise
 bool simulateOpenloop(void)
 {
-	static mjtNum state_error[kMaxState];
-
 	if (step_index_openloop == 0) {
-		modelInit(m, d_openloop, state_nominal[0], dof, quatnum);
+		modelInit(m, d_openloop, state_nominal[0]);
 		cost_openloop = 0;
 	}
 	if (step_index_openloop >= stepnum)
 	{
-		mju_sub(state_error, state_target, d_openloop->qpos, m->nq);
-		mju_sub(&state_error[m->nq], &state_target[m->nq], d_openloop->qvel, m->nv);
-        if (modelid == 0) {
-			state_error[0] = -(PI - fabs(d_openloop->qpos[0] - PI))*((PI - d_openloop->qpos[0] > 0) - (PI - d_openloop->qpos[0] < 0));
-		}
-		else if (modelid == 15) {
-			state_error[1] = -(PI - fabs(d_openloop->qpos[1]))*((d_openloop->qpos[1] < 0) - (d_openloop->qpos[1] > 0));
-		}
-		mju_mulMatVec(d_openloop->ctrl, *stabilizer_feedback_gain, state_error, m->nu, kMaxState);
-		ctrlLimit(d_openloop->ctrl, m->nu);
+		terminalCtrl(m, d_openloop, step_index_openloop);
 		if (_strcmpi(testmode, "policy_compare") == 0) {
 			cost_openloop += stepCost(m, d_openloop, stepnum);
 			step_index_openloop = 0;
@@ -1905,23 +1883,29 @@ mjtNum terminalError(mjtNum ptb, const char *type)
 {
 	mjtNum state_error[kMaxState], ctrl_feedback[kMaxState];
 
-	mj_resetData(m, d_closedloop);
-	mju_copy(d_closedloop->qpos, state_nominal[0], dof + quatnum);
-	mju_copy(d_closedloop->qvel, &state_nominal[0][dof + quatnum], dof);
-	mj_forward(m, d_closedloop);
+	modelInit(m, d_closedloop, state_nominal[0]);
+	terminal_trigger = false;
 	for (int e = 0; e < stepnum * actuatornum; e++) ctrl_openloop[e] = ctrl_nominal[e] + ptb * ctrl_max * randGauss(0, 1);
 
 	for (int step_index = 0; step_index < stepnum; step_index++) {
 		if (_strcmpi(type, "openloop") == 0) mju_copy(d_closedloop->ctrl, &ctrl_openloop[step_index * actuatornum], m->nu);
 		else {
-			mju_sub(state_error, state_nominal[step_index], d_closedloop->qpos, dof + quatnum);
-			mju_sub(&state_error[dof + quatnum], &state_nominal[step_index][dof + quatnum], d_closedloop->qvel, dof);
-			mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index], state_error, kMaxState, kMaxState);
-			mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index * actuatornum], ctrl_feedback, m->nu);
+			if (terminal_trigger == false) terminal_trigger = terminalTrigger(m, d_closedloop, modelid, step_index);
+			if (terminal_trigger == true) {
+				terminalCtrl(m, d_closedloop, step_index);
+				mju_add(d_closedloop->ctrl, d_closedloop->ctrl, ctrl_openloop, m->nu);
+				mju_sub(d_closedloop->ctrl, d_closedloop->ctrl, ctrl_nominal, m->nu);
+			}
+			else {
+				mju_sub(state_error, state_nominal[step_index], d_closedloop->qpos, dof + quatnum);
+				mju_sub(&state_error[dof + quatnum], &state_nominal[step_index][dof + quatnum], d_closedloop->qvel, dof);
+				mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index], state_error, kMaxState, kMaxState);
+				mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index * actuatornum], ctrl_feedback, m->nu);
+				ctrlLimit(d_closedloop->ctrl, m->nu);
+			}
 		}
 		for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
 	}
-	
 	if (modelid == 0)
 		return sqrt(angleModify(modelid, d_closedloop->qpos[0])*angleModify(modelid, d_closedloop->qpos[0]) + d_closedloop->qvel[0] * d_closedloop->qvel[0]);
 	else if (modelid == 2)
@@ -1946,6 +1930,8 @@ mjtNum terminalError(mjtNum ptb, const char *type)
 		return sqrt((d_closedloop->site_xpos[3] - d_closedloop->site_xpos[15]) * (d_closedloop->site_xpos[3] - d_closedloop->site_xpos[15]) + (d_closedloop->site_xpos[4] - d_closedloop->site_xpos[16]) * (d_closedloop->site_xpos[4] - d_closedloop->site_xpos[16]) + (d_closedloop->site_xpos[5] - d_closedloop->site_xpos[17]) * (d_closedloop->site_xpos[5] - d_closedloop->site_xpos[17]));
 	else if (modelid == 13)
 		return sqrt((d_closedloop->geom_xpos[6] - 0.6) * (d_closedloop->geom_xpos[6] - 0.6) + (d_closedloop->geom_xpos[7] + 0.6) * (d_closedloop->geom_xpos[7] + 0.6));
+	else if (modelid == 15)
+		return sqrt(d_closedloop->qpos[0]* d_closedloop->qpos[0] + angleModify(modelid, d_closedloop->qpos[1])*angleModify(modelid, d_closedloop->qpos[1]) + mju_dot(d_closedloop->qvel, d_closedloop->qvel, dof));
 	return 0;
 }
 
@@ -1961,29 +1947,25 @@ void performanceTest(void)
 		{
 			for (int i = 0; i < kTestNum; i++)
 			{
-				// data output for checking
 				sprintf(data_buff, "%4.8f", terminalError(ptb, "closedloop"));
 				fwrite(data_buff, 10, 1, filestream1);
 				fputs(" ", filestream1);
 			}
 			fputs("\n", filestream1);
 
+			//for (int i = 0; i < kTestNum; i++)
+			//{
+			//	sprintf(data_buff, "%4.8f", terminalError(ptb, "openloop"));
+			//	fwrite(data_buff, 10, 1, filestream1);
+			//	fputs(" ", filestream1);
+			//}
+			//fputs("\n", filestream1);
+
 			if (ptb >= 1 * printfraction)
 			{
 				printf(".");
 				printfraction += 0.2;
 			}
-		}
-		for (mjtNum ptb = 0; ptb < 1.0001; ptb += 0.05)
-		{
-			for (int i = 0; i < kTestNum; i++)
-			{
-				// data output for checking
-				sprintf(data_buff, "%4.8f", terminalError(ptb, "openloop"));
-				fwrite(data_buff, 10, 1, filestream1);
-				fputs(" ", filestream1);
-			}
-			fputs("\n", filestream1);
 		}
 		fclose(filestream1);
 	}
@@ -2423,7 +2405,7 @@ void init(void)
 		}
 		fclose(filestream1);
 	}
-	else printf("Could not open file: result.txt\n");
+	else printf("Could not open file: result0.txt\n");
 
 	// read feedback gain K
 	strcpy(datafilename, "TK.txt");
@@ -2440,6 +2422,18 @@ void init(void)
 		fclose(filestream1);
 	}
 	else printf("Could not open file: TK.txt\n");
+
+	strcpy(datafilename, "TK_top.txt");
+	if ((filestream1 = fopen(datafilename, "r")) != NULL)
+	{
+			for (int i2 = 0; i2 < actuatornum; i2++) {
+				for (int i = 0; i < 2 * dof + quatnum; i++) {
+					fscanf(filestream1, "%s", data_buff);
+					stabilizer_feedback_gain[i2][i] = atof(data_buff);
+				}
+			}
+		fclose(filestream1);
+	}
 
 	// read open-loop training cost parameters
 	strcpy(datafilename, "parameters.txt");

@@ -46,15 +46,35 @@ const mjtNum PI = 3.141592653;
 //void matRead(const char* filename, const char *varname, MatData *dataptr);
 
 /**
+* @brief  Judge if the terminal controller should kick in
+* @note   none
+* @param  mjModel* m: model
+*         mjData* d: data
+*         int modelid: model id
+*         int step_index: current step index
+* @retval bool: true: terminal controller starts; false: terminal controller waits
+*/
+bool terminalTrigger(mjModel* m, mjData* d, int modelid, int step_index);
+
+/**
+* @brief  Genrate control value from the terminal controller
+* @note   none
+* @param  mjModel* m: model
+*         mjData* d: data
+*         int step_index: current step index
+* @retval none
+*/
+void terminalCtrl(mjModel* m, mjData* d, int step_index);
+
+/**
 * @brief  Set the model to initial state
 * @note   none
 * @param  mjModel* m: model
 *         mjData* d: data
 *         mjtNum* state_init: initial state vector
-*         int len: length of initial state vector
 * @retval none
 */
-void modelInit(mjModel* m, mjData* d, mjtNum* state_init, int dof, int quatnum);
+void modelInit(mjModel* m, mjData* d, mjtNum* state_init);
 
 /**
 * @brief  Generate Gaussian random value
@@ -64,6 +84,16 @@ void modelInit(mjModel* m, mjData* d, mjtNum* state_init, int dof, int quatnum);
 * @retval mjtNum: Gaussian random value
 */
 mjtNum randGauss(mjtNum mean, mjtNum var);
+
+/**
+* @brief  Generate iid Gaussian random vector
+* @note   none
+* @param  mjtNum mean: mean
+*         mjtNum var: variance
+*         int n: vector size
+* @retval mjtNum*: Gaussian random vector
+*/
+mjtNum *randGauss(mjtNum mean, mjtNum var, int n);
 
 /**
 * @brief  Apply limit to control values
@@ -78,10 +108,19 @@ void ctrlLimit(mjtNum* ctrl, int num);
 * @brief  Angle modification for pendulum, cartpole and acrobot to clamp angle value
 * @note   different modification different model
 * @param  int model: id of the model
+*         mjtNum* state_error: state_target - qpos, will be updated in the function
+* @retval none
+*/
+void angleModify(int modelid, mjtNum* state_error);
+
+/**
+* @brief  Angle modification for pendulum, cartpole and acrobot to clamp angle value
+* @note   different modification different model
+* @param  int model: id of the model
 *         mjtNum angle: current angle value read from mujoco
 * @retval mjtNum: modified angle value
 */
-mjtNum angleModify(int model, mjtNum angle);
+mjtNum angleModify(int modelid, mjtNum angle);
 
 /**
 * @brief  Select model parameters set

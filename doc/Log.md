@@ -922,3 +922,30 @@ libeng.lib
 ## 01/26/2020
 ### Log:
 #### 1. bin文件夹里面放的dll和lib是因为vs的库目录设置的是bin文件夹，然后bin文件夹也是输出exe文件的位置。实际上在exe运行时，exe同文件夹只需要dll就可以。
+## 01/27/2020
+### Log:
+#### 1. 大电脑上gym和其中的mujoco_py包位置D:\Anaconda\Lib\site-packages\gym\envs\mujoco，keras_rl位置是桌面的DDPG_D2C文件夹。如果需要修改就去相应的位置修改，不需要重装包或者reload！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+## 01/30/2020
+### Log:
+#### 1. ddpg加了process noise好像更好一点，起码pendulum和cartpole是这样的。
+## 01/31/2020
+### Log:
+#### 1. least square的condition number等于最后求Ax=b的x时式子里求逆的那个矩阵的condition number。
+## 02/02/2020
+### Log:
+#### 1. ddpg code 保存文件用的是keras库的callbacks文件，目录在 C:\Users\rwang\Desktop\DDPG_D2C\libraries\keras-rl\rl
+#### 2. python zip可以同时循环两个变量。
+## 02/03/2020
+### Log:
+#### 1. python的随机种子设置之后，就决定了出来的随机数，在一次training中没关系，但多次training就会是一样的结果，testing也是的，每次testing要换随机种子。
+#### 2. cartpole在0.2fullprocessnoise训练下，0noise test不能把bar摆上去。
+#### 3. cartpole umax=12，pendulum umax=5.8，swimmer3 umax=20。
+## 02/11/2020
+### Log:
+#### 1. 认为加terminal controller进horizon之后，最后几步terminal controller启动，控制就不是optimal的了，因为tc是在最后一步设计的最优，即使cost func是一样的，对于前面的步不会最优，所以无noise的error反而变大，但加了noise之后，terminal controller会努力控制到想要到的位置而不是最后一步optimal trajectory的位置，所以对整体有帮助，var和mean都变小。
+#### 2. 系统崩溃后会重置到初始位置，error会很大，所以即使崩溃也不会让error比应该的小。
+## 02/17/2020
+### Log:
+#### 1. 布朗运动每一步（t=s1到t=s2）都与之前的无关，是独立的0 mean，正态分布，方差s2-s1。
+#### 2. 动量是物体在一个方向运动的趋势，惯性是衡量改变当前运动难易程度。
+#### 3. ddpg的deterministic是说在policy生成动作的时候不需要从一个分布采样，而是直接生成一个确定值。

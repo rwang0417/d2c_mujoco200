@@ -20,7 +20,7 @@ params = {
     'xtick.labelsize': 15,
     'ytick.labelsize': 15,
     'text.usetex': True ,
-    'figure.figsize': [7, 5], # instead of 4.5, 4.5
+    'figure.figsize': [7, 5.5], # instead of 4.5, 4.5
     'font.weight': 'bold',
     'axes.labelweight': 'bold',
     'ps.useafm' : True,
@@ -34,7 +34,7 @@ def latexplot(timefactor=8.805,filtered=False):
     #plot
     if filtered == True:
         b, a = signal.butter(8  , 0.025)
-        with open('cost.txt') as f:
+        with open('cost0.txt') as f:
             r=f.readlines()
         y=np.array(r[0].strip().split()).astype(np.float)
         x=np.linspace(1,y.shape[0],y.shape[0])*timefactor
@@ -46,7 +46,7 @@ def latexplot(timefactor=8.805,filtered=False):
         plt.ylabel('Episodic cost fraction', fontsize=20)
         plt.legend(['Original','Filtered'])
     else:
-        with open('cost.txt') as f:
+        with open('cost0.txt') as f:
             r=f.readlines()
         y=np.array(r[0].strip().split()).astype(np.float)
         x=np.linspace(1,y.shape[0],y.shape[0])*timefactor

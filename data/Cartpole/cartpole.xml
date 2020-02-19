@@ -3,7 +3,7 @@
   <include file="./common/visual.xml"/>
   <include file="./common/materials.xml"/>
 
-  <option timestep="0.01" integrator="RK4">
+  <option timestep="0.1" integrator="Euler">
     <flag contact="disable" energy="enable"/>
   </option>
 

@@ -1,3 +1,4 @@
+tic;
 %% system parameters
 NUM_IN = 1;
 NUM_SYS = 4;
@@ -8,10 +9,11 @@ Ua  = fscanf(fid, '%f %f %f');
 fclose(fid);
 La = reshape(Ua, NUM_SYS + NUM_IN, NUM_SYS * STEP_MAX)';
 %% dlqr
-Q = [10 0 0 0;
-     0 1 0 0
-     0 0 5 0
-     0 0 0 1];
-R = 1;
+Q = [270 0 0 0;
+     0 700 0 0
+     0 0 100 0
+     0 0 0 100];
+R = 0.1;
 [Kd,ss,e] = dlqr(La(:,1:NUM_SYS),La(:,NUM_SYS+1:NUM_SYS+NUM_IN),Q,R);
 Kd
+toc;

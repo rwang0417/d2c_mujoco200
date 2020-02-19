@@ -13,7 +13,7 @@
 
 //-------------------------------- global variables -------------------------------------
 // constants
-extern const int kMaxStep = 3000;   // max step number for one rollout
+extern const int kMaxStep = 9000;   // max step number for one rollout
 extern const int kMaxState = 60;	// max (state dimension, actuator number)
 const int kTestNum = 100;	        // number of monte-carlo runs
 const int kMaxThread = 8;           // max thread number
@@ -275,7 +275,7 @@ void sysid(int id, int nroll, int nthd)
 				d[id]->qvel[17] = -d[id]->qvel[7];
 				d[id]->qvel[23] = -d[id]->qvel[7];
 			}
-			mj_forward(m, d[id]);//////////////////////////////////////////////////
+			mj_forward(m, d[id]);
 			for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
 
 			for (int y = 0; y < dof + quatnum; y++) delta_x2(y, rollout_index) = d[id]->qpos[y];
@@ -353,7 +353,7 @@ void sysid(int id, int nroll, int nthd)
 				d[id]->qvel[17] = -d[id]->qvel[7];
 				d[id]->qvel[23] = -d[id]->qvel[7];
 			}
-			mj_forward(m, d[id]);//////////////////////////////////////////////////
+			mj_forward(m, d[id]);
 			for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
 
 			for (int y = 0; y < dof + quatnum; y++) delta_x2(y, rollout_index) -= d[id]->qpos[y];
@@ -418,7 +418,8 @@ int main(int argc, const char** argv)
 		return finish("Invalid nrollout argument");
 	if (argc > 4 && modelSelection(argv[4]) != 1) {
 		if (sscanf(argv[4], "%d", &nthread) != 1)
-			return finish("Invalid nthread argument");
+			if (sscanf(argv[4], "%s", &sysmode) != 1)
+				return finish("Invalid nthread argument");
 		if (argc > 5)
 			if (sscanf(argv[5], "%s", &sysmode) != 1)
 				if (sscanf(argv[5], "%d", &profile) != 1)
@@ -441,6 +442,27 @@ int main(int argc, const char** argv)
 
     // clamp nthread to [1, kMaxThread]
     nthread = mjMAX(1, mjMIN(kMaxThread, nthread));
+
+	// read nominal control values
+	strcpy(datafilename, "result0.txt");
+	if ((filestream3 = fopen(datafilename, "r")) != NULL) {
+		for (int i = 0; i < actuatornum * stepnum; i++)
+		{
+			fscanf(filestream3, "%s", data_buff);
+			ctrl_nominal[i] = atof(data_buff);
+			if (fabs(ctrl_nominal[i]) > ctrl_max) ctrl_max = fabs(ctrl_nominal[i]);
+		}
+		fclose(filestream3);
+	}
+	else printf("Could not open file: result0.txt\n");
+
+	if (_strcmpi(sysmode, "top") == 0) {
+		nthread = 1;
+		stepnum = 1;
+		strcpy(resultfilename, "lnr_top.txt");
+		mju_copy(state_nominal[0], state_target, 2 * dof + quatnum);
+		mju_zero(ctrl_nominal, kMaxStep * kMaxState);
+	}
 
     // load model
     char error[500] = "Could not load binary model";
@@ -467,27 +489,6 @@ int main(int argc, const char** argv)
             mju_copy(d[id]->act,  m->key_act  + testkey*m->na, m->na);
         }
     }
-
-	// read nominal control values
-	strcpy(datafilename, "result0.txt");
-	if ((filestream3 = fopen(datafilename, "r")) != NULL) {
-		for (int i = 0; i < actuatornum * stepnum; i++)
-		{
-			fscanf(filestream3, "%s", data_buff);
-			ctrl_nominal[i] = atof(data_buff);
-			if (fabs(ctrl_nominal[i]) > ctrl_max) ctrl_max = fabs(ctrl_nominal[i]);
-		}
-		fclose(filestream3);
-	}
-	else printf("Could not open file: result.txt\n");
-
-	if (_strcmpi(sysmode, "top") == 0) {
-		nthread = 1;
-		stepnum = 1;
-		strcpy(resultfilename, "lnr_top.txt");
-		mju_copy(state_nominal[0], state_target, 2 * dof + quatnum);
-		mju_zero(ctrl_nominal, kMaxStep * kMaxState);
-	}
 
     // install timer callback for profiling if requested
     tm_start = chrono::system_clock::now();

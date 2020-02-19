@@ -1808,7 +1808,7 @@ void simulateNominal(void)
 	static mjtNum state_error[kMaxState];
 	
 	if (step_index_nominal == 0) {
-		modelInit(m, d, state_nominal[0], dof, quatnum);
+		modelInit(m, d, state_nominal[0]);
 	}
 	if (step_index_nominal >= stepnum)
 	{
@@ -1855,7 +1855,7 @@ bool simulateClosedloop(void)
 
 	if (step_index_closedloop == 0) {
 		x1 = MatrixXd::Zero(ML.dimension[1], 1);
-		modelInit(m, d_closedloop, state_nominal[0], dof, quatnum);
+		modelInit(m, d_closedloop, state_nominal[0]);
 		cost_closedloop = 0;
 		energy = 0;
 	}
@@ -1923,7 +1923,7 @@ bool simulateOpenloop(void)
 	static mjtNum state_error[kMaxState];
 
 	if (step_index_openloop == 0) {
-		modelInit(m, d_openloop, state_nominal[0], dof, quatnum);
+		modelInit(m, d_openloop, state_nominal[0]);
 		cost_openloop = 0;
 	}
 	if (step_index_openloop >= stepnum)

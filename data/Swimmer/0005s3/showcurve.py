@@ -20,7 +20,7 @@ params = {
     'xtick.labelsize': 15,
     'ytick.labelsize': 15,
     'text.usetex': True ,
-    'figure.figsize': [5.5, 5], # instead of 4.5, 4.5 now[7,5.5]
+    'figure.figsize': [7, 5.5], # instead of 4.5, 4.5 now[7,5.5]
     'font.weight': 'bold',
     'axes.labelweight': 'bold',
     'ps.useafm' : True,
@@ -120,7 +120,7 @@ def showcurve(filename='cost0.txt'):
     print("NUM = {value1}".format(value1=y.shape[0]))
     print("MAX = {value1}  MIN = {value2}\nMEAN = {value3}  VAR = {value4}".format(value1=np.max(y),value2=np.min(y),value3=np.mean(y),value4=np.var(y)))
     
-def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
+def perfchecknew(nstart=0,nend=100,type='error',noisemax=100):
     if type=='cost':
         y=np.array(np.loadtxt('perfcheck.txt'))
         cost=np.mean(y,axis=1)
@@ -150,11 +150,41 @@ def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
         plt.fill_between(np.arange(sind,(eind-1)*step+1,step),(perf[eind:eind*2+1]-cstd[eind:eind*2+1]),(perf[eind:eind*2+1]+cstd[eind:eind*2+1]),alpha=0.3,color='dodgerblue')
         plt.xlabel('Std dev of perturbed noise (Percent of max. control)',fontsize=20)
         plt.ylabel('L2-norm of terminal state error',fontsize=20)
-        plt.legend(handles=[f5,f6,],labels=['Closed-loop cost','Open-loop cost'],loc='upper left')
+        plt.legend(handles=[f5,f6,],labels=['Closed-loop','Open-loop'],loc='upper left')
         plt.show()  
         print('averaged by {value1} rollouts'.format(value1=y.shape[1]))
 
+def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
+    if type=='cost':
+        y=np.array(np.loadtxt('perfcheck.txt'))
+        cost=np.mean(y,axis=1)
+        cstd=np.std(y,axis=1)
+        step=noisemax/int(cost.shape[0]-1)
+        sind=int(nstart/step)
+        eind=int(nend/step)+1
+        plt.grid(color='.910', linewidth=1.5)
+        f5,=plt.plot(np.arange(sind,(eind-1)*step+1,step),cost[sind:eind],'orange',linewidth=3)
+        plt.fill_between(np.arange(sind,(eind-1)*step+1,step),(cost[sind:eind]-cstd[sind:eind]),(cost[sind:eind]+cstd[sind:eind]),alpha=0.3,color='orange')
+        plt.xlabel('Std dev of perturbed noise (Percent of max. control)',fontsize=20)
+        plt.ylabel('cost per step',fontsize=20)
+        plt.show()  
+        print('averaged by {value1} rollouts'.format(value1=y.shape[1]))
 
+    if type=='error':
+        y=np.array(np.loadtxt('perfcheck.txt'))
+        perf=np.mean(y,axis=1)
+        cstd=np.std(y,axis=1)
+        step=noisemax/int(perf.shape[0]-1)
+        sind=int(nstart/step)
+        eind=int(nend/step)+1
+        plt.grid(color='.910', linewidth=1.5)
+        f5,=plt.plot(np.arange(sind,(eind-1)*step+1,step),perf[sind:eind],'orange',linewidth=3)
+        plt.fill_between(np.arange(sind,(eind-1)*step+1,step),(perf[sind:eind]-cstd[sind:eind]),(perf[sind:eind]+cstd[sind:eind]),alpha=0.3,color='orange')
+        plt.xlabel('Std dev of perturbed noise (Percent of max. control)',fontsize=20)
+        plt.ylabel('L2-norm of terminal state error',fontsize=20)
+        plt.show()  
+        print('averaged by {value1} rollouts'.format(value1=y.shape[1]))
+        
 def clopcompare():    
     pointnum=7
     testnum=400

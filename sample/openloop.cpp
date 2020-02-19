@@ -114,7 +114,7 @@ void train(int id, int niteration)
 		{
 			// nominal
 			nominal_cost(iteration_index) = 0;
-			modelInit(m, d[id], state_nominal[0], dof, quatnum);
+			modelInit(m, d[id], state_nominal[0]);
 			for (int step_index = 0; step_index < stepnum; step_index++) {
 				for (int i = 0; i < actuatornum; i++) d[id]->ctrl[i] = ctrl_current[id][step_index * actuatornum + i];
 				nominal_cost(iteration_index) += stepCost(m, d[id], step_index);
@@ -128,7 +128,7 @@ void train(int id, int niteration)
                 for (int i = 0; i < stepnum * actuatornum; i++) delta_u[id][i] = perturb_coefficient_train[id] * randGauss(0, 1);
                 mjtNum rollout_cost = 0;
                 
-				modelInit(m, d[id], state_nominal[0], dof, quatnum);
+				modelInit(m, d[id], state_nominal[0]);
                 for (int step_index = 0; step_index < stepnum; step_index++) {
                     for (int i = 0; i < actuatornum; i++) d[id]->ctrl[i] = ctrl_current[id][step_index * actuatornum + i] + delta_u[id][step_index * actuatornum + i];
                     rollout_cost += stepCost(m, d[id], step_index);
@@ -308,7 +308,8 @@ int main(int argc, const char** argv)
 			QTm[i][i] = 1 * QT;
 			Qm[i][i] = 1 * Q;
 		}
-		//QTm[0][0] = 200; QTm[1][1] = 100; QTm[2][2] = 500; QTm[3][3] = 100;
+		//QTm[0][0] = 3 * QT; Qm[0][0] = 3 * Q; //pendulum
+		//QTm[0][0] = 270; QTm[1][1] = 700; QTm[2][2] = 100; QTm[3][3] = 100; //cartpole
 		fclose(filestream3);
 	}
 	else printf("Could not open file: parameters.txt\n");
