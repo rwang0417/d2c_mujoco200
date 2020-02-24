@@ -82,6 +82,10 @@ void angleModify(int modelid, mjtNum* state_error)
 		state_error[0] = -(PI - fabs(state_target[0] - state_error[0] - PI))*((PI - state_target[0] + state_error[0] >= 0) - (PI - state_target[0] + state_error[0] < 0));
 	else if(modelid == 15)
 		state_error[1] = -(PI - fabs(state_target[1] - state_error[1]))*((state_target[1] - state_error[1] <= 0) - (state_target[1] - state_error[1] > 0));
+	else if (modelid == 3) {
+		state_error[0] = -(PI - fabs(state_target[0] - state_error[0] - PI))*((PI - state_target[0] + state_error[0] >= 0) - (PI - state_target[0] + state_error[0] < 0));
+		state_error[1] = fabs(state_target[1] - state_error[1])*((state_target[1] - state_error[1] <= 0) - (state_target[1] - state_error[1] > 0));
+	}
 }
 
 mjtNum angleModify(int modelid, mjtNum angle)
@@ -428,8 +432,8 @@ mjtNum stepCost(mjModel* m, mjData* d, int step_index)
 	mju_copy(&state[dof + quatnum], d->qvel, dof);
 	
 	if (modelid == 0) {
-		if (state[0] < PI) state_target[0] = 0; else state_target[0] = 2 * PI;
-		mju_sub(res0, state, state_target, 2*dof + quatnum);
+		mju_sub(res0, state_target, state, 2*dof + quatnum);
+		angleModify(modelid, res0);
 		if (step_index >= stepnum) {
 			mju_mulMatVec(res1, *QTm, res0, kMaxState, kMaxState);
 			cost = mju_dot(res0, res1, 2 * dof + quatnum);
@@ -440,8 +444,8 @@ mjtNum stepCost(mjModel* m, mjData* d, int step_index)
 		}
 	}
 	else if (modelid == 3) {
-		if (state[0] < PI) state_target[0] = 0; else state_target[0] = 2 * PI;
-		mju_sub(res0, state, state_target, 2* dof + quatnum);
+		mju_sub(res0, state_target, state, 2* dof + quatnum);
+		angleModify(modelid, res0);
 		if (step_index >= stepnum) {
 			mju_mulMatVec(res1, *QTm, res0, kMaxState, kMaxState);
 			cost = mju_dot(res0, res1, 2 * dof + quatnum);
@@ -530,8 +534,8 @@ mjtNum stepCost(mjModel* m, mjData* d, int step_index)
 		else cost = (Q * (1 * (d->site_xpos[15] - d->site_xpos[45]) * (d->site_xpos[15] - d->site_xpos[45]) + 1. * (d->site_xpos[16] - d->site_xpos[46]) * (d->site_xpos[16] - d->site_xpos[46]) + 1.5 * (d->site_xpos[17] - d->site_xpos[47]) * (d->site_xpos[17] - d->site_xpos[47]) + 0.6*mju_dot(d->qvel, d->qvel, m->nv)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
 	}
 	else if (modelid == 15) {
-		if (state[1] < 0) state_target[1] = -PI; else state_target[1] = PI;
-		mju_sub(res0, state, state_target, 2 * dof + quatnum);
+		mju_sub(res0, state_target, state, 2 * dof + quatnum);
+		angleModify(modelid, res0);
 		if (step_index >= stepnum) {
 			mju_mulMatVec(res1, *QTm, res0, kMaxState, kMaxState);
 			cost = mju_dot(res0, res1, 2 * dof + quatnum);

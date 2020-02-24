@@ -949,3 +949,23 @@ libeng.lib
 #### 1. 布朗运动每一步（t=s1到t=s2）都与之前的无关，是独立的0 mean，正态分布，方差s2-s1。
 #### 2. 动量是物体在一个方向运动的趋势，惯性是衡量改变当前运动难易程度。
 #### 3. ddpg的deterministic是说在policy生成动作的时候不需要从一个分布采样，而是直接生成一个确定值。
+## 02/19/2020
+### Log:
+#### 1. 
+\begin{icmlauthorlist}
+\icmlauthor{Ran Wang}{equal,tamuae}
+\icmlauthor{Karthikeya S. Parunandi}{equal,tamuae}
+\icmlauthor{Dan Yu}{equal,nan}
+\icmlauthor{Dileep Kalathil}{equal,tamuee}
+\icmlauthor{Suman Chakravorty}{equal,tamuae}
+\end{icmlauthorlist}
+
+\icmlaffiliation{tamuae}{Department of Aerospace Engineering, Texas A&M University, Texas, USA}
+\icmlaffiliation{tamuee}{Department of Electrical and Computer Engineering, Texas A&M University, Texas, USA}
+\icmlaffiliation{nan}{College of Astronautics,
+        Nanjing University of Aeronautics and Astronautics, Nanjing, China}
+
+\icmlcorrespondingauthor{Suman Chakravorty}{schakrav@tamu.edu}
+## 02/20/2020
+### Log:
+#### 1. arxiv提交需要点overleaf的log按钮（compile旁边的），拉到最下面，下载bbl文件，改成Main.bbl。

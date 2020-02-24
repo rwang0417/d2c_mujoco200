@@ -12,7 +12,7 @@ The algorithm has three steps:
 The code for each of the above steps is in a separate file.
 
 The D2C algorithm has advantages in the following aspects over reinforcement learning(compared with DDPG)
-1. Data efficiency
+1. Training efficiency
 2. Reproducibility
    
 D2C also has comparable performance with DDPG in robustness.
@@ -63,7 +63,7 @@ Tensegrity
   - openloop, sysid2d, test: Visual Studio projects.
 
 
-## Set up
+## Setup
 
 Operating system: Windows 64-bit
 
@@ -93,11 +93,11 @@ For the Matlab wrapper, first set up the c compiler by running `mex setup` in Ma
 5. Run the model-based shape control algorithm(shape_control.m) in Matlab. Make sure the Matlab wrapper is re-compiled or the .mexw64 file is in the workspace folder.
 6. Make plots by the functions in dataprocess.py using the data generated from the above steps.
 
-## Result
+## Results
 
 - Examples: 
 
-<img src="data/Dbar/init_reacher.PNG" width="200" height="200" alt="dbar"/><img src="data/T2D1/init_reacher.PNG" width="200" height="200" alt="t2d1"/><img src="data/Tbar_Arm/init_arm.PNG" width="200" height="200" alt="arm"/><img src="data/Swimmer/init_swimmer6t.PNG" width="200" height="200" alt="swimmer6"/><img src="data/T1D1/init_reacher.PNG" width="200" height="200" alt="t1d1"/>
+<img src="data/Dbar/init_reacher.PNG" width="200" height="200" alt="dbar"/><img src="data/T2D1/init_reacher.PNG" width="200" height="200" alt="t2d1"/><img src="data/Tbar_Arm/init_arm.PNG" width="200" height="200" alt="arm"/><img src="data/T1D1/init_reacher.PNG" width="200" height="200" alt="t1d1"/>
 
 ## Acknowledgement
 
