@@ -14,11 +14,11 @@ from scipy import signal
 bmap = brewer2mpl.get_map('Set2','qualitative', 7)
 colors = bmap.mpl_colors
 params = {
-    'axes.labelsize': 15,
+    'axes.labelsize': 22,
     'font.size': 20,
-    'legend.fontsize': 15,
-    'xtick.labelsize': 15,
-    'ytick.labelsize': 15,
+    'legend.fontsize': 20,
+    'xtick.labelsize': 20,
+    'ytick.labelsize': 20,
     'text.usetex': True ,
     'figure.figsize': [7, 5.5], # instead of 4.5, 4.5
     'font.weight': 'bold',
@@ -114,9 +114,9 @@ def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
         
 def clopcompare():                   
     nstart=0
-    nend=100
-    pointnum=21
-    testnum=500
+    nend=60
+    pointnum=13
+    testnum=400
     y=np.array(np.loadtxt('clopdata.txt'))
     clerr1=[0 for i in range(int(y.shape[0]/2))]
     operr1=[0 for i in range(int(y.shape[0]/2))]
@@ -137,8 +137,8 @@ def clopcompare():
     f6,=plt.plot(perfdata[4][sind:eind],perfdata[2][sind:eind],'dodgerblue', linewidth=3)
     plt.fill_between(perfdata[4][sind:eind],perfdata[0][sind:eind]-perfdata[1][sind:eind],perfdata[0][sind:eind]+perfdata[1][sind:eind],alpha=0.3,color='orange')
     plt.fill_between(perfdata[4][sind:eind],perfdata[2][sind:eind]-perfdata[3][sind:eind],perfdata[2][sind:eind]+perfdata[3][sind:eind],alpha=0.3,color='dodgerblue')
-    plt.xlabel('Std dev of perturbed noise(Percent of max. control)', fontsize=20)
-    plt.ylabel('Episodic cost', fontsize=20)
+    plt.xlabel('Std dev of perturbed noise(Percent of max. control)')
+    plt.ylabel('Episodic cost')
     plt.legend(handles=[f5,f6,],labels=['Closed-loop','Open-loop'],loc='upper left')
     plt.grid(color='.910', linewidth=1.5)
     plt.show()  

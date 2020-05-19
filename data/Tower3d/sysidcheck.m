@@ -5,8 +5,8 @@ POS_NUM = 16;
 VEL_NUM = 16;
 IN_NUM = 20;
 STEP_NUM = 5;
-SIM_STEP = 0.01;
-CTRL_STEP = 0.01;
+SIM_STEP = 0.001;
+CTRL_STEP = 0.001;
 MODEL = 'tower.xml';
 ID_STEP_NUM = STEP_NUM-1;
 %% read control sequence
@@ -31,6 +31,7 @@ for i = 1 : 1 : STEP_NUM
     X_NORM(ACTUAL_DOF+1:ACTUAL_DOF*2,i+1)=mexstep('get','qvel');
 end
 mexstep('exit');
+%% least square id
 %% check sysid result
 TEST_NUM = 1;
 TEST_NOISE_COEF = 0.001;%1

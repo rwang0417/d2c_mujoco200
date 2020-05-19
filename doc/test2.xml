@@ -1,0 +1,326 @@
+<mujoco model="dbar">
+    <option timestep="0.01" integrator="RK4" gravity = "0 0 0" collision="predefined" density="1000"/>
+
+    <default>
+        <geom size="0.03"/>
+        <site size="0.05"/>
+    </default>
+    
+    <asset>
+        <texture type="skybox" builtin="gradient" rgb1="0.6 0.6 0.6" rgb2="0 0 0" width="512" height="512"/> 
+
+        <texture name="texplane" type="2d" builtin="checker" rgb1=".25 .25 .25" rgb2=".3 .3 .3" width="512" height="512" mark="cross" markrgb=".8 .8 .8"/>  
+
+        <material name="matplane" reflectance="0.3" texture="texplane" texrepeat="1 1" texuniform="true"/>
+    </asset>
+<worldbody>
+<light directional="true" diffuse=".8 .8 .8" specular=".2 .2 .2" pos="0 0 5" dir="0 0 -1">
+</light>
+<body name="floor" pos="0 0 0">
+<geom name="floor" pos="0 0 -10" size="0 0 1" type="plane" material="matplane">
+</geom>
+<site name="s0" pos="0 0 0" size="0.1">
+</site>
+</body>
+<body name="body0" pos="8.     0.     1.4106">
+<joint type="free" pos="0 0 0">
+</joint>
+<geom name="body0" type="capsule" fromto="0 0 0  0.      0.     -1.4106" rgba="1 0 0 .8">
+</geom>
+<site name="site0" pos="0 0 0">
+</site>
+<site name="site1" pos=" 0.      0.     -1.4106">
+</site>
+</body>
+<body name="body1" pos=" 8.     -1.2216 -0.7053">
+<joint type="free" pos="0 0 0">
+</joint>
+<geom name="body1" type="capsule" fromto="0 0 0 0.     1.2216 0.7053" rgba="1 0 0 .8">
+</geom>
+<site name="site2" pos="0 0 0">
+</site>
+</body>
+<body name="body2" pos=" 8.      1.2216 -0.7053">
+<joint type="free" pos="0 0 0">
+</joint>
+<geom name="body2" type="capsule" fromto="0 0 0  0.     -1.2216  0.7053" rgba="1 0 0 .8">
+</geom>
+<site name="site3" pos="0 0 0">
+</site>
+</body>
+<body name="body3" pos="0. 0. 0.">
+<joint type="free" pos="0 0 0">
+</joint>
+<geom name="body3" type="capsule" fromto="0 0 0 4.     0.     0.7053" rgba="1 0 0 .8">
+</geom>
+<site name="site4" pos="0 0 0">
+</site>
+<site name="site5" pos="4.     0.     0.7053">
+</site>
+</body>
+<body name="body4" pos="0. 0. 0.">
+<joint type="free" pos="0 0 0">
+</joint>
+<geom name="body4" type="capsule" fromto="0 0 0  4.      0.6108 -0.3527" rgba="1 0 0 .8">
+</geom>
+<site name="site6" pos=" 4.      0.6108 -0.3527">
+</site>
+</body>
+<body name="body5" pos="0. 0. 0.">
+<joint type="free" pos="0 0 0">
+</joint>
+<geom name="body5" type="capsule" fromto="0 0 0  4.     -0.6108 -0.3527" rgba="1 0 0 .8">
+</geom>
+<site name="site7" pos=" 4.     -0.6108 -0.3527">
+</site>
+</body>
+<body name="body6" pos="8. 0. 0.">
+<joint type="free" pos="0 0 0">
+</joint>
+<geom name="body6" type="capsule" fromto="0 0 0 -4.      0.      0.7053" rgba="1 0 0 .8">
+</geom>
+<site name="site8" pos="0 0 0">
+</site>
+</body>
+<body name="body7" pos="8. 0. 0.">
+<joint type="free" pos="0 0 0">
+</joint>
+<geom name="body7" type="capsule" fromto="0 0 0 -4.      0.6108 -0.3527" rgba="1 0 0 .8">
+</geom>
+</body>
+<body name="body8" pos="8. 0. 0.">
+<joint type="free" pos="0 0 0">
+</joint>
+<geom name="body8" type="capsule" fromto="0 0 0 -4.     -0.6108 -0.3527" rgba="1 0 0 .8">
+</geom>
+</body>
+<body name="body9" pos="8. 0. 0.">
+<joint type="free" pos="0 0 0">
+</joint>
+<geom name="body9" type="capsule" fromto="0 0 0 4.     0.     0.7053" rgba="1 0 0 .8">
+</geom>
+<site name="site9" pos="4.     0.     0.7053">
+</site>
+</body>
+<body name="body10" pos="8. 0. 0.">
+<joint type="free" pos="0 0 0">
+</joint>
+<geom name="body10" type="capsule" fromto="0 0 0  4.      0.6108 -0.3527" rgba="1 0 0 .8">
+</geom>
+<site name="site10" pos=" 4.      0.6108 -0.3527">
+</site>
+</body>
+<body name="body11" pos="8. 0. 0.">
+<joint type="free" pos="0 0 0">
+</joint>
+<geom name="body11" type="capsule" fromto="0 0 0  4.     -0.6108 -0.3527" rgba="1 0 0 .8">
+</geom>
+<site name="site11" pos=" 4.     -0.6108 -0.3527">
+</site>
+</body>
+<body name="body12" pos="16.  0.  0.">
+<joint type="free" pos="0 0 0">
+</joint>
+<geom name="body12" type="capsule" fromto="0 0 0 -4.      0.      0.7053" rgba="1 0 0 .8">
+</geom>
+<site name="site12" pos="0 0 0">
+</site>
+</body>
+<body name="body13" pos="16.  0.  0.">
+<joint type="free" pos="0 0 0">
+</joint>
+<geom name="body13" type="capsule" fromto="0 0 0 -4.      0.6108 -0.3527" rgba="1 0 0 .8">
+</geom>
+</body>
+<body name="body14" pos="16.  0.  0.">
+<joint type="free" pos="0 0 0">
+</joint>
+<geom name="body14" type="capsule" fromto="0 0 0 -4.     -0.6108 -0.3527" rgba="1 0 0 .8">
+</geom>
+</body>
+</worldbody>
+
+
+<tendon>
+<spatial name="S1" width="0.02">
+<site site="site4">
+</site>
+<site site="site0">
+</site>
+</spatial>
+<spatial name="S2" width="0.02">
+<site site="site4">
+</site>
+<site site="site3">
+</site>
+</spatial>
+<spatial name="S3" width="0.02">
+<site site="site4">
+</site>
+<site site="site2">
+</site>
+</spatial>
+<spatial name="S4" width="0.02">
+<site site="site12">
+</site>
+<site site="site0">
+</site>
+</spatial>
+<spatial name="S5" width="0.02">
+<site site="site12">
+</site>
+<site site="site3">
+</site>
+</spatial>
+<spatial name="S6" width="0.02">
+<site site="site12">
+</site>
+<site site="site2">
+</site>
+</spatial>
+<spatial name="S7" width="0.02">
+<site site="site0">
+</site>
+<site site="site2">
+</site>
+</spatial>
+<spatial name="S8" width="0.02">
+<site site="site2">
+</site>
+<site site="site3">
+</site>
+</spatial>
+<spatial name="S9" width="0.02">
+<site site="site3">
+</site>
+<site site="site0">
+</site>
+</spatial>
+<spatial name="S10" width="0.02">
+<site site="site5">
+</site>
+<site site="site7">
+</site>
+</spatial>
+<spatial name="S11" width="0.02">
+<site site="site7">
+</site>
+<site site="site6">
+</site>
+</spatial>
+<spatial name="S12" width="0.02">
+<site site="site6">
+</site>
+<site site="site5">
+</site>
+</spatial>
+<spatial name="S13" width="0.02">
+<site site="site4">
+</site>
+<site site="site8">
+</site>
+</spatial>
+<spatial name="S14" width="0.02">
+<site site="site9">
+</site>
+<site site="site11">
+</site>
+</spatial>
+<spatial name="S15" width="0.02">
+<site site="site11">
+</site>
+<site site="site10">
+</site>
+</spatial>
+<spatial name="S16" width="0.02">
+<site site="site10">
+</site>
+<site site="site9">
+</site>
+</spatial>
+<spatial name="S17" width="0.02">
+<site site="site8">
+</site>
+<site site="site12">
+</site>
+</spatial>
+</tendon>
+
+<equality>
+<connect active="true" name="body82body2" body1="body8" body2="body2" anchor="0 0 0">
+</connect>
+<connect active="true" name="body82body7" body1="body8" body2="body7" anchor="0 0 0">
+</connect>
+<connect active="true" name="body82body9" body1="body8" body2="body9" anchor="0 0 0">
+</connect>
+<connect active="true" name="body82body10" body1="body8" body2="body10" anchor="0 0 0">
+</connect>
+<connect active="true" name="body82body0" body1="body8" body2="body0" anchor="0 0 0">
+</connect>
+<connect active="true" name="body82body1" body1="body8" body2="body1" anchor="0 0 0">
+</connect>
+<connect active="true" name="body82body6" body1="body8" body2="body6" anchor="0 0 0">
+</connect>
+<connect active="true" name="body82body11" body1="body8" body2="body11" anchor="0 0 0">
+</connect>
+<connect active="true" name="body42body3" body1="body4" body2="body3" anchor="0 0 0">
+</connect>
+<connect active="true" name="body42body5" body1="body4" body2="body5" anchor="0 0 0">
+</connect>
+<connect active="true" name="body32body6" body1="body3" body2="body6" anchor="4.     0.     0.7053">
+</connect>
+<connect active="true" name="body72body4" body1="body7" body2="body4" anchor="-4.      0.6108 -0.3527">
+</connect>
+<connect active="true" name="body52body8" body1="body5" body2="body8" anchor=" 4.     -0.6108 -0.3527">
+</connect>
+<connect active="true" name="body92body12" body1="body9" body2="body12" anchor="4.     0.     0.7053">
+</connect>
+<connect active="true" name="body102body13" body1="body10" body2="body13" anchor=" 4.      0.6108 -0.3527">
+</connect>
+<connect active="true" name="body112body14" body1="body11" body2="body14" anchor=" 4.     -0.6108 -0.3527">
+</connect>
+<connect active="true" name="body132body12" body1="body13" body2="body12" anchor="0 0 0">
+</connect>
+<connect active="true" name="body132body14" body1="body13" body2="body14" anchor="0 0 0">
+</connect>
+</equality>
+
+
+<actuator>
+<position tendon="S1" kp="0">
+</position>
+<position tendon="S2" kp="0">
+</position>
+<position tendon="S3" kp="0">
+</position>
+<position tendon="S4" kp="0">
+</position>
+<position tendon="S5" kp="0">
+</position>
+<position tendon="S6" kp="0">
+</position>
+<position tendon="S7" kp="0">
+</position>
+<position tendon="S8" kp="0">
+</position>
+<position tendon="S9" kp="0">
+</position>
+<position tendon="S10" kp="0">
+</position>
+<position tendon="S11" kp="0">
+</position>
+<position tendon="S12" kp="0">
+</position>
+<position tendon="S13" kp="0">
+</position>
+<position tendon="S14" kp="0">
+</position>
+<position tendon="S15" kp="0">
+</position>
+<position tendon="S16" kp="0">
+</position>
+<position tendon="S17" kp="0">
+</position>
+</actuator>
+
+</mujoco>

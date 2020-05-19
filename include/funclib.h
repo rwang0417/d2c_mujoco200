@@ -117,10 +117,11 @@ void angleModify(int modelid, mjtNum* state_error);
 * @brief  Angle modification for pendulum, cartpole and acrobot to clamp angle value
 * @note   different modification different model
 * @param  int model: id of the model
-*         mjtNum angle: current angle value read from mujoco
-* @retval mjtNum: modified angle value
+*         mjtNum angle: current angle value (state) read from mujoco
+*         int index: angle index
+* @retval mjtNum: clamped angle between current state and target
 */
-mjtNum angleModify(int modelid, mjtNum angle);
+mjtNum angleModify(int modelid, mjtNum angle, int index = 0);
 
 /**
 * @brief  Select model parameters set

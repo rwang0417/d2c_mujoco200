@@ -37,7 +37,7 @@ fidtk = fopen('TK.txt','wt');
 for it = 1 : STEP_MAX
     for itt = 1 : NUM_IN
         for ittt = 1 : NUM_SYS
-            fprintf(fidtk,'%g ',TK(itt,ittt,it));
+            fprintf(fidtk,'%f ',TK(itt,ittt,it));
         end
         fprintf(fidtk,'\n');
     end

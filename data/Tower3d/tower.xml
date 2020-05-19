@@ -3,7 +3,7 @@
     <include file="./common/skybox.xml"/>
     <include file="./common/materials.xml"/>
     
-    <option timestep="0.01" iterations="50" integrator="RK4" solver="Newton" tolerance="1e-10" gravity="0 0 -1.63333" collision="predefined" viscosity="0.0"/>
+    <option timestep="0.001" iterations="50" integrator="RK4" solver="Newton" tolerance="1e-12" gravity="0 0 -1.63333" collision="predefined" viscosity="0.0"/>
 
     <size njmax="200" nconmax="100" nstack="3000"/>
 

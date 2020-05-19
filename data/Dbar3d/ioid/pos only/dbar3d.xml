@@ -1,0 +1,122 @@
+<mujoco model="dbar">
+    <include file="./common/visual.xml"/>
+    <include file="./common/skybox.xml"/>
+    <include file="./common/materials.xml"/>
+    
+    <option timestep="0.01" iterations="50" solver="Newton" integrator="Euler" tolerance="1e-10" gravity = "0 0 0" collision="predefined" viscosity="0"/>
+
+    <size njmax="200" nconmax="100" nstack="2400"/>
+
+    <visual>
+        <rgba haze=".15 .25 .35 1"/>
+    </visual>
+
+    <default>
+        <joint type="ball" pos="0 0 0" limited="false" damping="0.0"/>
+        <motor ctrllimited="false" ctrlrange="-1 1"/>
+		<tendon stiffness="0" damping=".2"/>
+		<geom size="0.02" mass="1"/>
+		<site size="0.04"/>
+    </default>
+
+    <worldbody>
+        <light directional="true" diffuse=".8 .8 .8" specular=".2 .2 .2" pos="0 0 5" dir="0 0 -1"/>
+
+        <body name="lbar1" pos="0 0 0">
+            <geom type="capsule" fromto="0 0 0  1 1 1" material="self"/>
+			<site name="lb1e" pos="1 1 1"/>
+			<joint name="lj1"/>
+            <body name="lbar2" pos="1 1 1">
+                <geom type="capsule" fromto="0 0 0  -1 -1 1" material="self"/>
+                <joint name="lj2"/>
+                <site name="lb2e" pos="-1 -1 1"/>
+            </body>
+        </body>
+
+        <body name="mbar1" pos="0 0 0">
+            <geom type="capsule" fromto="0 0 0  -1 1 1" material="self"/>
+			<site name="mb1e" pos="-1 1 1"/>
+			<joint name="mj1"/>
+            <body name="mbar2" pos="-1 1 1">
+                <geom type="capsule" fromto="0 0 0  1 -1 1" material="self"/>
+                <joint name="mj2"/>
+            </body>
+        </body>
+
+        <body name="rbar1" pos="0 0 0">
+            <geom type="capsule" fromto="0 0 0  0 -1.414 1" material="self"/>
+			<site name="rb1e" pos="0 -1.414 1"/>
+			<joint name="rj1"/>
+            <body name="rbar2" pos="0 -1.414 1">
+                <geom type="capsule" fromto="0 0 0  0 1.414 1" material="self"/>
+                <joint name="rj2"/>
+            </body>
+        </body>
+		
+		<body pos="0 0 0">
+			<geom name="floor" pos="0 0 0" size="0 0 1" type="plane" material="grid"/>
+			<site name="target" pos="0. 0. 2.5" size="0.08" rgba="1 0 0 .3"/>
+			<site name="f0" pos="0 0 0"/>
+			<site name="fl" pos="1 1 0"/>
+			<site name="fm" pos="-1 1 0"/>
+            <site name="fr" pos="0 -1.414 0"/>
+		</body>
+    </worldbody>
+	
+	<equality>
+		<connect active="true" name='c1' body1='lbar2' body2='mbar2' anchor='-1 -1 1'/>
+		<connect active="true" name='c2' body1='lbar2' body2='rbar2' anchor='-1 -1 1'/>
+	</equality>
+
+    <tendon>
+        <spatial name="S1" width="0.02">
+            <site site="f0"/>
+            <site site="lb2e"/>
+        </spatial>
+		<spatial name="S2" width="0.02">
+            <site site="lb1e"/>
+            <site site="mb1e"/>
+        </spatial>
+		<spatial name="S3" width="0.02">
+            <site site="mb1e"/>
+            <site site="rb1e"/>
+        </spatial>
+		<spatial name="S4" width="0.02">
+            <site site="lb1e"/>
+            <site site="rb1e"/>
+        </spatial>
+        <spatial name="S5" width="0.02">
+            <site site="lb2e"/>
+            <site site="fl"/>
+        </spatial>
+        <spatial name="S6" width="0.02">
+            <site site="lb2e"/>
+            <site site="fm"/>
+        </spatial>
+        <spatial name="S7" width="0.02">
+            <site site="lb2e"/>
+            <site site="fr"/>
+        </spatial>
+    </tendon>   
+
+    <actuator>
+        <motor tendon="S1" gear="1"/>
+        <motor tendon="S2" gear="1"/>
+		<motor tendon="S3" gear="1"/>
+        <motor tendon="S4" gear="1"/>
+        <motor tendon="S5" gear="1"/>
+        <motor tendon="S6" gear="1"/>
+		<motor tendon="S7" gear="1"/>
+    </actuator>
+	
+	<sensor>
+		<framelinvel objtype="site" objname="lb1e"/>
+		<framelinvel objtype="site" objname="lb2e"/>
+		<framelinvel objtype="site" objname="mb1e"/>
+        <framelinvel objtype="site" objname="rb1e"/>
+		<framelinvel objtype="site" objname="f0"/>
+		<framelinvel objtype="site" objname="fl"/>
+		<framelinvel objtype="site" objname="fm"/>
+        <framelinvel objtype="site" objname="fr"/>
+	</sensor>
+</mujoco>

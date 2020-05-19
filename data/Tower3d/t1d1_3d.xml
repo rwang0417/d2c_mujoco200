@@ -194,15 +194,15 @@
         </spatial>
         <spatial name="S18">
             <site site="fl"/>
-            <site site="lb3e"/>
+            <site site="lb5e"/>
         </spatial>
         <spatial name="S19">
             <site site="fr"/>
-            <site site="rb3e"/>
+            <site site="lb5e"/>
         </spatial>
         <spatial name="S20">
             <site site="fm"/>
-            <site site="mb3e"/>
+            <site site="lb5e"/>
         </spatial>
     </tendon>   
 

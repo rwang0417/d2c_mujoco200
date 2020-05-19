@@ -1779,7 +1779,7 @@ void uiEvent(mjuiState* state)
 //--------------------------- control and testing ---------------------------------------
 // simulate the nominal trajectory
 void simulateNominal(void)
-{	
+{
 	if (step_index_nominal == 0) {
 		modelInit(m, d, state_nominal[0]);
 	}
@@ -1789,7 +1789,7 @@ void simulateNominal(void)
 
 		// print N_final to be the target for the analytical shape control
 		if (NFinal == true) {
-			for (int i = 0; i < 3 * m->nsite; i++) printf("%.4f\n", d->site_xpos[i]); 
+			for (int i = 0; i < 3 * m->nsite; i++) printf("%.4f\n", d->site_xpos[i]);
 			//for (int i = 0; i < m->nsensordata; i++) printf(" d->sensordata[%d]        : %.4f\n", i, d->sensordata[i]);
 			//for (int i = 0; i < 3 * m->nsite; i++) printf(" d->site_xpos[%d]        : %.4f\n", i, d->site_xpos[i]);
 			//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.8f\n", i, d->qpos[i]);
@@ -1799,6 +1799,32 @@ void simulateNominal(void)
 	}
 	else mju_copy(d->ctrl, &ctrl_nominal[step_index_nominal * actuatornum], m->nu);
 	ctrlLimit(d->ctrl, m->nu);//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.8f\n", i, d->qpos[i]);
+    // state perturbation
+	//d->qpos[0] += randGauss(0, 0.0001);
+	//d->qpos[1] += randGauss(0, 0.000001);
+	//d->qpos[3] += randGauss(0, 0.0001);
+	//d->qpos[4] += randGauss(0, 0.0001);
+	//d->qpos[5] += randGauss(0, 0.0001);
+	//d->qpos[8] += randGauss(0, 0.000001);
+	//d->qpos[9] += randGauss(0, 0.0001);
+	//d->qpos[10] += randGauss(0, 0.0001);
+	//d->qpos[11] += randGauss(0, 0.0001);
+	//d->qpos[15] += randGauss(0, 0.0001);
+	//d->qpos[21] += randGauss(0, 0.0001);
+	//d->qpos[12] += randGauss(0, 0.0001);
+	//d->qpos[18] += randGauss(0, 0.0001);
+	//d->qpos[2] = -2 * d->qpos[1];
+	//d->qpos[13] = -d->qpos[1];
+	//d->qpos[19] = -d->qpos[1];
+	//d->qpos[14] = -d->qpos[2];
+	//d->qpos[20] = -d->qpos[2];
+	//d->qpos[6] += randGauss(0, 0.000001);// d->qpos[1];
+	//d->qpos[7] = -2*(d->qpos[6]-d->qpos[1]);
+	//d->qpos[16] = -d->qpos[6];
+	//d->qpos[22] = -d->qpos[6];
+	//d->qpos[17] = -d->qpos[7];
+	//d->qpos[23] = -d->qpos[7];
+
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d);
 	step_index_nominal++;
 }
@@ -1822,6 +1848,7 @@ bool simulateClosedloop(void)
 		if (_strcmpi(testmode, "policy_compare") == 0 && step_index_closedloop >= stepnum) {
 			cost_closedloop += stepCost(m, d_closedloop, stepnum);
 			step_index_closedloop = 0; 
+			terminal_trigger = false;
 			return 1;
 		}
 		cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
@@ -1830,10 +1857,12 @@ bool simulateClosedloop(void)
 		mju_sub(state_error, state_nominal[step_index_closedloop], d_closedloop->qpos, dof + quatnum);
 		mju_sub(&state_error[dof + quatnum], &state_nominal[step_index_closedloop][dof + quatnum], d_closedloop->qvel, dof);
 		if (modelid == 14) {
-			state_error[13] = state_nominal[step_index_closedloop][13] - d_closedloop->qpos[18];
-			state_error[14] = state_nominal[step_index_closedloop][14] - d_closedloop->qpos[21];
-			state_error[29] = state_nominal[step_index_closedloop][29] - d_closedloop->qvel[18];
-			state_error[30] = state_nominal[step_index_closedloop][30] - d_closedloop->qvel[21];
+			state_error[2] = state_nominal[step_index_closedloop][2] - d_closedloop->qpos[15];
+			state_error[7] = state_nominal[step_index_closedloop][7] - d_closedloop->qpos[18];
+			state_error[13] = state_nominal[step_index_closedloop][13] - d_closedloop->qpos[21];
+			state_error[16] = state_nominal[step_index_closedloop][16] - d_closedloop->qvel[15];
+			state_error[21] = state_nominal[step_index_closedloop][21] - d_closedloop->qvel[18];
+			state_error[27] = state_nominal[step_index_closedloop][27] - d_closedloop->qvel[21];
 		}
 		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index_closedloop], state_error, kMaxState, kMaxState);
 		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
@@ -1844,11 +1873,10 @@ bool simulateClosedloop(void)
 		cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
 	}
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop); //printf("%f\t%f\t%f\t%f\t%f\t%f\t%d\n", d->qpos[0], d_closedloop->qpos[0], d->qpos[1],  d_closedloop->qpos[1], d->qpos[2], d_closedloop->qpos[2], terminal_trigger);
-	// process noise including state noise
+	step_index_closedloop++;																		 // process noise including state noise
 	//mju_add(d_closedloop->qpos, d_closedloop->qpos, randGauss(0, 0.00023, dof + quatnum), dof + quatnum);
 	//mju_add(d_closedloop->qvel, d_closedloop->qvel, randGauss(0, 0.00023, dof), dof);
 	//mj_forward(m, d_closedloop);
-	step_index_closedloop++;
 	return 0;
 }
 
@@ -1925,7 +1953,7 @@ mjtNum terminalError(mjtNum ptb, const char *type)
 	else if (modelid == 10)
 		return sqrt((d_closedloop->geom_xpos[11] - d_closedloop->geom_xpos[5]) * (d_closedloop->geom_xpos[11] - d_closedloop->geom_xpos[5]) + (d_closedloop->geom_xpos[10] - d_closedloop->geom_xpos[4]) * (d_closedloop->geom_xpos[10] - d_closedloop->geom_xpos[4]) + (d_closedloop->geom_xpos[9] - d_closedloop->geom_xpos[3]) * (d_closedloop->geom_xpos[9] - d_closedloop->geom_xpos[3]));
 	else if (modelid == 11)
-		return sqrt((d_closedloop->site_xpos[6] - d_closedloop->site_xpos[30]) * (d_closedloop->site_xpos[6] - d_closedloop->site_xpos[30]) + (d_closedloop->site_xpos[7] - d_closedloop->site_xpos[31]) * (d_closedloop->site_xpos[7] - d_closedloop->site_xpos[31]) + (d_closedloop->site_xpos[8] - d_closedloop->site_xpos[32]) * (d_closedloop->site_xpos[8] - d_closedloop->site_xpos[32]));
+		return sqrt((d_closedloop->site_xpos[3] - d_closedloop->site_xpos[12]) * (d_closedloop->site_xpos[3] - d_closedloop->site_xpos[12]) + (d_closedloop->site_xpos[4] - d_closedloop->site_xpos[13]) * (d_closedloop->site_xpos[4] - d_closedloop->site_xpos[13]) + (d_closedloop->site_xpos[5] - d_closedloop->site_xpos[14]) * (d_closedloop->site_xpos[5] - d_closedloop->site_xpos[14]));
 	else if (modelid == 12)
 		return sqrt((d_closedloop->site_xpos[3] - d_closedloop->site_xpos[15]) * (d_closedloop->site_xpos[3] - d_closedloop->site_xpos[15]) + (d_closedloop->site_xpos[4] - d_closedloop->site_xpos[16]) * (d_closedloop->site_xpos[4] - d_closedloop->site_xpos[16]) + (d_closedloop->site_xpos[5] - d_closedloop->site_xpos[17]) * (d_closedloop->site_xpos[5] - d_closedloop->site_xpos[17]));
 	else if (modelid == 13)
@@ -1947,6 +1975,7 @@ void performanceTest(void)
 		{
 			for (int i = 0; i < kTestNum; i++)
 			{
+				// data output for checking
 				sprintf(data_buff, "%4.8f", terminalError(ptb, "closedloop"));
 				fwrite(data_buff, 10, 1, filestream1);
 				fputs(" ", filestream1);
@@ -2048,6 +2077,10 @@ void testModeSelection(const char* mode)
 		modelTest();
 	else if (_strcmpi(testmode, "nfinal") == 0)
 		NFinal = true;
+	else if (_strcmpi(testmode, "top") == 0) {
+		stepnum = 0;
+		mju_add(state_nominal[0], state_target, randGauss(0, 0.0001, 2 * dof + quatnum), 2 * dof + quatnum);
+	}
 }
 
 //--------------------------- rendering and simulation ----------------------------------
@@ -2305,9 +2338,14 @@ void simulate(void)
 
 						// run mj_step
 						mjtNum prevtm = d->time;
-						simulateNominal();
-						simulateOpenloop();
-						simulateClosedloop();
+						if (_strcmpi(testmode, "modeltest") == 0)
+							mj_step(m, d);
+						else
+						{
+							simulateNominal();
+							simulateOpenloop();
+							simulateClosedloop();
+						}
 
 						//for (int i = 0; i < m->nq; i++) d->qpos[i] = -PI / 36;
 						//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.2f\n", i, d->qpos[i]);
@@ -2468,7 +2506,7 @@ void init(void)
 
 	// init GLFW, set timer callback (milliseconds)
 	if (!glfwInit())
-		mju_error("could not initialize GLFW");
+		mju_error("Could not initialize GLFW");
 	mjcb_time = timer;
 
 	// multisampling
@@ -2489,7 +2527,7 @@ void init(void)
 	if (!window)
 	{
 		glfwTerminate();
-		mju_error("could not create window");
+		mju_error("Could not create window");
 	}
 
 	glfwSetWindowPos(window, (2 * vmode.width) / 6, 100);

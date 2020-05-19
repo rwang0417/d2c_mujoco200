@@ -15,3 +15,11 @@ Q = [10 0 0 0;
 R = 1;
 [Kd,ss,e] = dlqr(La(:,1:NUM_SYS),La(:,NUM_SYS+1:NUM_SYS+NUM_IN),Q,R);
 Kd
+%fidtk = fopen('TK_top.txt','wt');
+%for i = 1 : NUM_IN
+  %  for j = 1 : NUM_SYS
+  %      fprintf(fidtk,'%f ',Kd(i,j));
+  %  end
+   % fprintf(fidtk,'\n');
+%end
+%fclose(fidtk);

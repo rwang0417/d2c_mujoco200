@@ -5,7 +5,6 @@ import xml.etree.ElementTree as ET
 import collections
 # xml = ET.parse('XML.xml')
 class tenseg_skelton(object):
-
     def __init__(self,data_name):
         self.mem = {}
         self.bar_mem = collections.defaultdict(set)
@@ -283,7 +282,7 @@ class tenseg_skelton(object):
 
 
 
-a = tenseg_skeleton('.\py.mat')
+a = tenseg_skelton('t1d13d.mat')
 # print(a._addbar())
 a.save_to_file('test2.xml')
 

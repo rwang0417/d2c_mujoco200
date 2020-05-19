@@ -14,11 +14,11 @@ from scipy import signal
 bmap = brewer2mpl.get_map('Set2','qualitative', 7)
 colors = bmap.mpl_colors
 params = {
-    'axes.labelsize': 15,
+    'axes.labelsize': 22,
     'font.size': 20,
-    'legend.fontsize': 15,
-    'xtick.labelsize': 15,
-    'ytick.labelsize': 15,
+    'legend.fontsize': 20,
+    'xtick.labelsize': 20,
+    'ytick.labelsize': 20,
     'text.usetex': True ,
     'figure.figsize': [7, 5.5], # instead of 4.5, 4.5
     'font.weight': 'bold',
@@ -114,8 +114,8 @@ def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
         
 def clopcompare():                   
     nstart=0
-    nend=100
-    pointnum=16
+    nend=55
+    pointnum=21
     testnum=400
     y=np.array(np.loadtxt('clopdata.txt'))
     clerr1=[0 for i in range(int(y.shape[0]/2))]
@@ -127,7 +127,7 @@ def clopcompare():
         operr1[i]=abs(y[2*i+1])
     with open('clopbar.txt', 'wt+') as f:
         for k in range(pointnum):
-            print(np.mean(clerr1[testnum*k:testnum*(k+1)]), np.std(clerr1[testnum*k:testnum*(k+1)]), np.mean(operr1[testnum*k:testnum*(k+1)]), np.std(operr1[testnum*k:testnum*(k+1)]), k*2, file=f)
+            print(np.mean(clerr1[testnum*k:testnum*(k+1)]), np.std(clerr1[testnum*k:testnum*(k+1)]), np.mean(operr1[testnum*k:testnum*(k+1)]), np.std(operr1[testnum*k:testnum*(k+1)]), k*5, file=f)
     
     # plot performance compare data and success rate
     sind=int(nstart/100*(pointnum-1))
@@ -137,9 +137,9 @@ def clopcompare():
     f6,=plt.plot(perfdata[4][sind:eind],perfdata[2][sind:eind],'dodgerblue', linewidth=3)
     plt.fill_between(perfdata[4][sind:eind],perfdata[0][sind:eind]-perfdata[1][sind:eind],perfdata[0][sind:eind]+perfdata[1][sind:eind],alpha=0.3,color='orange')
     plt.fill_between(perfdata[4][sind:eind],perfdata[2][sind:eind]-perfdata[3][sind:eind],perfdata[2][sind:eind]+perfdata[3][sind:eind],alpha=0.3,color='dodgerblue')
-    plt.xlabel('Std dev of perturbed noise(Percent of max. control)', fontsize=20)
-    plt.ylabel('D2C averaged cost', fontsize=20)
-    plt.legend(handles=[f5,f6,],labels=['Closed-loop cost','Open-loop cost'],loc='upper left')
+    plt.xlabel('Std dev of perturbed noise(Percent of max. control)')
+    plt.ylabel('Episodic cost')
+    plt.legend(handles=[f5,f6,],labels=['Closed-loop','Open-loop'],loc='upper left')
     plt.grid(color='.910', linewidth=1.5)
     plt.show()  
     

@@ -969,3 +969,50 @@ libeng.lib
 ## 02/20/2020
 ### Log:
 #### 1. arxiv提交需要点overleaf的log按钮（compile旁边的），拉到最下面，下载bbl文件，改成Main.bbl。
+## 03/02/2020
+### Log:
+#### 1. mujoco里如果加的state noise和constraint有冲突，会先满足state， constraint就变成力了。全是soft constraint。
+#### 2. 不记得之前是咋搞的了，现在tower给state noise之后，constraint直接不满足，可能之前是不满足之后再noiseless模拟一段时间然后会慢慢趋向于满足constraint。现在给state noise一定会产生偏转，所以从直上直下推的关系不再成立。
+#### 3. 可能是perturb state之后拉歪了然后之后的perturbation关系就会带来constraint break。
+#### 4. 因为上层的state是以下层为基础算的，所以下层的变了，上面的state虽然没变但是实际位置被下层带着变了，导致constraint点break。least square应该不适合在mujoco做这种模型的id，凉凉凉凉凉凉~。
+#### 5. forward也不会自己去算满足constraint的state，二维自己完全能算，三维很复杂。
+## 03/04/2020
+### Log:
+#### 1. 直上直下关系搞对，第二层bar的perturb自由度去掉，residual e-8，ok的。
+## 03/05/2020
+### Log:
+#### 1. acrobot角度处理是ok的，也能摆上去，但是速度大了稳定不了。
+## 03/07/2020
+### Log:
+#### 1. overleaf段首空格用\hspace{1cm}添加，不过前后必须空行，否则命令无效。
+## 03/11/2020
+### Log:
+#### 1. latex的\author{}里面如果有空行的话，会导致compile一直卡住。
+#### 2. 人生第一次公司的电话面试献给了Deeproute.ai，还是紧张了一点，有的地方表达的逻辑不够清晰，总体还可以吧，顺利面完了，没有晕倒。
+## 03/25/2020
+### Log:
+#### 1. mt : general error c101008d: Failed to write the updated manifest to the resource of file "mexstep.mexw64". ?????需要手动删除mexstep.mexw64.manifest文件重新编译。
+## 04/20/2020
+### Log:
+#### 1. matlab的fmincon解有nonlinear constraint的优化，nonlinear constraint function需要有两个输出，分别对应inequality constraint和equality constraint，需要用deal函数分配。
+#### 2. 定义函数fun=@(x) x(:,1)+1这种需要特别注意，在需要写fun(x)的时候不能写成fun(x(:,1)),只有定义函数里面可以写成这样，第二个index可以大于1.
+## 04/28/2020
+### Log:
+#### 1. 在写constrained expression的时候用了多阶多项式的话，后面拟合就不能从第一项1开始，但是也不能随便从一个比较后面的项开始，否则residual巨大。
+#### 2. figure的label要在end之前caption之后，不然不识别。
+## 05/07/2020
+### Log:
+#### 1. 没有.mat文件的时候，读不到变量，因为结构体没法初始化，后面又有很多调用的地方，所以会直接退出。所以在读的时候如果没文件就把变量结构体初始化成一个全是零但每个成员都有值的状态，dimension那里需要的是const size_t，如果真的用这个不能work，改成static就ok。static mwSize initdimension[3] = { 10, 10, 10 };dataptr->dimension = initdimension;print的时候模式用%d。为了让后面循环里调用的时候index不会越界，第一个dimension设为actuatornum，目前好像就这个限制。现在没有文件也能跑nominal control看效果了，不用再把test也放过来了。
+#### 2. 如果从一开始就给noise，就应该从一开始就observe y而不是置零，或者从max(mqx,mqu)+1之后再开始加noise。需要改一下看能不能提高闭环性能。
+#### 3. 用matlab读mujoco的数组，site_xpos是3行sitenum列，读sensordata是一行，但是在c里面这些都是vector不是矩阵的。
+#### 4. dbar3d full obsv目前0.2 noise work，0.3不行。
+#### 5. 写xml模型的时候要注意site的顺序，去掉多余的site，保证最前面的都是不重复的node。
+#### 6. openloop直接崩溃没有任何提示，经过尝试，extern const int kMaxStep = 9000; extern const int kMaxState = 60;可以，感觉是内存问题。extern const int kMaxStep = 5000; extern const int kMaxState = 80;也可以，t1d1_3d需要66个。
+## 05/08/2020
+### Log:
+#### 1. tv系统算controllability和observability是用grammian而不是直接一个timestep的矩阵按ti系统的算。
+#### 2. 目前找到的主bug是mujoco运行step之后，site和sensor并不会更新，需要手动写一个mjforward在step在函数后面才会更新，所以之前认为的yk一直是yk-1，所以把uk-1改成uk-2反而能对上，只是和TK偏移了一步，但每一个timestep系统变化不大，TK相对于本身的值比较接近，所以尽管偏移一步还是可以work。matlab里面调用mujoco的时候，用的是封装过一遍的step函数，里面自带forward，所以matlab是对齐的。目前认为是这样，希望是对的吧。其实这个知识点早就看到过遇到过，挺久不用忘得一干二净，导致花了一整天的时间找这个bug，而且一开始以为是程序写错了各种试，还是最后老老实实把u，y的nominal打印出来一个一个比较才发现，吸取教训！
+## 05/11/2020
+### Log:
+#### 1. 今天做3d的t2d1 tower,又出现了内存不足直接退出的问题，首先模型文件中nstack不能设的太大。然后局部变量存储的内存stack是比较小的，所以局部变量数组size不能太大，不过不在声明时初始化的局部变量和全局变量会先放在另一个叫BSS的区域，等到运行到给这些变量值的时候再放进stack或data segment。发现函数中所有的if else里面定义的局部变量，是会全部放在stack里的，不会因为之后程序是否进入而取舍，make sense。 全局变量放在data segment里，这个区域size比stack大很多很多，所以不够的时候可以定义成全局，比如static。这个文章讲的挺好的：https://blog.csdn.net/qq_36770641/article/details/88852924.
+#### 2. 自动生成tensegrity模型的程序可以运行，不过没有和固定点的连接，里面元素定义顺序也不是最简，用的是free joint加constraint连接，内存使用可以接受，暂时不考虑使用。

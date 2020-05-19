@@ -34,11 +34,9 @@ for i = 1 : STEP_MAX
 end
 toc
 fidtk = fopen('TK.txt','wt');
-for it = 1 : STEP_MAX
-    for itt = 1 : NUM_IN
-        for ittt = 1 : NUM_SYS
-            fprintf(fidtk,'%g ',TK(itt,ittt,it));
-        end
+for k = 1:1:STEP_MAX
+    for i = 1:1:NUM_IN
+		fprintf(fidtk,'%f ',TK(i,:,k));
         fprintf(fidtk,'\n');
     end
     fprintf(fidtk,'\n');

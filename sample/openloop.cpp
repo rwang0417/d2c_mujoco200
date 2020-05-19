@@ -16,9 +16,9 @@
 
 //-------------------------------- global variables -------------------------------------
 // constants
-extern const int kMaxStep = 9000;   // max step number for one rollout
-extern const int kMaxState = 60;	// max (state dimension, actuator number)
-const int kMaxThread = 64;
+extern const int kMaxStep = 3000;   // max step number for one rollout
+extern const int kMaxState = 160;	// max (state dimension, actuator number)
+const int kMaxThread = 1;
 const mjtNum kMaxUpdate = 0.1;
 
 // extern model specific parameters
@@ -119,11 +119,12 @@ void train(int id, int niteration)
 				for (int i = 0; i < actuatornum; i++) d[id]->ctrl[i] = ctrl_current[id][step_index * actuatornum + i];
 				nominal_cost(iteration_index) += stepCost(m, d[id], step_index);
 				for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
+				mj_forward(m, d[id]);
 			}
 			nominal_cost(iteration_index) += stepCost(m, d[id], stepnum);
 
             // calculate gradient and update control
-            for (int rollout_index = 0; rollout_index < int(rolloutnum_train); rollout_index++)
+            for (int rollout_index = 0; rollout_index < rolloutnum_train; rollout_index++)
             {
                 for (int i = 0; i < stepnum * actuatornum; i++) delta_u[id][i] = perturb_coefficient_train[id] * randGauss(0, 1);
                 mjtNum rollout_cost = 0;
@@ -133,6 +134,7 @@ void train(int id, int niteration)
                     for (int i = 0; i < actuatornum; i++) d[id]->ctrl[i] = ctrl_current[id][step_index * actuatornum + i] + delta_u[id][step_index * actuatornum + i];
                     rollout_cost += stepCost(m, d[id], step_index);
                     for (int i = 0; i < integration_per_step; i++) mj_step(m, d[id]);
+					mj_forward(m, d[id]);
                 }
                 rollout_cost += stepCost(m, d[id], stepnum);
 
@@ -209,14 +211,14 @@ int main(int argc, const char** argv)
 		strcat(keyfilename, "mjkeysmall.txt");
 		mj_activate(keyfilename);
 	}
-
+	
 	// get filename, determine file type
 	std::string filename(argv[1]);
 	bool binary = (filename.find(".mjb") != std::string::npos);
 	strcpy(modelfilename, argv[1]);
 	strncpy(modelname, modelfilename, strlen(modelfilename) - 4);
 	modelSelection(modelname);
-
+	
     // read niteration and nthread
     int niteration = 0, nthread = 0, profile = 0;
     if( sscanf(argv[2], "%d", &niteration)!=1 || niteration<=0 )
@@ -238,7 +240,7 @@ int main(int argc, const char** argv)
 
     // clamp nthread to [1, kMaxThread]
     nthread = mjMAX(1, mjMIN(kMaxThread, nthread));
-
+	
     // load model
     char error[500] = "Could not load binary model";
     if( binary )
@@ -247,7 +249,7 @@ int main(int argc, const char** argv)
         m = mj_loadXML(modelfilename, 0, error, 500);
     if( !m )
         return finish(error);
-
+	
     // make per-thread data
     int testkey = mj_name2id(m, mjOBJ_KEY, "test");
     for( int id=0; id<nthread; id++ )
@@ -310,6 +312,8 @@ int main(int argc, const char** argv)
 		}
 		//QTm[0][0] = 3 * QT; Qm[0][0] = 3 * Q; //pendulum
 		//QTm[0][0] = 270; QTm[1][1] = 700; QTm[2][2] = 100; QTm[3][3] = 100; //cartpole
+		//Qm[0][0] = 10 * Q; Qm[1][1] = 0.1 * Q; Qm[2][2] = 0.0 * Q; Qm[3][3] = 1 * Q;
+		//QTm[0][0] = 20*QT; QTm[1][1] = 10*QT; QTm[2][2] = 2*QT; QTm[3][3] = 4*QT;
 		fclose(filestream3);
 	}
 	else printf("Could not open file: parameters.txt\n");
