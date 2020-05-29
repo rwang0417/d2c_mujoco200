@@ -2463,7 +2463,7 @@ void init(void)
 		strcat(keyfilename, "mjkeybig.txt");
 		mj_activate(keyfilename);
 	}
-	else if (username[0] == '5') {
+	else {
 		strcpy(keyfilename, keyfilepre);
 		strcat(keyfilename, "mjkeysmall.txt");
 		mj_activate(keyfilename);

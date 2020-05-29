@@ -1,5 +1,5 @@
 # d2c_mujoco200
-d2c implementation on MuJoCo 200 windows x64 version
+d2c implementation on MuJoCo 200 Windows x64 version
 
 --------
 D2C stands for Decoupled Data-based Control. It's a model-free optimal control algorithm proposed to solve finite-horizon control problems for stochastic discrete systems.

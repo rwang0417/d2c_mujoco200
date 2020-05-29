@@ -5,7 +5,7 @@
     
     <option timestep="0.01" iterations="50" solver="Newton" tolerance="1e-10" gravity="0 0 0" collision="predefined" viscosity="0.0" integrator="Euler"/>
 
-    <size njmax="200" nconmax="100" nstack="70000"/>
+    <size njmax="200" nconmax="100" nstack="80000"/>
 
     <visual>
         <rgba haze=".15 .25 .35 1"/>
@@ -373,15 +373,28 @@
             <site site="lb11e"/>
         </spatial>
 		
-        <spatial name="S41">
+		<spatial name="S41">
+            <site site="lb10e"/>
+            <site site="rb10e"/>
+        </spatial>
+        <spatial name="S42">
+            <site site="lb10e"/>
+            <site site="mb10e"/>
+        </spatial>
+        <spatial name="S43">
+            <site site="rb10e"/>
+            <site site="mb10e"/>
+        </spatial>
+		
+        <spatial name="S44">
             <site site="fl"/>
             <site site="lb11e"/>
         </spatial>
-        <spatial name="S42">
+        <spatial name="S45">
             <site site="fr"/>
             <site site="lb11e"/>
         </spatial>
-        <spatial name="S43">
+        <spatial name="S46">
             <site site="fm"/>
             <site site="lb11e"/>
         </spatial>
@@ -431,6 +444,9 @@
 		<motor tendon="S41"/>
         <motor tendon="S42"/>
         <motor tendon="S43"/>
+		<motor tendon="S44"/>
+        <motor tendon="S45"/>
+        <motor tendon="S46"/>
     </actuator>
 	
 	<sensor>
