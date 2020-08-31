@@ -1016,3 +1016,7 @@ libeng.lib
 ### Log:
 #### 1. 今天做3d的t2d1 tower,又出现了内存不足直接退出的问题，首先模型文件中nstack不能设的太大。然后局部变量存储的内存stack是比较小的，所以局部变量数组size不能太大，不过不在声明时初始化的局部变量和全局变量会先放在另一个叫BSS的区域，等到运行到给这些变量值的时候再放进stack或data segment。发现函数中所有的if else里面定义的局部变量，是会全部放在stack里的，不会因为之后程序是否进入而取舍，make sense。 全局变量放在data segment里，这个区域size比stack大很多很多，所以不够的时候可以定义成全局，比如static。这个文章讲的挺好的：https://blog.csdn.net/qq_36770641/article/details/88852924.
 #### 2. 自动生成tensegrity模型的程序可以运行，不过没有和固定点的连接，里面元素定义顺序也不是最简，用的是free joint加constraint连接，内存使用可以接受，暂时不考虑使用。
+## 08/31/2020
+### Log:
+#### 1. 很久没写了，可能以后直接在ipad上记录了。
+#### 2. 为了让Raman能用d2c，修改activate部分。

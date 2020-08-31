@@ -15,8 +15,8 @@
 
 //-------------------------------- global -----------------------------------------------
 // constants
-extern const int kMaxStep = 9000;   // max step number for one rollout
-extern const int kMaxState = 60;	// max (state dimension, actuator number)
+extern const int kMaxStep = 3000;   // max step number for one rollout
+extern const int kMaxState = 160;	// max (state dimension, actuator number)
 
 const int kTestNum = 1000;	        // number of monte-carlo runs
 const int kMaxGeom = 5000;          // preallocated geom array in mjvScene
@@ -2425,7 +2425,7 @@ void init(void)
 		strcat(keyfilename, "mjkeybig.txt");
 		mj_activate(keyfilename);
 	}
-	else if (username[0] == '5') {
+	else {
 		strcpy(keyfilename, keyfilepre);
 		strcat(keyfilename, "mjkeysmall.txt");
 		mj_activate(keyfilename);
@@ -2602,8 +2602,8 @@ void init(void)
 int main(int argc, const char** argv)
 {
 	// print help if arguments are missing
-	if (argc <= 1 || argc > 5) {
-		printf("\n Usage:  test2d modelfile [modeltype [mode [noiselevel]]]\n");
+	if (argc <= 1 || argc > 7) {
+		printf("\n Usage:  test2d modelfile control_timestep stepnum [modeltype [mode [noiselevel]]]\n");
 		return 0;
 	}
 
@@ -2615,20 +2615,37 @@ int main(int argc, const char** argv)
 		strncpy(modelname, modelfilename, strlen(modelfilename) - 4);
 		settings.loadrequest = 1;
 	}
-	if (argc > 2 && modelSelection(argv[2]) == 1);
+	if (argc > 4 && modelSelection(argv[4]) == 1);
 	else modelSelection(modelname);
+	if (sscanf(argv[2], "%lf", &control_timestep) != 1 || control_timestep <= 0) {
+		printf("Invalid control_timestep argument");
+		return 0;
+	}
+	if (sscanf(argv[3], "%d", &stepnum) != 1 || stepnum <= 0) {
+		printf("Invalid stepnum argument");
+		return 0;
+	}
 	srand((unsigned)time(NULL));
 
 	// initialize
 	init();
 	loadmodel();
+
+	// check timestep setting
+	simulation_timestep = m->opt.timestep;
+	integration_per_step = (int)(control_timestep / simulation_timestep);
+	if (integration_per_step <= 0) {
+		printf("Invalid timestep setting");
+		return 0;
+	}
+
 	stateNominal(m, d);
 
-	if (argc > 2) if (sscanf(argv[2], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[2]);
+	if (argc > 4) if (sscanf(argv[4], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[4]);
 
-	if (argc > 3) if (sscanf(argv[3], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[3]);
+	if (argc > 5) if (sscanf(argv[5], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[5]);
 
-	if (argc > 4) sscanf(argv[4], "%lf", &perturb_coefficient_test);
+	if (argc > 6) sscanf(argv[6], "%lf", &perturb_coefficient_test);
 	for (int e = 0; e < stepnum * actuatornum; e++)
 	{
 		ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_test * ctrl_max * randGauss(0, 1);

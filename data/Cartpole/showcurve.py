@@ -7,28 +7,29 @@ This is a temporary script file.
 import numpy as np
 import matplotlib.pyplot as plt
 import brewer2mpl
-import matplotlib as mpl
 from scipy import signal
+from matplotlib import rcParams
 
 #plot preprocessing
 bmap = brewer2mpl.get_map('Set2','qualitative', 7)
 colors = bmap.mpl_colors
 params = {
-    'axes.labelsize': 22,
+    'axes.labelsize': 20,
+    'axes.titlesize': 20,
     'font.size': 20,
     'legend.fontsize': 20,
     'xtick.labelsize': 20,
     'ytick.labelsize': 20,
-    'text.usetex': True ,
     'figure.figsize': [7, 5.5], # instead of 4.5, 4.5
     'font.weight': 'bold',
     'axes.labelweight': 'bold',
     'ps.useafm' : True,
     'pdf.use14corefonts':True,
+    'text.usetex': True , # this three 'True' enforces the type-1 font
     'pdf.fonttype': 42,
     'ps.fonttype': 42
 }
-mpl.rcParams.update(params)
+rcParams.update(params)
 
 def latexplot(timefactor=8.805,filtered=False):
     #plot

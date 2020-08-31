@@ -1793,7 +1793,7 @@ void matRead(const char* filename, const char *varname, MatData *dataptr)
 {
 	MATFile *matfile = NULL;
 	mxArray *mxarray = NULL;
-	double initdata[20000] = { 0 };
+	double initdata[40000] = { 0 };
 	static mwSize initdimension[3] = { actuatornum, 1, 1 };
 
 	if ((matfile = matOpen(filename, "r")) != NULL)
@@ -2318,7 +2318,7 @@ void simulate(void)
     while( !settings.exitrequest )
     {
         // sleep for 1 ms or yield, to let main thread run
-        //  yield results in busy wait - which has better timing but kills battery life
+        // yield results in busy wait - which has better timing but kills battery life
         if( settings.run && settings.busywait )
             std::this_thread::yield();
 		else
@@ -2551,7 +2551,7 @@ void init(void)
 	mqx = MQ.data[0];
 	mqu = MQU.data[0];
 
-	if (!(2 * dof + quatnum == MCK.dimension[1] || 2*3*nodenum == MCK.dimension[1])) printf("Wrong dimension for matrix Ck\n");
+	if (!(2 * dof + quatnum == MCK.dimension[1] || 2 * 3 * nodenum == MCK.dimension[1])) printf("Wrong dimension for matrix Ck\n");
 
 	// init GLFW, set timer callback (milliseconds)
 	if (!glfwInit())
@@ -2651,8 +2651,8 @@ void init(void)
 int main(int argc, const char** argv)
 {
 	// print help if arguments are missing
-	if (argc <= 1 || argc > 5) {
-		printf("\n Usage:  test2d modelfile [modeltype [mode [noiselevel]]]\n");
+	if (argc <= 1 || argc > 7) {
+		printf("\n Usage:  testioid modelfile control_timestep stepnum [modeltype [mode [noiselevel]]]\n");
 		return 0;
 	}
 
@@ -2664,20 +2664,37 @@ int main(int argc, const char** argv)
 		strncpy(modelname, modelfilename, strlen(modelfilename) - 4);
 		settings.loadrequest = 1;
 	}
-	if (argc > 2 && modelSelection(argv[2]) == 1);
+	if (argc > 4 && modelSelection(argv[4]) == 1);
 	else modelSelection(modelname);
+	if (sscanf(argv[2], "%lf", &control_timestep) != 1 || control_timestep <= 0) {
+		printf("Invalid control_timestep argument");
+		return 0;
+	}
+	if (sscanf(argv[3], "%d", &stepnum) != 1 || stepnum <= 0) {
+		printf("Invalid stepnum argument");
+		return 0;
+	}
 	srand((unsigned)time(NULL));
 
 	// initialize
 	init();
 	loadmodel();
+
+	// check timestep setting
+	simulation_timestep = m->opt.timestep;
+	integration_per_step = (int)(control_timestep / simulation_timestep);
+	if (integration_per_step <= 0) {
+		printf("Invalid timestep setting");
+		return 0;
+	}
+
 	stateNominal(m, d);
 
-	if (argc > 2) if (sscanf(argv[2], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[2]);
+	if (argc > 4) if (sscanf(argv[4], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[4]);
 
-	if (argc > 3) if (sscanf(argv[3], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[3]);
+	if (argc > 5) if (sscanf(argv[5], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[5]);
 
-	if (argc > 4) sscanf(argv[4], "%lf", &perturb_coefficient_test);
+	if (argc > 6) sscanf(argv[6], "%lf", &perturb_coefficient_test);
 
 	for (int e = 0; e < stepnum * actuatornum; e++)
 	{

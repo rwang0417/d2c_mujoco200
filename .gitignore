@@ -29,10 +29,27 @@
 *.out
 *.app
 
-MUJOCO_LOG.TXT
 *.ilk
 *.pdb
-openloop/
-sysid2d/
-sysid3d/
-test/
+
+.vs/
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+bld/
+[Bb]in/!*.dll
+[Oo]bj/
+[Ll]og/
+
+MUJOCO_LOG.TXT

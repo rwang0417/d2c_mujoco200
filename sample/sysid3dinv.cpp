@@ -14,7 +14,7 @@
 //-------------------------------- global variables -------------------------------------
 // constants
 extern const int kMaxStep = 3000;   // max step number for one rollout
-extern const int kMaxState = 60;	// max (state dimension, actuator number)
+extern const int kMaxState = 160;	// max (state dimension, actuator number)
 const int kTestNum = 100;	        // number of monte-carlo runs
 const int kMaxThread = 8;           // max thread number
 
@@ -357,8 +357,8 @@ void sysid(int id, int nroll, int nthd)
 int main(int argc, const char** argv)
 {
     // print help if arguments are missing
-    if( argc<3 || argc>7 )
-        return finish("\n Usage:  sysid2d modelfile noiselevel rolloutnumber [modeltype [nthread [profile]]]\n");
+    if( argc<3 || argc>9 )
+        return finish("\n Usage:  sysid3d modelfile control_timestep stepnum noiselevel rolloutnumber [modeltype [nthread [profile]]]\n");
 
     // activate MuJoCo Pro license (this must be *your* activation key)
 	DWORD usernamesize = 30;
@@ -368,7 +368,7 @@ int main(int argc, const char** argv)
 		strcat(keyfilename, "mjkeybig.txt");
 		mj_activate(keyfilename);
 	}
-	else if (username[0] == '5') {
+	else {
 		strcpy(keyfilename, keyfilepre);
 		strcat(keyfilename, "mjkeysmall.txt");
 		mj_activate(keyfilename);
@@ -381,24 +381,30 @@ int main(int argc, const char** argv)
 	strncpy(modelname, modelfilename, strlen(modelfilename) - 4);
 	modelSelection(modelname);
 
+	// set timestep and stepnum
+	if (sscanf(argv[2], "%lf", &control_timestep) != 1 || control_timestep <= 0)
+		return finish("Invalid control_timestep argument");
+	if (sscanf(argv[3], "%d", &stepnum) != 1 || stepnum <= 0)
+		return finish("Invalid stepnum argument");
+
 	// read nrollout and nthread
 	int nrollout = 0, nthread = 0, profile = 0;
-	if (sscanf(argv[2], "%lf", &perturb_coefficient_sysid) != 1 || perturb_coefficient_sysid < 0)
+	if (sscanf(argv[4], "%lf", &perturb_coefficient_sysid) != 1 || perturb_coefficient_sysid < 0)
 		return finish("Invalid noise level argument");
-	if (sscanf(argv[3], "%d", &nrollout) != 1 || nrollout <= 0)
+	if (sscanf(argv[5], "%d", &nrollout) != 1 || nrollout <= 0)
 		return finish("Invalid nrollout argument");
-	if (argc > 4 && modelSelection(argv[4]) != 1) {
-		if (sscanf(argv[4], "%d", &nthread) != 1)
+	if (argc > 6 && modelSelection(argv[6]) != 1) {
+		if (sscanf(argv[6], "%d", &nthread) != 1)
 			return finish("Invalid nthread argument");
-		if (argc > 5)
-			if (sscanf(argv[5], "%d", &profile) != 1)
+		if (argc > 7)
+			if (sscanf(argv[7], "%d", &profile) != 1)
 				return finish("Invalid profile argument");
 	}
-	else if (argc > 5) {
-		if (sscanf(argv[5], "%d", &nthread) != 1)
+	else if (argc > 7) {
+		if (sscanf(argv[7], "%d", &nthread) != 1)
 			return finish("Invalid nthread argument");
-		if (argc > 6)
-			if (sscanf(argv[6], "%d", &profile) != 1)
+		if (argc > 8)
+			if (sscanf(argv[8], "%d", &profile) != 1)
 				return finish("Invalid profile argument");
 	}
 
@@ -413,6 +419,12 @@ int main(int argc, const char** argv)
         m = mj_loadXML(modelfilename, 0, error, 500);
     if( !m )
         return finish(error);
+
+	// check timestep setting
+	simulation_timestep = m->opt.timestep;
+	integration_per_step = (int)(control_timestep / simulation_timestep);
+	if (integration_per_step <= 0)
+		return finish("Invalid timestep setting");
 
     // make per-thread data
     int testkey = mj_name2id(m, mjOBJ_KEY, "test");

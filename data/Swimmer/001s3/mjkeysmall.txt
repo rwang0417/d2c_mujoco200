@@ -1,0 +1,20 @@
+MuJoCo Pro Personal license activation key, number 68239, type 6.
+
+Issued to Ran Wang <rwang0417@tamu.edu>.
+
+Expires September 26, 2020.
+
+This file activates MuJoCo Pro on a single computer with id:
+WINDOWS_7446G011400k00PN4U254DC901417a405A01849400Si01BD68Bs4S68nC_107
+
+Do not modify this file. Its entire content, including the
+plain text section, is used by the activation manager.
+
+cd8c85e192834dd2cd20dd3ea059c38431e35df7283b20a90bb02a298a8f4755
+0cd3a3c48819e99f42a146c9a4557924f044d6a056f4ab56bd7c6bc33ec0a140
+a5295764fba8052c0b9971414d41d8d4667b1c67c7c38fc0f5761dd764c36e73
+2d73c278e642b113061c35c64c59f6a69087bac7664634121a34d703db87ca76
+5127fca59ecad8937032066a36b2a88622aa28a4b501268cf246039fac86af49
+053b747bb1d184777d66bcb46cb4156a7821035cf94f9566200de22a82027c64
+e6da33ce63c0137b447845be33997d1388382266cf3954a3969fe0e0ec750fea
+35a7974aa417ef72f2dfd8bf50dd6b747ad243c7652a87ee63a0c9fb9b1767b6

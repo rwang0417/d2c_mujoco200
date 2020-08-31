@@ -189,9 +189,9 @@ int modelSelection(const char* model)
 	}
 	else if (_strcmpi(model, "swimmer6") == 0) {
 		modelid = 2;
-		control_timestep = 0.006;
+		control_timestep = 0.006; //0.006
 		simulation_timestep = 0.006;
-		stepnum = 1500;
+		stepnum = 1500; //1500
 		dof = 8;
 		quatnum = 0;
 		actuatornum = 5;
@@ -369,9 +369,9 @@ int modelSelection(const char* model)
 	}
 	else if (_strcmpi(model, "swimmer3") == 0) {
 		modelid = 13;
-		control_timestep = 0.005;
-		simulation_timestep = 0.005;
-		stepnum = 1600;
+		control_timestep = 0.01; //0.005
+		simulation_timestep = 0.01;
+		stepnum = 950; //1600
 		dof = 5;
 		quatnum = 0;
 		actuatornum = 2;
@@ -440,6 +440,25 @@ int modelSelection(const char* model)
 		mjtNum temp1[kMaxState] = { 0 };
 		mju_copy(state_nominal[0], temp1, 2 * dof + quatnum);
 		integration_per_step = (int)(control_timestep / simulation_timestep);
+		printf("Modeltype selected: %s\n", model);
+		return 1;
+	}
+	else if (_strcmpi(model, "swimmer15") == 0) {
+		modelid = 17;
+		control_timestep = 0.006;
+		simulation_timestep = 0.006;
+		stepnum = 1500;
+		dof = 17;
+		quatnum = 0;
+		actuatornum = 14;
+		rolloutnum_train = 100;
+		ctrl_upperlimit = 1000;
+		ctrl_lowerlimit = -1000;
+		mjtNum temp1[kMaxState] = { 0 };
+		mju_copy(state_nominal[0], temp1, 2 * dof + quatnum);
+		integration_per_step = (int)(control_timestep / simulation_timestep);
+		mjtNum temp2[kMaxState] = { 0.6, -0.6, PI / 4, 0, 0 };
+		mju_copy(state_target, temp2, 2 * dof + quatnum);
 		printf("Modeltype selected: %s\n", model);
 		return 1;
 	}
@@ -571,6 +590,10 @@ mjtNum stepCost(mjModel* m, mjData* d, int step_index)
 	else if (modelid == 16) {
 		if (step_index >= stepnum) cost = (QT * (1 * (d->site_xpos[48] - d->site_xpos[75]) * (d->site_xpos[48] - d->site_xpos[75]) + 1. * (d->site_xpos[49] - d->site_xpos[76]) * (d->site_xpos[49] - d->site_xpos[76]) + 1.5 * (d->site_xpos[50] - d->site_xpos[77]) * (d->site_xpos[50] - d->site_xpos[77]) + .08 * mju_dot(d->sensordata, d->sensordata, 3*nodenum)));
 		else cost = (Q * (1 * (d->site_xpos[48] - d->site_xpos[75]) * (d->site_xpos[48] - d->site_xpos[75]) + 1. * (d->site_xpos[49] - d->site_xpos[76]) * (d->site_xpos[49] - d->site_xpos[76]) + 1.5 * (d->site_xpos[50] - d->site_xpos[77]) * (d->site_xpos[50] - d->site_xpos[77]) + 0.00*mju_dot(d->sensordata, d->sensordata, 3*nodenum)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+	}
+	else if (modelid == 17) {
+		if (step_index >= stepnum) cost = (QT * (1 * (d->qpos[0] - 0.6) * (d->qpos[0] - 0.6) + (d->qpos[1] + 0.6) * (d->qpos[1] + 0.6) + .01 * mju_dot(d->qvel, d->qvel, m->nv)));
+		else cost = (Q * (1 * (d->qpos[0] - 0.6) * (d->qpos[0] - 0.6) + 1 * (d->qpos[1] + 0.6) * (d->qpos[1] + 0.6) + .1 * mju_dot(d->qvel, d->qvel, m->nv)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
 	}
 	return cost;
 }

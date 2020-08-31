@@ -195,8 +195,8 @@ int main(int argc, const char** argv)
 	char str2[30];
 	
     // print help if arguments are missing
-    if( argc<3 || argc>5 )
-        return finish("\n Usage:  testspeed modelfile niteration [nthread [profile]]\n");
+    if( argc<3 || argc>8 )
+        return finish("\n Usage:  openloop modelfile control_timestep stepnum niteration [model [nthread [profile]]]\n");
 	
     // activate MuJoCo Pro license (this must be *your* activation key)
 	DWORD usernamesize = 30;
@@ -223,18 +223,23 @@ int main(int argc, const char** argv)
     int niteration = 0, nthread = 0, profile = 0;
     if( sscanf(argv[2], "%d", &niteration)!=1 || niteration<=0 )
         return finish("Invalid niteration argument");
-	if (argc > 3 && modelSelection(argv[3]) != 1) {
-		if (sscanf(argv[3], "%d", &nthread) != 1)
+	if (sscanf(argv[3], "%lf", &control_timestep) != 1 || control_timestep <= 0)
+		return finish("Invalid control_timestep argument");
+	if (sscanf(argv[4], "%d", &stepnum) != 1 || stepnum <= 0)
+		return finish("Invalid stepnum argument");
+
+	if (argc > 5 && modelSelection(argv[5]) != 1) {
+		if (sscanf(argv[5], "%d", &nthread) != 1)
 			return finish("Invalid nthread argument");
-		if (argc > 4)
-			if (sscanf(argv[4], "%d", &profile) != 1)
+		if (argc > 6)
+			if (sscanf(argv[6], "%d", &profile) != 1)
 				return finish("Invalid profile argument");
 	}
-	else if (argc > 4) {
-		if (sscanf(argv[4], "%d", &nthread) != 1)
+	else if (argc > 6) {
+		if (sscanf(argv[6], "%d", &nthread) != 1)
 			return finish("Invalid nthread argument");
-		if (argc > 5)
-			if (sscanf(argv[5], "%d", &profile) != 1)
+		if (argc > 7)
+			if (sscanf(argv[7], "%d", &profile) != 1)
 				return finish("Invalid profile argument");
 	}
 
@@ -249,6 +254,12 @@ int main(int argc, const char** argv)
         m = mj_loadXML(modelfilename, 0, error, 500);
     if( !m )
         return finish(error);
+
+	// check timestep setting
+	simulation_timestep = m->opt.timestep;
+	integration_per_step = (int)(control_timestep / simulation_timestep);
+	if (integration_per_step <= 0)
+		return finish("Invalid timestep setting");
 	
     // make per-thread data
     int testkey = mj_name2id(m, mjOBJ_KEY, "test");
