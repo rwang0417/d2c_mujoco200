@@ -1020,3 +1020,4 @@ libeng.lib
 ### Log:
 #### 1. 很久没写了，可能以后直接在ipad上记录了。
 #### 2. 为了让Raman能用d2c，修改activate部分。
+#### 3. $(SolutionDir)\..\bin就是SolutionDir的上一级目录下的bin文件夹，之前是$(HOMEDRIVE)$(HOMEPATH)\Dropbox\Tensegrity\include\;现在是$(SolutionDir)\..\include\; 编译通过，能找到文件。
