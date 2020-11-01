@@ -1,0 +1,10 @@
+fid = fopen('result.txt','r');
+U = fscanf(fid, '%f');
+fclose(fid);
+UC=U(1:1200);
+fid = fopen('result0.txt','wt');
+fprintf(fid,'%f ',UC);
+fclose(fid);
+fid = fopen('result0.txt','r');
+Ucc = fscanf(fid, '%f');
+fclose(fid);

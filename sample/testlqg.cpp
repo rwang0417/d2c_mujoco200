@@ -58,7 +58,7 @@ mjData* d = NULL;
 mjData* d_closedloop = NULL;
 mjData* d_openloop = NULL;
 mjtNum ctrl_max = 0;
-mjtNum perturb_coefficient_test = 0;
+mjtNum perturb_coefficient_std = 0;
 mjtNum cost_closedloop = 0, cost_openloop = 0;
 mjtNum energy = 0;
 mjtNum tracker_feedback_gain[kMaxStep][kMaxState][kMaxState] = { 0 };
@@ -1424,7 +1424,7 @@ void uiEvent(mjuiState* state)
 					updatesettings();
 					for (int e = 0; e < stepnum * actuatornum; e++)
 					{
-						ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_test * ctrl_max * randGauss(0, 1);
+						ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_std * ctrl_max * randGauss(0, 1);
 					}
                 }
                 break;
@@ -2642,13 +2642,12 @@ void init(void)
 int main(int argc, const char** argv)
 {
 	// print help if arguments are missing
-	if (argc <= 1 || argc > 7) {
+	if (argc < 4 || argc > 7) {
 		printf("\n Usage:  testlqg modelfile control_timestep stepnum [modeltype [mode [noiselevel]]]\n");
 		return 0;
 	}
 
-	// process input from command window
-	if (argc <= 1) return 0;
+	// process input from command window4
 	if (argc > 1)
 	{
 		strcpy(modelfilename, argv[1]);
@@ -2681,14 +2680,14 @@ int main(int argc, const char** argv)
 
 	stateNominal(m, d);
 
-	if (argc > 4) if (sscanf(argv[4], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[4]);
+	if (argc > 4) if (sscanf(argv[4], "%lf", &perturb_coefficient_std) != 1) testModeSelection(argv[4]);
 
-	if (argc > 5) if (sscanf(argv[5], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[5]);
+	if (argc > 5) if (sscanf(argv[5], "%lf", &perturb_coefficient_std) != 1) testModeSelection(argv[5]);
 
-	if (argc > 6) sscanf(argv[6], "%lf", &perturb_coefficient_test);
+	if (argc > 6) sscanf(argv[6], "%lf", &perturb_coefficient_std);
 	for (int e = 0; e < stepnum * actuatornum; e++)
 	{
-		ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_test * ctrl_max * randGauss(0, 1);
+		ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_std * ctrl_max * randGauss(0, 1);
 	}
 	
     // start simulation thread

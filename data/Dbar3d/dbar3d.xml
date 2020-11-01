@@ -3,7 +3,7 @@
     <include file="./common/skybox.xml"/>
     <include file="./common/materials.xml"/>
     
-    <option timestep="0.01" iterations="50" solver="Newton" integrator="Euler" tolerance="1e-10" gravity = "0 0 0" collision="predefined" viscosity="0"/>
+    <option timestep="0.01" iterations="50" solver="Newton" integrator="RK4" tolerance="1e-12" gravity = "0 0 0" collision="predefined" viscosity="0"/>
 
     <size njmax="200" nconmax="100" nstack="2400"/>
 
@@ -12,9 +12,9 @@
     </visual>
 
     <default>
-        <joint type="ball" pos="0 0 0" limited="false" damping="0.0"/>
+        <joint type="ball" pos="0 0 0" limited="false" damping="0"/>
         <motor ctrllimited="false" ctrlrange="-100 100"/>
-		<tendon stiffness="0" damping=".2"/>
+		<tendon stiffness="100" damping="0.5"/>
 		<geom size="0.02" mass="1"/>
 		<site size="0.04"/>
     </default>
@@ -54,12 +54,12 @@
         </body>
 		
 		<body pos="0 0 0">
-			<geom name="floor" pos="0 0 0" size="0 0 1" type="plane" material="grid"/>
-			<site name="target" pos="0. 0. 2.5" size="0.08" rgba="1 0 0 .3"/>
+			<geom name="floor" pos="0 0 0" size="0 0 1" type="plane" material="grid"/>=
 			<site name="f0" pos="0 0 0"/>
 			<site name="fl" pos="1 1 0"/>
 			<site name="fm" pos="-1 1 0"/>
             <site name="fr" pos="0 -1.414 0"/>
+			<site name="target" pos="0. 0. 2.5" size="0.08" rgba="1 0 0 .3"/>
 		</body>
     </worldbody>
 	

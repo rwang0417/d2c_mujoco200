@@ -196,7 +196,7 @@ int main(int argc, const char** argv)
 	
     // print help if arguments are missing
     if( argc<3 || argc>8 )
-        return finish("\n Usage:  openloop modelfile control_timestep stepnum niteration [model [nthread [profile]]]\n");
+        return finish("\n Usage: openloop modelfile control_timestep stepnum niteration [model [nthread [profile]]]\n");
 	
     // activate MuJoCo Pro license (this must be *your* activation key)
 	DWORD usernamesize = 30;
@@ -204,6 +204,11 @@ int main(int argc, const char** argv)
 	if (username[0] == 'R') {
 		strcpy(keyfilename, keyfilepre);
 		strcat(keyfilename, "mjkeybig.txt");
+		mj_activate(keyfilename);
+	}
+	else if (username[0] == 'r') {
+		strcpy(keyfilename, keyfilepre);
+		strcat(keyfilename, "mjkeyda.txt");
 		mj_activate(keyfilename);
 	}
 	else {
@@ -221,12 +226,12 @@ int main(int argc, const char** argv)
 	
     // read niteration and nthread
     int niteration = 0, nthread = 0, profile = 0;
-    if( sscanf(argv[2], "%d", &niteration)!=1 || niteration<=0 )
-        return finish("Invalid niteration argument");
-	if (sscanf(argv[3], "%lf", &control_timestep) != 1 || control_timestep <= 0)
+	if (sscanf(argv[2], "%lf", &control_timestep) != 1 || control_timestep <= 0)
 		return finish("Invalid control_timestep argument");
-	if (sscanf(argv[4], "%d", &stepnum) != 1 || stepnum <= 0)
+	if (sscanf(argv[3], "%d", &stepnum) != 1 || stepnum <= 0)
 		return finish("Invalid stepnum argument");
+	if (sscanf(argv[4], "%d", &niteration) != 1 || niteration <= 0)
+		return finish("Invalid niteration argument");
 
 	if (argc > 5 && modelSelection(argv[5]) != 1) {
 		if (sscanf(argv[5], "%d", &nthread) != 1)

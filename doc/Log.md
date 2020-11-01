@@ -946,7 +946,7 @@ libeng.lib
 #### 2. 系统崩溃后会重置到初始位置，error会很大，所以即使崩溃也不会让error比应该的小。
 ## 02/17/2020
 ### Log:
-#### 1. 布朗运动每一步（t=s1到t=s2）都与之前的无关，是独立的0 mean，正态分布，方差s2-s1。
+#### 1. 布朗运动每一步（t=s1到t=s2）都与之前的无关，是独立的0 mean，正态分布，方差s2-s1。现实世界的iid noise认为是布朗运动，在离散模型时离散iid noise会得到根号delta t项。
 #### 2. 动量是物体在一个方向运动的趋势，惯性是衡量改变当前运动难易程度。
 #### 3. ddpg的deterministic是说在policy生成动作的时候不需要从一个分布采样，而是直接生成一个确定值。
 ## 02/19/2020
@@ -1021,3 +1021,12 @@ libeng.lib
 #### 1. 很久没写了，可能以后直接在ipad上记录了。
 #### 2. 为了让Raman能用d2c，修改activate部分。
 #### 3. $(SolutionDir)\..\bin就是SolutionDir的上一级目录下的bin文件夹，之前是$(HOMEDRIVE)$(HOMEPATH)\Dropbox\Tensegrity\include\;现在是$(SolutionDir)\..\include\; 编译通过，能找到文件。
+## 09/17/2020
+### Log:
+#### 1. error C2059: 语法错误:“常数” 是因为宏或常量有重复定义，检查下是不是设置了同名的常量或宏，或者同一个宏定义两次。
+## 09/30/2020
+### Log:
+#### 1. default库冲突把runtime library改成/MT后warning消失。
+## 10/01/2020
+### Log:
+#### 1. conda install 在默认channel找不到包的话，可以conda install -c conda-forge pylatex 用这个c flag指定channel。

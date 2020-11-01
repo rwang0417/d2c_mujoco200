@@ -35,6 +35,8 @@ extern mjtNum simulation_timestep;
 extern mjtNum state_nominal[kMaxStep][kMaxState];
 extern mjtNum ctrl_nominal[kMaxStep * kMaxState];
 extern mjtNum ctrl_openloop[kMaxStep * kMaxState];
+extern mjtNum rest_length[kMaxStep * kMaxState];
+extern mjtNum delta_rest_length[kMaxStep*kMaxState];
 extern mjtNum state_target[kMaxState];
 extern mjtNum stabilizer_feedback_gain[kMaxState][kMaxState];
 extern mjtNum ctrl_upperlimit;
@@ -50,7 +52,7 @@ mjData* d = NULL;
 mjData* d_closedloop = NULL;
 mjData* d_openloop = NULL;
 mjtNum ctrl_max = 0;
-mjtNum perturb_coefficient_test = 0;
+mjtNum perturb_coefficient_std = 0;
 mjtNum cost_closedloop = 0, cost_openloop = 0;
 mjtNum energy = 0;
 mjtNum tracker_feedback_gain[kMaxStep][kMaxState][kMaxState] = { 0 };
@@ -1414,7 +1416,8 @@ void uiEvent(mjuiState* state)
 					updatesettings();
 					for (int e = 0; e < stepnum * actuatornum; e++)
 					{
-						ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_test * ctrl_max * randGauss(0, 1);
+						ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_std * ctrl_max * randGauss(0, 1);
+						delta_rest_length[e] = perturb_coefficient_std * randGauss(0, 1);
 					}
                 }
                 break;
@@ -1903,7 +1906,37 @@ bool simulateOpenloop(void)
 	}
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_openloop);
 	step_index_openloop++;
+	//printf("%f,%f,%f\n", d_openloop->qpos[0]-state_nominal[step_index_openloop][0], d_openloop->qpos[1]- state_nominal[step_index_openloop][1], d_openloop->qvel[1]- state_nominal[step_index_openloop][9]);
 	return 0;
+}
+
+// simulate the rest length control trajectory
+void simulateRestLength(void)
+{
+	if (step_index_nominal == 0) {
+		modelInit(m, d, state_nominal[0]);
+	}
+	if (step_index_nominal >= stepnum)
+	{
+		for (int i = 0; i < actuatornum; i++)
+			m->tendon_lengthspring[i] = rest_length[(stepnum - 1) * actuatornum + i];
+
+		// print N_final to be the target for the analytical shape control
+		if (NFinal == true) {
+			for (int i = 0; i < 3 * m->nsite; i++) printf("%.4f\n", d->site_xpos[i]);
+			//for (int i = 0; i < m->nsensordata; i++) printf(" d->sensordata[%d]        : %.4f\n", i, d->sensordata[i]);
+			//for (int i = 0; i < 3 * m->nsite; i++) printf(" d->site_xpos[%d]        : %.4f\n", i, d->site_xpos[i]);
+			//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.8f\n", i, d->qpos[i]);
+			//for (int i = 0; i < m->nv; i++) printf(" d->qvel[%d]        : %.8f\n", i, d->qvel[i]);
+			NFinal = false;
+		}
+	}
+	else {
+		for (int i = 0; i < actuatornum; i++)
+			m->tendon_lengthspring[i] = rest_length[step_index_nominal * actuatornum + i] + delta_rest_length[step_index_nominal * actuatornum + i];
+	}
+	for (int i = 0; i < integration_per_step; i++) mj_step(m, d);
+	step_index_nominal++;
 }
 
 // calculate the distance from the target at the terminal step
@@ -2075,6 +2108,8 @@ void testModeSelection(const char* mode)
 	}
 	else if (_strcmpi(testmode, "modeltest") == 0)
 		modelTest();
+	else if (_strcmpi(testmode, "restlength") == 0)
+		printf("Controlling the rest length...\n");
 	else if (_strcmpi(testmode, "nfinal") == 0)
 		NFinal = true;
 	else if (_strcmpi(testmode, "top") == 0) {
@@ -2338,15 +2373,29 @@ void simulate(void)
 
 						// run mj_step
 						mjtNum prevtm = d->time;
-						if (_strcmpi(testmode, "modeltest") == 0)
+						if (_strcmpi(testmode, "modeltest") == 0) {
 							mj_step(m, d);
-						else
-						{
+						}
+						else if (_strcmpi(testmode, "restlength") == 0) {
+							simulateRestLength();
+							//for (int i = 0; i < actuatornum; i++)
+							//	m->tendon_lengthspring[i] = rest_length[i];
+							////m->tendon_lengthspring[0] = 1.79999999995395;
+							////m->tendon_lengthspring[1] = 1.69707951914804;
+							////m->tendon_lengthspring[2] = 2.05316229103641;
+							////m->tendon_lengthspring[3] = 2.05316229103641;
+							////m->tendon_lengthspring[4] = 2.20454076848204;
+							////m->tendon_lengthspring[5] = 2.20454076846339;
+							////m->tendon_lengthspring[6] = 2.10292140654738;
+							//mj_step(m, d);
+						}
+						else {
 							simulateNominal();
 							simulateOpenloop();
 							simulateClosedloop();
 						}
 
+						//m->tendon_lengthspring[0] = 0.5;
 						//for (int i = 0; i < m->nq; i++) d->qpos[i] = -PI / 36;
 						//for (int i = 0; i < m->nq; i++) printf(" d->qpos[%d]        : %.2f\n", i, d->qpos[i]);
 						//printf("%f \n", d->qpos[20] - (d->qpos[9]+d->qpos[7] + d->qpos[10]));
@@ -2425,11 +2474,16 @@ void init(void)
 		strcat(keyfilename, "mjkeybig.txt");
 		mj_activate(keyfilename);
 	}
-	else {
+	else if (username[0] == 'r') {
 		strcpy(keyfilename, keyfilepre);
-		strcat(keyfilename, "mjkeysmall.txt");
+		strcat(keyfilename, "mjkeyda.txt");
 		mj_activate(keyfilename);
 	}
+    else {
+        strcpy(keyfilename, keyfilepre);
+        strcat(keyfilename, "mjkeysmall.txt");
+        mj_activate(keyfilename);
+    }
 
 	// read nominal control values
 	strcpy(datafilename, "result0.txt");
@@ -2444,6 +2498,20 @@ void init(void)
 		fclose(filestream1);
 	}
 	else printf("Could not open file: result0.txt\n");
+
+	// read rest length values
+	strcpy(datafilename, "length0.txt");
+	if ((filestream1 = fopen(datafilename, "r")) != NULL)
+	{
+		for (int i = 0; i < actuatornum * stepnum; i++)
+		{
+			fscanf(filestream1, "%s", data_buff);
+			rest_length[i] = atof(data_buff);
+			if (fabs(rest_length[i]) > ctrl_max) ctrl_max = fabs(rest_length[i]); // find umax
+		}
+		fclose(filestream1);
+	}
+	else printf("Could not open file: length0.txt\n");
 
 	// read feedback gain K
 	strcpy(datafilename, "TK.txt");
@@ -2602,13 +2670,12 @@ void init(void)
 int main(int argc, const char** argv)
 {
 	// print help if arguments are missing
-	if (argc <= 1 || argc > 7) {
-		printf("\n Usage:  test2d modelfile control_timestep stepnum [modeltype [mode [noiselevel]]]\n");
+	if (argc < 4 || argc > 7) {
+		printf("\n Usage: test2d modelfile control_timestep stepnum [modeltype [mode [noiselevel]]]\n");
 		return 0;
 	}
 
-	// process input from command window
-	if (argc <= 1) return 0;
+	// process input from command window4
 	if (argc > 1)
 	{
 		strcpy(modelfilename, argv[1]);
@@ -2641,14 +2708,15 @@ int main(int argc, const char** argv)
 
 	stateNominal(m, d);
 
-	if (argc > 4) if (sscanf(argv[4], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[4]);
+	if (argc > 4) if (sscanf(argv[4], "%lf", &perturb_coefficient_std) != 1) testModeSelection(argv[4]);
 
-	if (argc > 5) if (sscanf(argv[5], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[5]);
+	if (argc > 5) if (sscanf(argv[5], "%lf", &perturb_coefficient_std) != 1) testModeSelection(argv[5]);
 
-	if (argc > 6) sscanf(argv[6], "%lf", &perturb_coefficient_test);
+	if (argc > 6) sscanf(argv[6], "%lf", &perturb_coefficient_std);
 	for (int e = 0; e < stepnum * actuatornum; e++)
 	{
-		ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_test * ctrl_max * randGauss(0, 1);
+		ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_std * ctrl_max * randGauss(0, 1);
+		delta_rest_length[e] = perturb_coefficient_std * randGauss(0, 1);
 	}
 	
     // start simulation thread

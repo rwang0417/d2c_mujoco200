@@ -59,6 +59,9 @@ Tensegrity
     - sysid2dseq.cpp: system identification code for 2D models. The least-square is solved using iterative estimation method. This method is faster for single thread but less accurate.
     - sysid3dinv.cpp: system identification code for 3D models. The least-square is solved using matrix inversion method. 3D version of sysid2dinv.cpp.
     - test.cpp: testing code for 2D and 3D models. This file can visualize the simulation, compare the open-loop policy with closed-loop policy, calculate episodic energy and terminal distance from the target, show the model information.
+    - testlqg.cpp: testing code for lqg closedloop control policy.
+    - testiolqr.cpp: testing code for pod2c with lqr closedloop control policy.
+    - testioid.cpp: testing code for pod2c with lqg closedloop control policy.
     - dataprocess.py: python functions for data analysis and plotting.
   - openloop, sysid2d, test: Visual Studio projects.
 
@@ -81,17 +84,18 @@ For the Matlab wrapper, first set up the c compiler by running `mex setup` in Ma
 1. Write the MuJoCo model in the .xml file and put needed files in the workspace folder. Subfolders in `Tensegrity\data\` can be used as examples.
 2. Write model-dependent parameters into funclib.cpp. Generate executable files: openloop.exe, sysid2d.exe and test2d.exe and put them into the workspace folder.
 3. Open a command window in the workspace folder and run the D2C algorithm
-   1. openloop: `openloop modelname.xml iteration_number [modeltype] [thread_number]` Modeltype is usually the same as modelname. If not, it needs to be specified for the code to identify the model.
-   2. sysid2d: `sysid2d modelname.xml noise_level rollout_number [modeltype] [thread_number] [sysmode]` The standard deviation of perturbation is set as noise_level * Umax, where Umax is the maximum nominal control value from step 1. If sysmode is set to "top", the code will generate the linearized system at the top position (pendulum, cartpole) and the thread number will be set to 1. The output file is "lnr_top.txt" for top position and "lnr.txt" otherwise. Run toplqr.m in Matlab to get the stablizer geedback gain at the top.
-   3. sysid3d: `sysid3d modelname.xml noise_level rollout_number [modeltype] [thread_number]` Same as sysid2d.
+   1. openloop: `openloop modelname.xml timestep stepnum iteration_number [modeltype] [thread_number]` Modeltype is usually the same as modelname. If not, it needs to be specified for the code to identify the model.
+   2. sysid2d: `sysid2d modelname.xml timestep stepnum noise_level rollout_number [modeltype] [thread_number] [sysmode]` The standard deviation of perturbation is set as noise_level * Umax, where Umax is the maximum nominal control value from step 1. If sysmode is set to "top", the code will generate the linearized system at the top position (pendulum, cartpole) and the thread number will be set to 1. The output file is "lnr_top.txt" for top position and "lnr.txt" otherwise. Run toplqr.m in Matlab to get the stablizer geedback gain at the top.
+   3. sysid3d: `sysid3d modelname.xml timestep stepnum noise_level rollout_number [modeltype] [thread_number]` Same as sysid2d.
    4. LQR gain: Run tvlqr.m in Matlab. Make sure the model dependent parameters align with those in funclib.cpp.
-4. Test the result by running `test modelname.xml [modeltype] [mode] [noise_level]` in the command window. The options for mode are listed here:
+4. Test the result by running `test modelname.xml timestep stepnum [modeltype] [mode] [noise_level]` in the command window. The options for mode are listed here:
    - modeltest: simulate the model with no control input and display. Some model parameters will be printed on the command window.
    - policy_compare: generate data for the D2C open-loop policy and closed-loop policy comparison under different noise level. Also outputs the episodic energy data for the D2C Closed-loop policy.
    - performance_test: generate data of the distance from the target with the D2C closed-loop and open-loop policy applied under different noise level.
    - nfinal: print the positions for all nodes. Copy-paste the sequence EXCEPT the last 3 values to shape_control.m to run analytical shape control.
-5. Run the model-based shape control algorithm(shape_control.m) in Matlab. Make sure the Matlab wrapper is re-compiled or the .mexw64 file is in the workspace folder.
-6. Make plots by the functions in dataprocess.py using the data generated from the above steps.
+5. For pod2c, measurement noise are added in the testing. The command to run testioid.exe should be `testioid modelname.xml timestep stepnum [modeltype] [mode] [process_noise_level [measurement_noise_level]]`. The process noise level is (std of process noise / max nominal control value). The measurement noise level is (std of measurement noise / max output deviation without measurement noise).
+6. Run the model-based shape control algorithm(shape_control.m) in Matlab. Make sure the Matlab wrapper is re-compiled or the .mexw64 file is in the workspace folder.
+7. Make plots by the functions in dataprocess.py using the data generated from the above steps.
 
 ## Results
 

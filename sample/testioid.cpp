@@ -7,6 +7,8 @@
         https://www.roboti.us/resourcelicense.txt
 */
 
+#pragma warning(disable:6031) // disable ignore return value warning
+
 #include <windows.h>
 #include <thread>
 #include <mutex>
@@ -58,13 +60,16 @@ mjModel* m = NULL;
 mjData* d = NULL;
 mjData* d_closedloop = NULL;
 mjData* d_openloop = NULL;
+mjtNum* measurement_noise = NULL;
 mjtNum ctrl_max = 0;
-mjtNum perturb_coefficient_test = 0;
+mjtNum perturb_coefficient_std = 0;
+mjtNum measurement_coefficient_std = 0;
 mjtNum cost_closedloop = 0, cost_openloop = 0;
 mjtNum energy = 0;
 mjtNum tracker_feedback_gain[kMaxStep][kMaxState][kMaxState] = { 0 };
 FILE *filestream1, *filestream2;
-MatData MTK, MCK, MQ, MQU;
+MatData MTK, MCK, MQ, MQU, MYE, MYM, MU1;
+Matrix<Matrix<double, Dynamic, Dynamic>, 1, Dynamic> MTKM, MYEM, MYMM, MU1M;
 char testmode[30];
 char data_buff[30];
 char keyfilename[100];
@@ -79,6 +84,7 @@ int step_index_closedloop = 0;
 int mqx, mqu;
 bool NFinal = false;
 bool terminal_trigger = false;
+bool loaded = false;
 
 // abstract visualization
 mjvScene scn, scn_openloop, scn_closedloop;
@@ -1424,9 +1430,8 @@ void uiEvent(mjuiState* state)
                     sensorupdate();
 					updatesettings();
 					for (int e = 0; e < stepnum * actuatornum; e++)
-					{
-						ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_test * ctrl_max * randGauss(0, 1);
-					}
+						ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_std * ctrl_max * randGauss(0, 1);
+                    measurement_noise = randGauss(0, measurement_coefficient_std * measurement_coefficient_std, stepnum * MCK.dimension[1]);
                 }
                 break;
 
@@ -1789,29 +1794,51 @@ void uiEvent(mjuiState* state)
 
 //--------------------------- control and testing ---------------------------------------
 // read data from .mat file
-void matRead(const char* filename, const char *varname, MatData *dataptr)
+void matReadOpt(const char* filename, const char* varname, MatData* dataptr, Matrix<Matrix<double, Dynamic, Dynamic>, 1, Dynamic>* matptr = NULL)
 {
-	MATFile *matfile = NULL;
-	mxArray *mxarray = NULL;
-	double initdata[40000] = { 0 };
-	static mwSize initdimension[3] = { actuatornum, 1, 1 };
+    MATFile* matfile = NULL;
+    mxArray* mxarray = NULL;
+    double initdata[40000] = { 0 };
+    static mwSize initdimension[3] = { actuatornum, 1, 1 };
 
-	if ((matfile = matOpen(filename, "r")) != NULL)
-	{
-		mxarray = matGetVariable(matfile, varname);
-		if (mxarray == NULL) printf("cannot find variable %s...\n", varname);
-		dataptr->data = (double*)mxGetData(mxarray);
-		dataptr->dimension = mxGetDimensions(mxarray);
-		dataptr->dimension_num = mxGetNumberOfDimensions(mxarray);
-		matClose(matfile);
-	}
-	else
-	{
-		dataptr->data = initdata;
-		dataptr->dimension = initdimension;
-		dataptr->dimension_num = 3;
-		printf("cannot open file %s...\n", filename);
-	}
+    if ((matfile = matOpen(filename, "r")) != NULL)
+    {
+        mxarray = matGetVariable(matfile, varname);
+        if (mxarray == NULL) printf("cannot find variable %s...\n", varname);
+        dataptr->data = (double*)mxGetData(mxarray);
+        dataptr->dimension = mxGetDimensions(mxarray);
+        dataptr->dimension_num = mxGetNumberOfDimensions(mxarray);
+        matClose(matfile);
+
+        if (matptr != NULL) {
+            (*matptr).resize(1, dataptr->dimension[2]);
+            for (int s = 0; s < dataptr->dimension[2]; s++) {
+                (*matptr)(0, s).resize(dataptr->dimension[0], dataptr->dimension[1]);
+                for (int i = 0; i < dataptr->dimension[1]; i++)
+                    for (int j = 0; j < dataptr->dimension[0]; j++)
+                        (*matptr)(0, s)(j, i) = dataptr->data[s * dataptr->dimension[0] * dataptr->dimension[1] + i * dataptr->dimension[0] + j];
+            }
+        }
+        printf("matrix %s processed...\n", varname);
+    }
+    else
+    {
+        dataptr->data = initdata;
+        dataptr->dimension = initdimension;
+        dataptr->dimension_num = 3;
+        printf("cannot open file %s...\n", filename);
+    }
+}
+
+// copy the stepidx slice of dataptr into MAT_sliced
+void matSlice(MatrixXd* MAT_sliced, MatData* dataptr, int stepidx)
+{
+    assert(MAT_sliced->rows() == dataptr->dimension[0]);
+    assert(MAT_sliced->cols() == dataptr->dimension[1]);
+
+    for (int i = 0; i < dataptr->dimension[1]; i++)
+        for (int j = 0; j < dataptr->dimension[0]; j++)
+            (*MAT_sliced)(j, i) = dataptr->data[stepidx * dataptr->dimension[0] * dataptr->dimension[1] + i * dataptr->dimension[0] + j];
 }
 
 // simulate the nominal trajectory
@@ -1841,17 +1868,17 @@ void simulateNominal(void)
 	step_index_nominal++;
 }
 
-// simulate with closed-loop control policy under noise
+// simulate with LQG control policy under noise
 bool simulateClosedloop(void)
 {
 	static mjtNum state_error[kMaxState], ctrl_temp[kMaxState]; 
 	static MatrixXd MCK_step(MCK.dimension[0], MCK.dimension[1]); 
 	static MatrixXd y_rcd = MatrixXd::Zero(MCK.dimension[0], stepnum + 1);
+    static MatrixXd y_est = MatrixXd::Zero(MTK.dimension[1], stepnum);
 	static MatrixXd u_rcd = MatrixXd::Zero(MTK.dimension[0], stepnum);
 	MatrixXd x_err_aug = MatrixXd::Zero(MTK.dimension[1], 1);
 	MatrixXd x_err_temp = MatrixXd::Zero(MCK.dimension[1], 1);
 	MatrixXd u_feedback = MatrixXd::Zero(MTK.dimension[0], 1);
-	MatrixXd MTK_step(MTK.dimension[0], MTK.dimension[1]);
 	
 	if (step_index_closedloop == 0) {
 		for (int i = 0; i < MCK.dimension[1]; i++)
@@ -1868,32 +1895,30 @@ bool simulateClosedloop(void)
 	{
 		terminalCtrl(m, d_closedloop, step_index_closedloop); 
 		if (_strcmpi(testmode, "policy_compare") == 0 && step_index_closedloop >= stepnum) {
-			cost_closedloop += stepCost(m, d_closedloop, stepnum);
+			cost_closedloop += stepCost(m, d_closedloop, stepnum); 
 			step_index_closedloop = 0; 
 			terminal_trigger = false;
 			return 1;
 		}
-		cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
+		cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop); 
 	}
 	else {
-		if (step_index_closedloop >= max(mqx, mqu) + 1)
+		if (step_index_closedloop >= max(mqx, mqu) + 2)
 		{
+            y_est.col(step_index_closedloop) = MYEM(0, step_index_closedloop-1).block(0, 0, MYE.dimension[0], MYE.dimension[1]) * y_est.col(step_index_closedloop - 1) + MU1M(0, step_index_closedloop - 1).block(0, 0, MU1.dimension[0], MU1.dimension[1]) * u_rcd.col(step_index_closedloop - 1) + MYMM(0, step_index_closedloop - 1).block(0, 0, MYM.dimension[0], MYM.dimension[1]) * y_rcd.col(step_index_closedloop);
 			for (int i = 0; i < mqx; i++) x_err_aug.block(i * MCK.dimension[0], 0, MCK.dimension[0], 1) = y_rcd.col(step_index_closedloop - i);
-			for (int i = 0; i < mqu; i++) x_err_aug.block(mqx * MCK.dimension[0] + i * MTK.dimension[0], 0, MTK.dimension[0], 1) = u_rcd.col(step_index_closedloop - i - 1);
+			for (int i = 0; i < mqu-1; i++) x_err_aug.block(mqx * MCK.dimension[0] + i * MTK.dimension[0], 0, MTK.dimension[0], 1) = u_rcd.col(step_index_closedloop - i - 1);
 
-			for (int i = 0; i < MTK.dimension[1]; i++) 
-				for (int j = 0; j < MTK.dimension[0]; j++)
-					MTK_step(j, i) = MTK.data[step_index_closedloop * MTK.dimension[0] * MTK.dimension[1] + i * MTK.dimension[0] + j];
-			u_rcd.col(step_index_closedloop) = -MTK_step * x_err_aug; 
+            u_rcd.col(step_index_closedloop) = -MTKM(0, step_index_closedloop).block(0,0, MTK.dimension[0], MTK.dimension[1]) * y_est.col(step_index_closedloop);
 		}
 		
 		for (int i = 0; i < actuatornum; i++) d_closedloop->ctrl[i] = ctrl_openloop[step_index_closedloop * actuatornum + i] + u_rcd(i, step_index_closedloop);
 
 		ctrlLimit(d_closedloop->ctrl, m->nu);
 		for (int i = 0; i < actuatornum; i++) u_rcd(i, step_index_closedloop) = d_closedloop->ctrl[i] - ctrl_openloop[step_index_closedloop * actuatornum + i];
-		for (int i = 0; i < actuatornum; i++) ctrl_temp[i] = ctrl_nominal[step_index_closedloop * actuatornum + i] + u_rcd(i, step_index_closedloop);
-		ctrlLimit(ctrl_temp, m->nu);
-		energy += mju_dot(ctrl_temp, ctrl_temp, m->nu);
+		//for (int i = 0; i < actuatornum; i++) ctrl_temp[i] = ctrl_nominal[step_index_closedloop * actuatornum + i] + u_rcd(i, step_index_closedloop);
+		//ctrlLimit(ctrl_temp, m->nu);
+		//energy += mju_dot(ctrl_temp, ctrl_temp, m->nu);
 		cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
 	}
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
@@ -1911,38 +1936,118 @@ bool simulateClosedloop(void)
 		mju_sub(state_error, state_nominal[step_index_closedloop], d_closedloop->qpos, dof + quatnum);
 		mju_sub(&state_error[dof + quatnum], &state_nominal[step_index_closedloop][dof + quatnum], d_closedloop->qvel, dof);
 	}
-	for (int i = 0; i < MCK.dimension[1]; i++) x_err_temp(i, 0) = -state_error[i] +.00 * randGauss(0, 1);
-	if (step_index_closedloop <= stepnum) y_rcd.col(step_index_closedloop) = MCK_step * x_err_temp;
+    if (step_index_closedloop <= stepnum)
+    {
+        for (int i = 0; i < MCK.dimension[1]; i++) x_err_temp(i, 0) = -state_error[i] + measurement_noise[i + (step_index_closedloop - 1)* MCK.dimension[1]]; // measurement noise
+        y_rcd.col(step_index_closedloop) = MCK_step * x_err_temp;
+    }
 
 	return 0;
+}
+
+// simulate with LQR control policy under noise
+bool simulateOpenloop(void)
+{
+    static mjtNum state_error[kMaxState], ctrl_temp[kMaxState];
+    static MatrixXd MCK_step(MCK.dimension[0], MCK.dimension[1]);
+    static MatrixXd y_rcd = MatrixXd::Zero(MCK.dimension[0], stepnum + 1);
+    static MatrixXd u_rcd = MatrixXd::Zero(MTK.dimension[0], stepnum);
+    MatrixXd x_err_aug = MatrixXd::Zero(MTK.dimension[1], 1);
+    MatrixXd x_err_temp = MatrixXd::Zero(MCK.dimension[1], 1);
+    MatrixXd u_feedback = MatrixXd::Zero(MTK.dimension[0], 1);
+    MatrixXd MTK_step(MTK.dimension[0], MTK.dimension[1]);
+
+    if (step_index_openloop == 0) {
+        for (int i = 0; i < MCK.dimension[1]; i++)
+            for (int j = 0; j < MCK.dimension[0]; j++)
+                MCK_step(j, i) = MCK.data[i * MCK.dimension[0] + j];
+        modelInit(m, d_openloop, state_nominal[0]);
+        cost_openloop = 0;
+        energy = 0;
+    }
+
+    if (terminal_trigger == false) terminal_trigger = terminalTrigger(m, d_openloop, modelid, step_index_openloop);
+
+    if (terminal_trigger == true)
+    {
+        terminalCtrl(m, d_openloop, step_index_openloop);
+        if (_strcmpi(testmode, "policy_compare") == 0 && step_index_openloop >= stepnum) {
+            cost_openloop += stepCost(m, d_openloop, stepnum);
+            step_index_openloop = 0;
+            terminal_trigger = false;
+            return 1;
+        }
+        cost_openloop += stepCost(m, d_openloop, step_index_openloop);
+    }
+    else {
+        if (step_index_openloop >= max(mqx, mqu) + 2)
+        {
+            for (int i = 0; i < mqx; i++) x_err_aug.block(i * MCK.dimension[0], 0, MCK.dimension[0], 1) = y_rcd.col(step_index_openloop - i);
+            for (int i = 0; i < mqu-1; i++) x_err_aug.block(mqx * MCK.dimension[0] + i * MTK.dimension[0], 0, MTK.dimension[0], 1) = u_rcd.col(step_index_openloop - i - 1);
+
+            matSlice(&MTK_step, &MTK, step_index_openloop);
+            u_rcd.col(step_index_openloop) = -MTK_step * x_err_aug;
+        }
+
+        for (int i = 0; i < actuatornum; i++) d_openloop->ctrl[i] = ctrl_openloop[step_index_openloop * actuatornum + i] + u_rcd(i, step_index_openloop);
+
+        ctrlLimit(d_openloop->ctrl, m->nu);
+        for (int i = 0; i < actuatornum; i++) u_rcd(i, step_index_openloop) = d_openloop->ctrl[i] - ctrl_openloop[step_index_openloop * actuatornum + i];
+        //for (int i = 0; i < actuatornum; i++) ctrl_temp[i] = ctrl_nominal[step_index_openloop * actuatornum + i] + u_rcd(i, step_index_openloop);
+        //ctrlLimit(ctrl_temp, m->nu);
+        //energy += mju_dot(ctrl_temp, ctrl_temp, m->nu);
+        cost_openloop += stepCost(m, d_openloop, step_index_openloop);
+    }
+    for (int i = 0; i < integration_per_step; i++) mj_step(m, d_openloop);
+    mj_forward(m, d_openloop);
+    step_index_openloop++;
+    // process noise including state noise
+    //mju_add(d_compare->qpos, d_compare->qpos, randGauss(0, 0.00023, dof + quatnum), dof + quatnum);
+    //mju_add(d_compare->qvel, d_compare->qvel, randGauss(0, 0.00023, dof), dof);
+    //mj_forward(m, d_compare);
+    if (modelid == 11 || modelid == 14 || modelid == 16) {
+        mju_sub(state_error, state_nominal[step_index_openloop], d_openloop->site_xpos, 3 * nodenum);
+        mju_sub(&state_error[3 * nodenum], &state_nominal[step_index_openloop][3 * nodenum], d_openloop->sensordata, 3 * nodenum);
+    }
+    else {
+        mju_sub(state_error, state_nominal[step_index_openloop], d_openloop->qpos, dof + quatnum);
+        mju_sub(&state_error[dof + quatnum], &state_nominal[step_index_openloop][dof + quatnum], d_openloop->qvel, dof);
+    }
+    if (step_index_openloop <= stepnum) {
+        for (int i = 0; i < MCK.dimension[1]; i++) x_err_temp(i, 0) = -state_error[i] + measurement_noise[i + (step_index_openloop - 1) * MCK.dimension[1]]; // measurement noise
+        y_rcd.col(step_index_openloop) = MCK_step * x_err_temp;
+    }
+
+    return 0;
 }
 
 // simulate with open-loop control policy under noise
-bool simulateOpenloop(void)
-{
-	if (step_index_openloop == 0) {
-		modelInit(m, d_openloop, state_nominal[0]);
-		cost_openloop = 0;
-	}
-	if (step_index_openloop >= stepnum)
-	{
-		terminalCtrl(m, d_openloop, step_index_openloop);
-		if (_strcmpi(testmode, "policy_compare") == 0) {
-			cost_openloop += stepCost(m, d_openloop, stepnum);
-			step_index_openloop = 0;
-			return 1;
-		}
-	}
-	else {
-		mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index_openloop * actuatornum], m->nu);
-		ctrlLimit(d_openloop->ctrl, m->nu);
-		cost_openloop += stepCost(m, d_openloop, step_index_openloop);
-	}
-	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_openloop);
-	mj_forward(m, d_openloop);
-	step_index_openloop++;
-	return 0;
-}
+//bool simulateOpenloop(void)
+//{
+//	if (step_index_openloop == 0) {
+//		modelInit(m, d_openloop, state_nominal[0]);
+//		cost_openloop = 0;
+//	}
+//	if (step_index_openloop >= stepnum)
+//	{
+//		terminalCtrl(m, d_openloop, step_index_openloop);
+//		if (_strcmpi(testmode, "policy_compare") == 0) {
+//			cost_openloop += stepCost(m, d_openloop, stepnum);
+//			step_index_openloop = 0;
+//			return 1;
+//		}
+//        cost_openloop += stepCost(m, d_openloop, stepnum);
+//	}
+//	else {
+//		mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index_openloop * actuatornum], m->nu);
+//		ctrlLimit(d_openloop->ctrl, m->nu);
+//		cost_openloop += stepCost(m, d_openloop, step_index_openloop);
+//	}
+//	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_openloop);
+//	mj_forward(m, d_openloop);
+//	step_index_openloop++;
+//	return 0;
+//}
 
 // calculate the distance from the target at the terminal step
 mjtNum terminalError(mjtNum ptb, const char *type)
@@ -2042,22 +2147,24 @@ void performanceTest(void)
 // compare the expected cost between the closed-loop policy, the open-loop policy and the model-based shape control under different levels of noise 
 void policyCompare()
 {
-	double printfraction = 0.2;
+	double printfraction = 0.1;
+    double ptb1 = 0.1;
 	
 	strcpy(datafilename, "clopdata.txt");
 	if ((filestream1 = fopen(datafilename, "wt+")) != NULL)
 	{
-		strcpy(datafilename, "energydata.txt");
-		if ((filestream2 = fopen(datafilename, "wt+")) != NULL)
-		{
-			for (double ptb = 0; ptb <= 1.001; ptb += 0.05)
+		//strcpy(datafilename, "energydata.txt");
+		//if ((filestream2 = fopen(datafilename, "wt+")) != NULL)
+		//{
+			for (double ptb2 = 0; ptb2 <= 0.002001; ptb2 += 0.0004)
 			{
 				for (int i = 0; i < kTestNum; i++)
 				{
-					for (int e = 0; e < stepnum * actuatornum; e++) ctrl_openloop[e] = ctrl_nominal[e] + ptb * ctrl_max * randGauss(0, 1);
-
-					while (simulateOpenloop() != 1);
-					while (simulateClosedloop() != 1);
+					for (int e = 0; e < stepnum * actuatornum; e++) ctrl_openloop[e] = ctrl_nominal[e] + ptb1 * ctrl_max * randGauss(0, 1);
+                    measurement_noise = randGauss(0, ptb2 * ptb2, stepnum * MCK.dimension[1]);
+                    
+					while (simulateOpenloop() != 1); 
+                    while (simulateClosedloop() != 1);
 
 					sprintf(data_buff, "%4.8f", cost_closedloop);
 					fwrite(data_buff, 10, 1, filestream1);
@@ -2066,21 +2173,21 @@ void policyCompare()
 					fwrite(data_buff, 10, 1, filestream1);
 					fputs("\n", filestream1);
 
-					sprintf(data_buff, "%4.8f", energy);
-					fwrite(data_buff, 10, 1, filestream2);
-					fputs(" ", filestream2);
+					//sprintf(data_buff, "%4.8f", energy);
+					//fwrite(data_buff, 10, 1, filestream2);
+					//fputs(" ", filestream2);
 				}
-				fputs("\n", filestream2);
+				//fputs("\n", filestream2);
 
-				if (ptb >= 1 * printfraction)
+				if (ptb2 >= 0.015 * printfraction)
 				{
 					printf(".");
-					printfraction += 0.2;
+					printfraction += 0.1;
 				}
 			}
-			fclose(filestream2);
-		}
-		else printf("Could not open file: energydata.txt\n");
+		//	fclose(filestream2);
+		//}
+		//else printf("Could not open file: energydata.txt\n");
 		fclose(filestream1);
 	}else printf("Could not open file: clopdata.txt\n");
 }
@@ -2458,16 +2565,21 @@ void init(void)
 	// activate MuJoCo license
 	DWORD usernamesize = 30;
 	GetUserName(username, &usernamesize);
-	if (username[0] == 'R') {
-		strcpy(keyfilename, keyfilepre);
-		strcat(keyfilename, "mjkeybig.txt");
-		mj_activate(keyfilename);
-	}
-	else {
-		strcpy(keyfilename, keyfilepre);
-		strcat(keyfilename, "mjkeysmall.txt");
-		mj_activate(keyfilename);
-	}
+    if (username[0] == 'R') {
+        strcpy(keyfilename, keyfilepre);
+        strcat(keyfilename, "mjkeybig.txt");
+        mj_activate(keyfilename);
+    }
+    else if (username[0] == 'r') {
+        strcpy(keyfilename, keyfilepre);
+        strcat(keyfilename, "mjkeyda.txt");
+        mj_activate(keyfilename);
+    }
+    else {
+        strcpy(keyfilename, keyfilepre);
+        strcat(keyfilename, "mjkeysmall.txt");
+        mj_activate(keyfilename);
+    }
 
 	// read nominal control values
 	strcpy(datafilename, "result0.txt");
@@ -2543,15 +2655,26 @@ void init(void)
 	}
 	else printf("Could not open file: parameters.txt\n");
 
-	matRead("feedbackioid.mat", "MTK", &MTK);
-	matRead("feedbackioid.mat", "MCK", &MCK);
-	matRead("feedbackioid.mat", "MQ", &MQ);
-	matRead("feedbackioid.mat", "MQU", &MQU);
+	//matRead("feedbackiolqg.mat", "MTK", &MTK);
+	//matRead("feedbackiolqg.mat", "MCK", &MCK);
+	//matRead("feedbackiolqg.mat", "MQ", &MQ);
+	//matRead("feedbackiolqg.mat", "MQU", &MQU);
+    //matRead("feedbackiolqg.mat", "MYE", &MYE);
+    //matRead("feedbackiolqg.mat", "MYM", &MYM);
+    //matRead("feedbackiolqg.mat", "MU1", &MU1);
+
+    matReadOpt("feedbackiolqg.mat", "MCK", &MCK);
+    matReadOpt("feedbackiolqg.mat", "MQ", &MQ);
+    matReadOpt("feedbackiolqg.mat", "MQU", &MQU);
+    matReadOpt("feedbackiolqg.mat", "MTK", &MTK, &MTKM);
+    matReadOpt("feedbackiolqg.mat", "MYE", &MYE, &MYEM);
+    matReadOpt("feedbackiolqg.mat", "MYM", &MYM, &MYMM);
+    matReadOpt("feedbackiolqg.mat", "MU1", &MU1, &MU1M);
 
 	mqx = MQ.data[0];
 	mqu = MQU.data[0];
 
-	if (!(2 * dof + quatnum == MCK.dimension[1] || 2 * 3 * nodenum == MCK.dimension[1])) printf("Wrong dimension for matrix Ck\n");
+	if (!(2.0 * dof + quatnum == MCK.dimension[1] || 2 * 3.0 * nodenum == MCK.dimension[1])) printf("Wrong dimension for matrix Ck\n");
 
 	// init GLFW, set timer callback (milliseconds)
 	if (!glfwInit())
@@ -2651,13 +2774,12 @@ void init(void)
 int main(int argc, const char** argv)
 {
 	// print help if arguments are missing
-	if (argc <= 1 || argc > 7) {
-		printf("\n Usage:  testioid modelfile control_timestep stepnum [modeltype [mode [noiselevel]]]\n");
+	if (argc < 4 || argc > 8) {
+		printf("\n Usage:  testioid modelfile control_timestep stepnum [modeltype [mode [noiselevel1 [noiselevel2]]]\n");
 		return 0;
 	}
 
 	// process input from command window
-	if (argc <= 1) return 0;
 	if (argc > 1)
 	{
 		strcpy(modelfilename, argv[1]);
@@ -2690,16 +2812,32 @@ int main(int argc, const char** argv)
 
 	stateNominal(m, d);
 
-	if (argc > 4) if (sscanf(argv[4], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[4]);
+	if (argc > 4) 
+        if (sscanf(argv[4], "%lf", &perturb_coefficient_std) != 1) 
+            testModeSelection(argv[4]); 
+        else if (argc > 5)
+        {
+            sscanf(argv[5], "%lf", &measurement_coefficient_std);
+            loaded = true;
+        }
 
-	if (argc > 5) if (sscanf(argv[5], "%lf", &perturb_coefficient_test) != 1) testModeSelection(argv[5]);
+	if (argc > 5 && loaded == false) 
+        if (sscanf(argv[5], "%lf", &perturb_coefficient_std) != 1) 
+            testModeSelection(argv[5]); 
+        else if (argc > 6)
+        {
+            sscanf(argv[6], "%lf", &measurement_coefficient_std);
+            loaded = true;
+        }
 
-	if (argc > 6) sscanf(argv[6], "%lf", &perturb_coefficient_test);
+	if (argc > 6 && loaded == false) sscanf(argv[6], "%lf", &perturb_coefficient_std);
 
+    if (argc > 7) sscanf(argv[7], "%lf", &measurement_coefficient_std);
+    
 	for (int e = 0; e < stepnum * actuatornum; e++)
-	{
-		ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_test * ctrl_max * randGauss(0, 1);
-	}
+		ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_std * ctrl_max * randGauss(0, 1);
+    
+    measurement_noise = randGauss(0, measurement_coefficient_std * measurement_coefficient_std, stepnum * MCK.dimension[1]);
 	
     // start simulation thread
     std::thread simthread(simulate);
