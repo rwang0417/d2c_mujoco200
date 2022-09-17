@@ -14,7 +14,7 @@ class tenseg_skelton(object):
         self.Cb = self.data['C_b']
         self.Cs = self.data['C_s']
         self.N = self.data['N']
-        self.color = ["1 0 0 .8","1 0 0 .8","1 0 0 .8","1 0 0 .8","1 0 0 .8","1 0 0 .8"];
+        self.color = ["1 0 0 .8","1 0 0 .8","1 0 0 .8","1 0 0 .8","1 0 0 .8","1 0 0 .8"]
         self.worldbody = worldbody()
         Geom = geom(name="floor",pos="0 0 -10",size="0 0 1",type="plane",material="matplane")
         Light = light(directional="true",diffuse=".8 .8 .8",specular=".2 .2 .2",pos="0 0 5",dir="0 0 -1")
@@ -282,8 +282,8 @@ class tenseg_skelton(object):
 
 
 
-a = tenseg_skelton('t1d13d.mat')
+a = tenseg_skelton('3D_6bar_lander.mat')
 # print(a._addbar())
-a.save_to_file('test2.xml')
+a.save_to_file('lander6.xml')
 
 # a.write('test.xml')

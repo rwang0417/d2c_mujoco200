@@ -1,0 +1,168 @@
+<mujoco model="swimmer">
+  <include file="./common/visual.xml"/>
+  <include file="./common/skybox.xml"/>
+  <include file="./common/materials.xml"/>
+
+  <option timestep="0.005" density="3000">
+    <flag contact="disable"/>
+  </option>
+
+  <default>
+    <default class="swimmer">
+      <joint type="hinge" pos="0 -.05 0" axis="0 0 1" limited="true" solreflimit=".05 1" solimplimit="0 .8 .1" armature="1e-6"/>
+      <default class="inertial">
+        <geom type="box" size=".001 .05 .01" rgba="0 0 0 0" mass=".01"/>
+      </default>
+      <default class="visual">
+        <geom type="capsule" size=".01" fromto="0 -.05 0 0 .05 0" material="self" mass="0"/>
+      </default>
+      <site size=".01" rgba="0 0 0 0"/>
+    </default>
+    <default class="free">
+      <joint limited="false" stiffness="0" armature="0"/>
+    </default>
+    <motor gear="5e-4" ctrllimited="false" ctrlrange="-100 100"/>
+  </default>
+
+  <worldbody>
+    <geom name="ground" type="plane" size="2 2 0.1" material="grid"/>
+    <body name="head" pos="0 0 .05" childclass="swimmer">
+      <light name="light_1" diffuse=".8 .8 .8" pos="0 0 1.5"/>
+      <geom name="head" type="ellipsoid" size=".02 .04 .017" pos="0 -.022 0"  material="self" mass="0"/>
+      <geom name="nose" type="sphere" pos="0 -.06 0" size=".004" material="effector" mass="0"/>
+      <geom name="eyes" type="capsule" fromto="-.006 -.054 .005 .006 -.054 .005" size=".004" material="eye" mass="0"/>
+      <camera name="tracking1" pos="0 -.2 .5" xyaxes="1 0 0 0 1 1" mode="trackcom" fovy="60"/>
+      <camera name="tracking2" pos="-.9 .5 .15" xyaxes="0 -1 0 .3 0 1" mode="trackcom" fovy="60"/>
+      <camera name="eyes" pos="0 -.058 .005" xyaxes="-1 0 0 0 0 1"/>
+      <joint name="rootx" class="free" type="slide" axis="1 0 0" pos="0 -.05 0"/>
+      <joint name="rooty" class="free" type="slide" axis="0 1 0" pos="0 -.05 0"/>
+      <joint name="rootz" class="free" type="hinge" axis="0 0 1" pos="0 -.05 0"/>
+      <geom name="inertial" class="inertial"/>
+      <geom name="visual" class="visual"/>
+      <site name="head"/>
+      <body name="segment_1" pos="0 .1 0">
+          <geom name="inertial_1" class="inertial"/>
+          <geom name="visual_1" class="visual"/>
+          <site name="site_1"/>
+          <joint name="joint_1" range="-60 60"/>
+          <body name="segment_2" pos="0 .1 0">
+              <geom name="inertial_2" class="inertial"/>
+              <geom name="visual_2" class="visual"/>
+              <site name="site_2"/>
+              <joint name="joint_2" range="-60 60"/>
+              <body name="segment_3" pos="0 .1 0">
+                  <geom name="inertial_3" class="inertial"/>
+                  <geom name="visual_3" class="visual"/>
+                  <site name="site_3"/>
+                  <joint name="joint_3" range="-60 60"/>
+                  <body name="segment_4" pos="0 .1 0">
+                      <geom name="inertial_4" class="inertial"/>
+                      <geom name="visual_4" class="visual"/>
+                      <site name="site_4"/>
+                      <joint name="joint_4" range="-60 60"/>
+                      <body name="segment_5" pos="0 .1 0">
+                          <geom name="inertial_5" class="inertial"/>
+                          <geom name="visual_5" class="visual"/>
+                          <site name="site_5"/>
+                          <joint name="joint_5" range="-60 60"/>
+						  <body name="segment_6" pos="0 .1 0">
+							  <geom name="inertial_6" class="inertial"/>
+							  <geom name="visual_6" class="visual"/>
+							  <site name="site_6"/>
+							  <joint name="joint_6" range="-60 60"/>
+							  <body name="segment_7" pos="0 .1 0">
+								  <geom name="inertial_7" class="inertial"/>
+								  <geom name="visual_7" class="visual"/>
+								  <site name="site_7"/>
+								  <joint name="joint_7" range="-60 60"/>
+								  <body name="segment_8" pos="0 .1 0">
+									  <geom name="inertial_8" class="inertial"/>
+									  <geom name="visual_8" class="visual"/>
+									  <site name="site_8"/>
+									  <joint name="joint_8" range="-60 60"/>
+									  <body name="segment_9" pos="0 .1 0">
+										  <geom name="inertial_9" class="inertial"/>
+										  <geom name="visual_9" class="visual"/>
+										  <site name="site_9"/>
+										  <joint name="joint_9" range="-60 60"/>
+										  <body name="segment_10" pos="0 .1 0">
+											  <geom name="inertial_10" class="inertial"/>
+											  <geom name="visual_10" class="visual"/>
+											  <site name="site_10"/>
+											  <joint name="joint_10" range="-60 60"/>
+											  <body name="segment_11" pos="0 .1 0">
+												  <geom name="inertial_11" class="inertial"/>
+												  <geom name="visual_11" class="visual"/>
+												  <site name="site_11"/>
+												  <joint name="joint_11" range="-60 60"/>
+												  <body name="segment_12" pos="0 .1 0">
+													  <geom name="inertial_12" class="inertial"/>
+													  <geom name="visual_12" class="visual"/>
+													  <site name="site_12"/>
+													  <joint name="joint_12" range="-60 60"/>
+													  <body name="segment_13" pos="0 .1 0">
+														  <geom name="inertial_13" class="inertial"/>
+														  <geom name="visual_13" class="visual"/>
+														  <site name="site_13"/>
+														  <joint name="joint_13" range="-60 60"/>
+														  <body name="segment_14" pos="0 .1 0">
+															  <geom name="inertial_14" class="inertial"/>
+															  <geom name="visual_14" class="visual"/>
+															  <site name="site_14"/>
+															  <joint name="joint_14" range="-60 60"/>
+														  </body>
+													  </body>
+												  </body>
+											  </body>
+										  </body>
+									  </body>
+								  </body>
+							  </body>
+						  </body>
+                      </body>
+                  </body>
+              </body>
+          </body>
+      </body>
+    </body>
+    <geom name="target" type="sphere" pos="0.7 0.7 .05" size=".06" material="target"/>
+    <light name="target_light" diffuse="1 1 1" pos="1 1 1.5"/>
+  </worldbody>
+
+  <!--sensor>
+    <framepos name="nose_pos" objtype="geom" objname="nose"/>
+    <framepos name="target_pos" objtype="geom" objname="target"/>
+    <framexaxis name="head_xaxis" objtype="xbody" objname="head"/>
+    <frameyaxis name="head_yaxis" objtype="xbody" objname="head"/>
+    <velocimeter name="head_vel" site="head"/>
+    <gyro name="head_gyro" site="head"/>
+    <velocimeter name="velocimeter_1" site="site_1"/>
+    <gyro name="gyro_1" site="site_1"/>
+    <velocimeter name="velocimeter_2" site="site_2"/>
+    <gyro name="gyro_2" site="site_2"/>
+    <velocimeter name="velocimeter_3" site="site_3"/>
+    <gyro name="gyro_3" site="site_3"/>
+    <velocimeter name="velocimeter_4" site="site_4"/>
+    <gyro name="gyro_4" site="site_4"/>
+    <velocimeter name="velocimeter_5" site="site_5"/>
+    <gyro name="gyro_5" site="site_5"/>
+  </sensor-->
+
+  <actuator>
+    <motor name="moter_1" joint="joint_1"/>
+    <motor name="moter_2" joint="joint_2"/>
+    <motor name="moter_3" joint="joint_3"/>
+    <motor name="moter_4" joint="joint_4"/>
+    <motor name="moter_5" joint="joint_5"/>
+	<motor name="moter_6" joint="joint_6"/>
+    <motor name="moter_7" joint="joint_7"/>
+    <motor name="moter_8" joint="joint_8"/>
+    <motor name="moter_9" joint="joint_9"/>
+    <motor name="moter_10" joint="joint_10"/>
+	<motor name="moter_11" joint="joint_11"/>
+    <motor name="moter_12" joint="joint_12"/>
+    <motor name="moter_13" joint="joint_13"/>
+    <motor name="moter_14" joint="joint_14"/>
+  </actuator>
+  
+</mujoco>

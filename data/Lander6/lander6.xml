@@ -1,0 +1,220 @@
+<mujoco model="lander6">
+    <include file="./common/visual.xml"/>
+    <include file="./common/skybox.xml"/>
+    <include file="./common/materials.xml"/>
+    
+    <option timestep="0.01" iterations="50" solver="Newton" tolerance="1e-10" gravity="0 0 -9.8" collision="predefined" viscosity="0.0" integrator="Euler"/>
+
+    <size njmax="200" nconmax="100" nstack="5000"/>
+
+    <visual>
+        <rgba haze=".15 .25 .35 1"/>
+    </visual>
+
+    <default>
+        <joint type="free" damping="0.5"/>
+        <motor ctrllimited="false" ctrlrange="-1 1" gear="1"/>
+		<tendon stiffness="50" damping="4" width="0.04"/>
+		<geom size="0.1" mass=".5" material="self"/>
+		<site size="0.04"/>
+    </default>
+
+    <worldbody>
+        <light directional="true" diffuse=".8 .8 .8" specular=".2 .2 .2" pos="0 0 5" dir="0 0 -1"/>
+
+        <body pos="0 0 0">
+            <geom name="bar1" type="capsule" fromto="1.5 0 0  1.5 2.6833 5.3666"/>
+            <site name="b1s" pos="1.5 0 0"/>
+			<site name="b1e" pos="1.5 2.6833 5.3666"/>
+			<joint name="j1"/>
+        </body>
+        <body pos="0 0 0">
+            <geom name="bar2" type="capsule" fromto="-1.5 0 0  -1.5 2.6833 5.3666"/>
+            <site name="b2s" pos="-1.5 0 0"/>
+			<site name="b2e" pos="-1.5 2.6833 5.3666"/>
+			<joint name="j2"/>
+        </body>
+        <body pos="0 0 0">
+            <geom name="bar3" type="capsule" fromto="0 -0.6708 5.3666  0 4.6957 2.6833"/>
+            <site name="b3s" pos="0 -0.6708 5.3666"/>
+			<site name="b3e" pos="0 4.6957 2.6833"/>
+			<joint name="j3"/>
+        </body>
+        <body pos="0 0 0">
+            <geom name="bar4" type="capsule" fromto="0 -2.0125 2.6833  0 3.3541 0"/>
+            <site name="b4s" pos="0 -2.0125 2.6833"/>
+			<site name="b4e" pos="0 3.3541 0"/>
+			<joint name="j4"/>
+        </body>
+        <body pos="0 0 0">
+            <geom name="bar5" type="capsule" fromto="3 0 3.3541  -3 0 3.3541"/>
+            <site name="b5s" pos="3 0 3.3541"/>
+			<site name="b5e" pos="-3 0 3.3541"/>
+			<joint name="j5"/>
+        </body>
+        <body pos="0 0 0">
+            <geom name="bar6" type="capsule" fromto="3 2.6833 2.0125  -3 2.6833 2.0125"/>
+            <site name="b6s" pos="3 2.6833 2.0125"/>
+			<site name="b6e" pos="-3 2.6833 2.0125"/>
+			<joint name="j6"/>
+        </body>
+            
+		<body pos="0 0 0">
+			<geom name="floor" pos="0 0 -0.1" size="0 0 1" type="plane" material="grid"/>
+			<site name="target" pos="3 1 4.5" size="0.12" rgba="1 0 0 .3"/>
+		</body>
+    </worldbody>
+
+    <contact>
+		<pair geom1="floor" geom2="bar1"/>
+        <pair geom1="floor" geom2="bar2"/>
+        <pair geom1="floor" geom2="bar3"/>
+        <pair geom1="floor" geom2="bar4"/>
+		<pair geom1="floor" geom2="bar5"/>
+        <pair geom1="floor" geom2="bar6"/>
+	</contact>
+
+    <tendon>
+        <spatial name="S1">
+            <site site="b1e"/>
+            <site site="b3s"/>
+        </spatial>
+		<spatial name="S2">
+            <site site="b1e"/>
+            <site site="b3e"/>
+        </spatial>
+        <spatial name="S3">
+            <site site="b1e"/>
+            <site site="b5s"/>
+        </spatial>
+        <spatial name="S4">
+            <site site="b1e"/>
+            <site site="b6s"/>
+        </spatial>
+		<spatial name="S5">
+            <site site="b2e"/>
+            <site site="b3s"/>
+        </spatial>
+		<spatial name="S6">
+            <site site="b2e"/>
+            <site site="b3e"/>
+        </spatial>
+        <spatial name="S7">
+            <site site="b2e"/>
+            <site site="b5e"/>
+        </spatial>
+        <spatial name="S8">
+            <site site="b2e"/>
+            <site site="b6e"/>
+        </spatial>
+
+        <spatial name="S9">
+            <site site="b1s"/>
+            <site site="b4s"/>
+        </spatial>
+        <spatial name="S10">
+            <site site="b1s"/>
+            <site site="b4e"/>
+        </spatial>
+        <spatial name="S11">
+            <site site="b1s"/>
+            <site site="b5s"/>
+        </spatial>
+        <spatial name="S12">
+            <site site="b1s"/>
+            <site site="b6s"/>
+        </spatial>
+        <spatial name="S13">
+            <site site="b2s"/>
+            <site site="b4s"/>
+        </spatial>
+        <spatial name="S14">
+            <site site="b2s"/>
+            <site site="b4e"/>
+        </spatial>
+        <spatial name="S15">
+            <site site="b2s"/>
+            <site site="b5e"/>
+        </spatial>
+        <spatial name="S16">
+            <site site="b2s"/>
+            <site site="b6e"/>
+        </spatial>
+
+        <spatial name="S17">
+            <site site="b3s"/>
+            <site site="b5s"/>
+        </spatial>
+		<spatial name="S18">
+            <site site="b3s"/>
+            <site site="b5e"/>
+        </spatial>
+        <spatial name="S19">
+            <site site="b4s"/>
+            <site site="b5s"/>
+        </spatial>
+        <spatial name="S20">
+            <site site="b4s"/>
+            <site site="b5e"/>
+        </spatial>
+		<spatial name="S21">
+            <site site="b3e"/>
+            <site site="b6s"/>
+        </spatial>
+        <spatial name="S22">
+            <site site="b3e"/>
+            <site site="b6e"/>
+        </spatial>
+        <spatial name="S23">
+            <site site="b4e"/>
+            <site site="b6s"/>
+        </spatial>
+		<spatial name="S24">
+            <site site="b4e"/>
+            <site site="b6e"/>
+        </spatial> 
+    </tendon>   
+
+    <actuator>
+        <motor tendon="S1"/>
+        <motor tendon="S2"/>
+		<motor tendon="S3"/>
+        <motor tendon="S4"/>
+        <motor tendon="S5"/>
+        <motor tendon="S6"/>
+		<motor tendon="S7"/>
+        <motor tendon="S8"/>
+        <motor tendon="S9"/>
+        <motor tendon="S10"/>
+        <motor tendon="S11"/>
+        <motor tendon="S12"/>
+		<motor tendon="S13"/>
+        <motor tendon="S14"/>
+        <motor tendon="S15"/>
+        <motor tendon="S16"/>
+		<motor tendon="S17"/>
+        <motor tendon="S18"/>
+        <motor tendon="S19"/>
+        <motor tendon="S20"/>
+		<motor tendon="S21"/>
+        <motor tendon="S22"/>
+		<motor tendon="S23"/>
+        <motor tendon="S24"/>
+    </actuator>
+	
+	<sensor>
+		<framelinvel objtype="site" objname="b1s"/>
+		<framelinvel objtype="site" objname="b2s"/>
+		<framelinvel objtype="site" objname="b3s"/>
+		<framelinvel objtype="site" objname="b4s"/>
+		<framelinvel objtype="site" objname="b5s"/>
+		<framelinvel objtype="site" objname="b6s"/>
+		
+		<framelinvel objtype="site" objname="b1e"/>
+		<framelinvel objtype="site" objname="b2e"/>
+        <framelinvel objtype="site" objname="b3e"/>
+		<framelinvel objtype="site" objname="b4e"/>
+		<framelinvel objtype="site" objname="b5e"/>
+        <framelinvel objtype="site" objname="b6e"/>
+	</sensor>
+</mujoco>

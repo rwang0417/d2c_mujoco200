@@ -1,0 +1,6 @@
+Q_diag: 1.5
+R: 0.0004
+QT: 15000.0
+ptb_coef: 0.1
+step_coef: 0.005
+goal: 0.7, 0.7

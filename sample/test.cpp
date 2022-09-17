@@ -1854,19 +1854,21 @@ bool simulateClosedloop(void)
 			terminal_trigger = false;
 			return 1;
 		}
-		cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
+        cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
+        if (step_index_closedloop == stepnum) printf("Closed-loop cost: %.2f\n", cost_closedloop);
 	}
 	else {
 		mju_sub(state_error, state_nominal[step_index_closedloop], d_closedloop->qpos, dof + quatnum);
 		mju_sub(&state_error[dof + quatnum], &state_nominal[step_index_closedloop][dof + quatnum], d_closedloop->qvel, dof);
-		if (modelid == 14) {
-			state_error[2] = state_nominal[step_index_closedloop][2] - d_closedloop->qpos[15];
-			state_error[7] = state_nominal[step_index_closedloop][7] - d_closedloop->qpos[18];
-			state_error[13] = state_nominal[step_index_closedloop][13] - d_closedloop->qpos[21];
-			state_error[16] = state_nominal[step_index_closedloop][16] - d_closedloop->qvel[15];
-			state_error[21] = state_nominal[step_index_closedloop][21] - d_closedloop->qvel[18];
-			state_error[27] = state_nominal[step_index_closedloop][27] - d_closedloop->qvel[21];
-		}
+		//if (modelid == 14) {
+		//	state_error[2] = state_nominal[step_index_closedloop][2] - d_closedloop->qpos[15];
+		//	state_error[7] = state_nominal[step_index_closedloop][7] - d_closedloop->qpos[18];
+		//	state_error[13] = state_nominal[step_index_closedloop][13] - d_closedloop->qpos[21];
+		//	state_error[16] = state_nominal[step_index_closedloop][16] - d_closedloop->qvel[15];
+		//	state_error[21] = state_nominal[step_index_closedloop][21] - d_closedloop->qvel[18];
+		//	state_error[27] = state_nominal[step_index_closedloop][27] - d_closedloop->qvel[21];
+		//}
+        mju_add(state_error, state_error, randGauss(0, 0.04, 2*dof + quatnum), 2*dof + quatnum);
 		mju_mulMatVec(ctrl_feedback, *tracker_feedback_gain[step_index_closedloop], state_error, kMaxState, kMaxState);
 		mju_add(d_closedloop->ctrl, &ctrl_openloop[step_index_closedloop * actuatornum], ctrl_feedback, m->nu);
 		ctrlLimit(d_closedloop->ctrl, m->nu);
@@ -1898,6 +1900,8 @@ bool simulateOpenloop(void)
 			step_index_openloop = 0;
 			return 1;
 		}
+        cost_openloop += stepCost(m, d_openloop, stepnum);
+        if (step_index_openloop == stepnum) printf("Open-loop cost: %.2f\n", cost_openloop);
 	}
 	else {
 		mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index_openloop * actuatornum], m->nu);

@@ -24,7 +24,7 @@
     <camera name="tracking_y" pos="0 -.3 .2" xyaxes="1 0 0 0 0.342 0.940" fovy="60" mode="trackcom"/>
     <camera name="fixed_top" pos="0 0 5.5" fovy="10"/>
     <geom name="ground" type="plane" pos="0 0 -.1" size=".5 .5 .1" material="grid"/>
-    <geom name="target" type="sphere" pos="0 .4 .2" size=".04" material="target"/>
+    <geom name="target" type="sphere" pos="0 .4 .2" size=".034" rgba="1 0 0 .3" material="target"/>
     <body name="torso" pos="0 0 .1" childclass="fish">
       <light name="light" diffuse=".6 .6 .6" pos="0 0 0.5" dir="0 0 -1" specular=".3 .3 .3" mode="track"/>
       <joint name="root" type="free" damping="0" limited="false"/>

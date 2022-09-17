@@ -12,9 +12,9 @@
     </visual>
 
     <default>
-        <joint type="ball" pos="0 0 0" limited="false" damping="0.1"/>
+        <joint type="ball" pos="0 0 0" limited="false" damping="4"/>
         <motor ctrllimited="false" ctrlrange="-1 1" gear="1"/>
-		<tendon stiffness="0" damping="0.2" width="0.02"/>
+		<tendon stiffness="0" damping="1" width="0.02"/>
 		<geom size="0.02" mass=".1" material="self"/>
 		<site size="0.04"/>
     </default>
@@ -184,11 +184,11 @@
 		
 		<body pos="0 0 0">
 			<geom name="floor" pos="0 0 0" size="0 0 1" type="plane" material="grid"/>
-			<site name="target" pos=".2 0.2 7" size="0.12" rgba="1 0 0 .3"/>
 			<site name="f0" pos="0 0 0"/>
 			<site name="fl" pos="-4 4 0"/>
 			<site name="fm" pos="0 -5.656 0"/>
             <site name="fr" pos="4 4 0"/>
+			<site name="target" pos="3 1 4.5" size="0.12" rgba="1 0 0 .3"/>
 		</body>
     </worldbody>
 	
@@ -202,6 +202,44 @@
 		<connect active="true" name="c7" body1="lbar11" body2="rbar11" anchor="1 -1 1"/>
         <connect active="true" name="c8" body1="lbar11" body2="mbar11" anchor="1 -1 1"/>
 	</equality>
+
+    <contact>
+		<pair geom1="floor" geom2="lbar1"/>
+        <pair geom1="floor" geom2="lbar2"/>
+        <pair geom1="floor" geom2="lbar3"/>
+        <pair geom1="floor" geom2="lbar4"/>
+		<pair geom1="floor" geom2="lbar5"/>
+        <pair geom1="floor" geom2="lbar6"/>
+		<pair geom1="floor" geom2="lbar7"/>
+        <pair geom1="floor" geom2="lbar8"/>
+        <pair geom1="floor" geom2="lbar9"/>
+		<pair geom1="floor" geom2="lbar10"/>
+        <pair geom1="floor" geom2="lbar11"/>
+
+        <pair geom1="floor" geom2="rbar1"/>
+        <pair geom1="floor" geom2="rbar2"/>
+        <pair geom1="floor" geom2="rbar3"/>
+        <pair geom1="floor" geom2="rbar4"/>
+		<pair geom1="floor" geom2="rbar5"/>
+        <pair geom1="floor" geom2="rbar6"/>
+		<pair geom1="floor" geom2="rbar7"/>
+        <pair geom1="floor" geom2="rbar8"/>
+        <pair geom1="floor" geom2="rbar9"/>
+		<pair geom1="floor" geom2="rbar10"/>
+        <pair geom1="floor" geom2="rbar11"/>
+
+        <pair geom1="floor" geom2="mbar1"/>
+        <pair geom1="floor" geom2="mbar2"/>
+        <pair geom1="floor" geom2="mbar3"/>
+        <pair geom1="floor" geom2="mbar4"/>
+		<pair geom1="floor" geom2="mbar5"/>
+        <pair geom1="floor" geom2="mbar6"/>
+		<pair geom1="floor" geom2="mbar7"/>
+        <pair geom1="floor" geom2="mbar8"/>
+        <pair geom1="floor" geom2="mbar9"/>
+		<pair geom1="floor" geom2="mbar10"/>
+        <pair geom1="floor" geom2="mbar11"/>
+	</contact>
 
     <tendon>
         <spatial name="S1">

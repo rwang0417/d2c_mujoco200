@@ -10,6 +10,8 @@ import brewer2mpl
 import matplotlib as mpl
 from scipy import signal
 
+bmap = brewer2mpl.get_map('Set2','qualitative', 7)
+colors = bmap.mpl_colors
 #plot preprocessing
 params = {
 'axes.labelsize': 22,
@@ -55,7 +57,7 @@ def latexplot(timefactor=600,filtered=False):
         plt.plot(x, signal.filtfilt(b, a, y/y[-1]), color=colors[2], linewidth=3)
         plt.grid(axis='y', color='.910', linestyle='-', linewidth=1.5)
         plt.grid(axis='x', color='.910', linestyle='-', linewidth=1.5)
-        
+
         plt.xlabel('Num of rollouts', fontsize=20)
         plt.ylabel('Episodic cost fraction', fontsize=20)
         plt.legend(['Original','Filtered'])
@@ -67,13 +69,13 @@ def latexplot(timefactor=600,filtered=False):
         plt.plot(x, y/y[-1], color=colors[2], linewidth=3)
         plt.grid(axis='y', color='.910', linestyle='-', linewidth=1.5)
         plt.grid(axis='x', color='.910', linestyle='-', linewidth=1.5)
-        
+
         plt.xlabel('Num of rollouts', fontsize=20)
         plt.ylabel('Episodic cost fraction', fontsize=20)
         plt.legend(['Original'])
-    
-    plt.tight_layout()    
-    
+
+    plt.tight_layout()
+
 def showcurve(filename='cost.txt'):
     if filename == 'result.txt':
         with open(filename) as f:
@@ -84,7 +86,7 @@ def showcurve(filename='cost.txt'):
             r=f.readlines()
         y=np.array(r[0].strip().split()).astype(np.float)
     x=np.linspace(1,y.shape[0],y.shape[0])
-    
+
     plt.figure(figsize=(12,9))
     plt.plot(x,y)
     plt.show()
@@ -119,9 +121,9 @@ def noiseresist(nstart=0,nend=100,noisemax=100):
     plt.xlabel('noise/% of umax(std of noise)')
     plt.ylabel('cost / cost_norm')
     plt.grid(True)
-    plt.show()  
+    plt.show()
     print('averaged by {value1} rollouts'.format(value1=y.shape[1]))
-    
+
 def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
     if type=='cost':
         y=np.array(np.loadtxt('perfcheck.txt'))
@@ -136,7 +138,7 @@ def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
         plt.xlabel('Std dev of perturbed noise (Percent of max. control)')
         plt.ylabel('cost per step')
         plt.grid(True)
-        plt.show()  
+        plt.show()
         print('averaged by {value1} rollouts'.format(value1=y.shape[1]))
 
     if type=='error':
@@ -151,16 +153,16 @@ def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
         plt.xlabel('Std dev of perturbed noise (Percent of max. control)')
         plt.ylabel('L2-norm of terminal state error')
         plt.grid(True)
-        plt.show()  
+        plt.show()
         print('averaged by {value1} rollouts'.format(value1=y.shape[1]))
-        
-def clopcompare():    
+
+def clopcompare():
     pointnum=10
     testnum=400
     y=np.array(np.loadtxt('clopdata.txt'))
     clerr1=[0 for i in range(int(y.shape[0]/2))]
     operr1=[0 for i in range(int(y.shape[0]/2))]
-    
+
     # calculate error value and get the average by each test
     for i in range(int(y.shape[0]/2)):
         clerr1[i]=abs(y[2*i])
@@ -168,7 +170,7 @@ def clopcompare():
     with open('clopbar.txt', 'wt+') as f:
         for k in range(pointnum):
             print(np.mean(clerr1[testnum*k:testnum*(k+1)]), np.std(clerr1[testnum*k:testnum*(k+1)]), np.mean(operr1[testnum*k:testnum*(k+1)]), np.std(operr1[testnum*k:testnum*(k+1)]), k*3, file=f)
-    
+
     # plot performance compare data and success rate
     sind=0
     eind=10
@@ -181,9 +183,9 @@ def clopcompare():
     plt.ylabel('Episodic cost')
     plt.legend(handles=[f5,f6],labels=['Closed-loop','Open-loop'],loc='upper left')
     plt.grid(color='.910', linewidth=1.5)
-    plt.show()  
-        
-#def clopcompare():       
+    plt.show()
+
+#def clopcompare():
 #    nstart=0
 #    nend=30
 #    pointnum=17
@@ -191,7 +193,7 @@ def clopcompare():
 #    y=np.array(np.loadtxt('clopdata.txt'))
 #    clerr1=[0 for i in range(int(y.shape[0]/2))]
 #    operr1=[0 for i in range(int(y.shape[0]/2))]
-#    
+#
 #    # calculate error value and get the average by each test
 #    for i in range(int(y.shape[0]/2)):
 #        clerr1[i]=abs(y[2*i])
@@ -199,7 +201,7 @@ def clopcompare():
 #    with open('clopbar.txt', 'wt+') as f:
 #        for k in range(pointnum):
 #            print(np.mean(clerr1[testnum*k:testnum*(k+1)]), np.std(clerr1[testnum*k:testnum*(k+1)]), np.mean(operr1[testnum*k:testnum*(k+1)]), np.std(operr1[testnum*k:testnum*(k+1)]), k*5, file=f)
-#    
+#
 #    # plot performance compare data and success rate
 #    sind=int(nstart/5)
 #    eind=int(nend/5)+1
@@ -213,8 +215,8 @@ def clopcompare():
 #    plt.legend(handles=[f5,f6,],labels=['Closed-loop cost','Open-loop cost'],loc='upper left')
 #    plt.grid(axis='y', color='.910', linestyle='-', linewidth=1.5)
 #    plt.grid(axis='x', color='.910', linestyle='-', linewidth=1.5)
-#    plt.show()  
-    
+#    plt.show()
+
 def errcompare(nstart=0,nend=100, testnum=200, by='state'):
     pointnum=10 # total number of noise level checked
     singlecheck=4 # get error result under selected noise level 4 means 40%
@@ -225,7 +227,7 @@ def errcompare(nstart=0,nend=100, testnum=200, by='state'):
     operr2=[0 for i in range(testnum*pointnum)]
     clerr=[0 for i in range(y.shape[1])]
     operr=[0 for i in range(y.shape[1])]
-    
+
     # calculate error value and get the average by each test
     for i in range(int(y.shape[0]/3)):
         clerr1[i][:]=abs((y[3*i+1][:]-y[3*i][:])/y[3*i][:])
@@ -238,7 +240,7 @@ def errcompare(nstart=0,nend=100, testnum=200, by='state'):
         print(0, 0, 0, 0, 0, file=f)
         for k in range(pointnum):
             print(np.mean(clerr2[testnum*k:testnum*(k+1)]), np.std(clerr2[testnum*k:testnum*(k+1)]), np.mean(operr2[testnum*k:testnum*(k+1)]), np.std(operr2[testnum*k:testnum*(k+1)]), (k+1)*10, file=f)
-    
+
     # plot performance compare data and success rate
     sind=int(nstart/10)
     eind=int(nend/10)+1
@@ -256,7 +258,7 @@ def errcompare(nstart=0,nend=100, testnum=200, by='state'):
     plt.legend(handles=[f5,f6,],labels=['closed-loop error','open-loop error'],loc='upper left')
     plt.grid(True)
     plt.show()
-    
+
     # check error by step or state to find the exact step or state that behaves bad, plot
     # valid only when testnum=1
     if testnum == 1:
@@ -283,17 +285,17 @@ def errcompare(nstart=0,nend=100, testnum=200, by='state'):
         mop=np.mean(operr2[testnum*(singlecheck-1):testnum*(singlecheck)])
         stdcl=np.std(clerr2[testnum*(singlecheck-1):testnum*(singlecheck)])
         stdop=np.std(operr2[testnum*(singlecheck-1):testnum*(singlecheck)])
-        x=np.linspace(1,testnum,testnum) 
+        x=np.linspace(1,testnum,testnum)
         plt.figure(figsize=(20,16))
         f3,=plt.plot(x,clerr2[testnum*singlecheck:testnum*(singlecheck+1)])
         f4,=plt.plot(x,operr2[testnum*singlecheck:testnum*(singlecheck+1)])
-        plt.ylabel('error')  
+        plt.ylabel('error')
         plt.legend(handles=[f3,f4,],labels=['closed-loop error','open-loop error'],loc='upper right')
-        plt.show() 
+        plt.show()
         print(testnum)
         print("closed-loop error = {value1}  std = {value2}".format(value1=mcl, value2=stdcl))
         print("open-loop error = {value1}  std = {value2}".format(value1=mop, value2=stdop))
-        
+
 def sysidcheck():
     y=np.array(np.loadtxt('sysidcheck.txt'))
     syserr1=[[0 for i in range(y.shape[1])] for i in range(int(y.shape[0]/2))]
@@ -301,9 +303,9 @@ def sysidcheck():
     for i in range(int(y.shape[0]/2)):
         for j in range(int(y.shape[1])):
             if y[2*i][j] != 0:
-                syserr1[i][j]=abs((y[2*i+1][j]-y[2*i][j])/y[2*i][j]) 
+                syserr1[i][j]=abs((y[2*i+1][j]-y[2*i][j])/y[2*i][j])
     syserr=np.mean(syserr1,axis=1)
-    
+
     x=np.linspace(1,int(y.shape[0]/2),int(y.shape[0]/2))
     plt.figure(figsize=(20,16))
     f1,=plt.plot(x,syserr)

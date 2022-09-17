@@ -151,15 +151,15 @@ int modelSelection(const char* model)
 {
 	if (_strcmpi(model, "pendulum") == 0) {
 		modelid = 0;
-		control_timestep = 0.01; //0.01 qmc
-		simulation_timestep = 0.01; //0.01
-		stepnum = 200; //200
+		control_timestep = 0.1; //0.01 qmc
+		simulation_timestep = 0.1; //0.01
+		stepnum = 30; //200
 		dof = 1;
 		quatnum = 0;
 		actuatornum = 1;
 		rolloutnum_train = 1;
-		ctrl_upperlimit = 100;
-		ctrl_lowerlimit = -100;
+		ctrl_upperlimit = 10;
+		ctrl_lowerlimit = -10;
 		mjtNum temp[1][2] = { 9.463564809357289, 1.193578631556765 };
 		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], 2*dof+quatnum);
 		mjtNum temp1[kMaxState] = { PI, 0.0 };
@@ -191,18 +191,18 @@ int modelSelection(const char* model)
 	}
 	else if (_strcmpi(model, "swimmer6") == 0) {
 		modelid = 2;
-		control_timestep = 0.006; //0.006
-		simulation_timestep = 0.006;
-		stepnum = 1500; //1500
+		control_timestep = 0.01; //0.006
+		simulation_timestep = 0.01;
+		stepnum = 900; //1500
 		dof = 8;
 		quatnum = 0;
 		actuatornum = 5;
 		rolloutnum_train = 50;
-		ctrl_upperlimit = 100;
-		ctrl_lowerlimit = -100;
+		ctrl_upperlimit = 20;
+		ctrl_lowerlimit = -20;
 		mjtNum temp1[kMaxState] = { 0 };
 		mju_copy(state_nominal[0], temp1, 2*dof+quatnum);
-		mjtNum temp2[kMaxState] = { 0.6, -0.6, PI/4 };
+		mjtNum temp2[kMaxState] = { 0.5, -0.6, PI/4 };
 		mju_copy(state_target, temp2, 2*dof+quatnum);
 		integration_per_step = (int)(control_timestep / simulation_timestep);
 		printf("Modeltype selected: %s\n", model);
@@ -210,14 +210,14 @@ int modelSelection(const char* model)
 	}
 	else if (_strcmpi(model, "acrobot") == 0) {
 		modelid = 3;
-		control_timestep = 0.02;
-		simulation_timestep = 0.02;
-		stepnum = 400;
+		control_timestep = 0.01;
+		simulation_timestep = 0.01;
+		stepnum = 500;
 		dof = 2;
 		quatnum = 0;
 		actuatornum = 1;
 		rolloutnum_train = 100;
-		mjtNum temp[1][4] = {0};// { -240.3429644433826, -60.4349625481677, -88.3643552434026, -25.7046399010518 };
+		mjtNum temp[1][4] = { -240.3429644433826, -60.4349625481677, -88.3643552434026, -25.7046399010518 };
 		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], 2*dof+quatnum);
 		mjtNum temp1[kMaxState] = { PI, 0.0, 0, 0 };
 		mju_copy(state_nominal[0], temp1, 2*dof+quatnum);
@@ -324,10 +324,12 @@ int modelSelection(const char* model)
 		quatnum = 1;
 		actuatornum = 6;
 		rolloutnum_train = 30;//300
-		ctrl_upperlimit = 300;
-		ctrl_lowerlimit = -300;
+		ctrl_upperlimit = 10;
+		ctrl_lowerlimit = -10;
 		mjtNum temp1[kMaxState] = { 0.0, 0.0, 0, 1, 0, 0, 0 }; // X Y Z QUAT
 		mju_copy(state_nominal[0], temp1, 2 * dof + quatnum); 
+		mjtNum temp2[kMaxState] = { 0, 0.4, 0.2, 1 };
+		mju_copy(state_target, temp2, 2 * dof + quatnum);
 		integration_per_step = (int)(control_timestep / simulation_timestep);
 		printf("Modeltype selected: %s\n", model);
 		return 1;
@@ -378,8 +380,8 @@ int modelSelection(const char* model)
 		quatnum = 0;
 		actuatornum = 2;
 		rolloutnum_train = 40;
-		ctrl_upperlimit = 100;
-		ctrl_lowerlimit = -100;
+		ctrl_upperlimit = 10;
+		ctrl_lowerlimit = -10;
 		mjtNum temp1[kMaxState] = { 0 };
 		mju_copy(state_nominal[0], temp1, 2 * dof + quatnum);
 		mjtNum temp2[kMaxState] = { 0.6, -0.6, PI/4, 0, 0 };
@@ -415,8 +417,8 @@ int modelSelection(const char* model)
 		quatnum = 0;
 		actuatornum = 1;
 		rolloutnum_train = 1;
-		ctrl_upperlimit = 100;
-		ctrl_lowerlimit = -100;
+		ctrl_upperlimit = 12;
+		ctrl_lowerlimit = -12;
 		mjtNum temp[1][4] = { -6.542245202164158, - 58.135743265102924, - 8.560886179516817, - 12.848142686878143 };// { -13.092556577239106, -64.598908804911986, -11.404678463728189, -13.703401036812515 };
 		for (int i = 0; i < actuatornum; i++) mju_copy(stabilizer_feedback_gain[i], temp[i], 2 * dof + quatnum);
 		mjtNum temp1[kMaxState] = { 0 };
@@ -459,7 +461,26 @@ int modelSelection(const char* model)
 		mjtNum temp1[kMaxState] = { 0 };
 		mju_copy(state_nominal[0], temp1, 2 * dof + quatnum);
 		integration_per_step = (int)(control_timestep / simulation_timestep);
-		mjtNum temp2[kMaxState] = { 0.6, -0.6, PI / 4, 0, 0 };
+		mjtNum temp2[kMaxState] = { 0.7, 0.7, 0, 0, 0 };
+		mju_copy(state_target, temp2, 2 * dof + quatnum);
+		printf("Modeltype selected: %s\n", model);
+		return 1;
+	}
+	else if (_strcmpi(model, "slip") == 0) {
+		modelid = 18;
+		control_timestep = 0.001;
+		simulation_timestep = 0.001; // 0.006 1500
+		stepnum = 1000;
+		dof = 7;
+		quatnum = 0;
+		actuatornum = 4;
+		rolloutnum_train = 200;
+		ctrl_upperlimit = 1000;
+		ctrl_lowerlimit = -1000;
+		mjtNum temp1[kMaxState] = { 0 };
+		mju_copy(state_nominal[0], temp1, 2 * dof + quatnum);
+		integration_per_step = (int)(control_timestep / simulation_timestep);
+		mjtNum temp2[kMaxState] = { 0 };
 		mju_copy(state_target, temp2, 2 * dof + quatnum);
 		printf("Modeltype selected: %s\n", model);
 		return 1;
@@ -558,8 +579,10 @@ mjtNum stepCost(mjModel* m, mjData* d, int step_index)
 		else cost = (Q * ((1 * (d->site_xpos[33] - d->site_xpos[63]) * (d->site_xpos[33] - d->site_xpos[63]) + 1.5 * (d->site_xpos[35] - d->site_xpos[65]) * (d->site_xpos[35] - d->site_xpos[65])) + 0.00*mju_dot(d->qvel, d->qvel, m->nv)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
 	}
 	else if (modelid == 10) {
-		if (step_index >= stepnum) cost = (QT * (120 * (2 * (d->geom_xpos[11] - d->geom_xpos[5]) * (d->geom_xpos[11] - d->geom_xpos[5]) + (d->geom_xpos[10] - d->geom_xpos[4]) * (d->geom_xpos[10] - d->geom_xpos[4]) + (d->geom_xpos[9] - d->geom_xpos[3]) * (d->geom_xpos[9] - d->geom_xpos[3])) + (d->xmat[17] - 1) * (d->xmat[17] - 1)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
-		else cost = (Q * (120 * (2 * (d->geom_xpos[11] - d->geom_xpos[5]) * (d->geom_xpos[11] - d->geom_xpos[5]) + (d->geom_xpos[10] - d->geom_xpos[4]) * (d->geom_xpos[10] - d->geom_xpos[4]) + 1.2*(d->geom_xpos[9] - d->geom_xpos[3]) * (d->geom_xpos[9] - d->geom_xpos[3])) + (d->xmat[17] - 1) * (d->xmat[17] - 1)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+		//if (step_index >= stepnum) cost = (QT * (120 * (2 * (d->geom_xpos[11] - d->geom_xpos[5]) * (d->geom_xpos[11] - d->geom_xpos[5]) + (d->geom_xpos[10] - d->geom_xpos[4]) * (d->geom_xpos[10] - d->geom_xpos[4]) + (d->geom_xpos[9] - d->geom_xpos[3]) * (d->geom_xpos[9] - d->geom_xpos[3])) + (d->xmat[17] - 1) * (d->xmat[17] - 1)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+		//else cost = (Q * (120 * (2 * (d->geom_xpos[11] - d->geom_xpos[5]) * (d->geom_xpos[11] - d->geom_xpos[5]) + (d->geom_xpos[10] - d->geom_xpos[4]) * (d->geom_xpos[10] - d->geom_xpos[4]) + 1.2*(d->geom_xpos[9] - d->geom_xpos[3]) * (d->geom_xpos[9] - d->geom_xpos[3])) + (d->xmat[17] - 1) * (d->xmat[17] - 1)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+		if (step_index >= stepnum) cost = (QT * (1 * ((d->qpos[0] - 0) * (d->qpos[0] - 0) + (d->qpos[1] - 0.4) * (d->qpos[1] - 0.4) + (d->qpos[2] - 0.2) * (d->qpos[2] - 0.2)) + 0.25*(d->xmat[17] - 1) * (d->xmat[17] - 1)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+		else cost = (Q * (1 * ((d->qpos[0] - 0) * (d->qpos[0] - 0) + (d->qpos[1] - 0.4) * (d->qpos[1] - 0.4) + 1 * (d->qpos[2] - 0.2) * (d->qpos[2] - 0.2)) + 0.25*(d->xmat[17] - 1) * (d->xmat[17] - 1)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
 	}
 	else if (modelid == 11) {
 		if (step_index >= stepnum) cost = (QT * (1 * (d->site_xpos[3] - d->site_xpos[12]) * (d->site_xpos[3] - d->site_xpos[12]) + 1. * (d->site_xpos[4] - d->site_xpos[13]) * (d->site_xpos[4] - d->site_xpos[13]) + 1.5 * (d->site_xpos[5] - d->site_xpos[14]) * (d->site_xpos[5] - d->site_xpos[14]) + .08 * mju_dot(d->qvel, d->qvel, m->nv)));
@@ -590,12 +613,30 @@ mjtNum stepCost(mjModel* m, mjData* d, int step_index)
 		}
 	}
 	else if (modelid == 16) {
-		if (step_index >= stepnum) cost = QT * (1 * (d->site_xpos[48] - d->site_xpos[75]) * (d->site_xpos[48] - d->site_xpos[75]) + 1. * (d->site_xpos[49] - d->site_xpos[76]) * (d->site_xpos[49] - d->site_xpos[76]) + 1.5 * (d->site_xpos[50] - d->site_xpos[77]) * (d->site_xpos[50] - d->site_xpos[77]) + .01 * mju_dot(d->sensordata, d->sensordata, 3*nodenum)); //0.08 vel
-		else cost = Q * (1 * (d->site_xpos[48] - d->site_xpos[75]) * (d->site_xpos[48] - d->site_xpos[75]) + 1. * (d->site_xpos[49] - d->site_xpos[76]) * (d->site_xpos[49] - d->site_xpos[76]) + 1.5 * (d->site_xpos[50] - d->site_xpos[77]) * (d->site_xpos[50] - d->site_xpos[77]) + 0.00*mju_dot(d->sensordata, d->sensordata, 3*nodenum)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum);
+	    /* reaching */
+		if (step_index >= stepnum) cost = QT * (1 * (d->site_xpos[48] - d->site_xpos[87]) * (d->site_xpos[48] - d->site_xpos[87]) + 1. * (d->site_xpos[49] - d->site_xpos[88]) * (d->site_xpos[49] - d->site_xpos[88]) + 3 * (d->site_xpos[50] - d->site_xpos[89]) * (d->site_xpos[50] - d->site_xpos[89]) + .00 * mju_dot(d->sensordata, d->sensordata, 3*nodenum)); //0.08 vel
+		else cost = Q * (2 * (d->site_xpos[48] - d->site_xpos[87]) * (d->site_xpos[48] - d->site_xpos[87]) + 2 * (d->site_xpos[49] - d->site_xpos[88]) * (d->site_xpos[49] - d->site_xpos[88]) + 2 * (d->site_xpos[50] - d->site_xpos[89]) * (d->site_xpos[50] - d->site_xpos[89]) + 0.00*mju_dot(d->sensordata, d->sensordata, 3*nodenum)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum);
+		/* folding */
+		//mju_sub(res0, state_target, d->site_xpos, 3 * nodenum);
+		//if (step_index >= stepnum) {
+		//	mju_mulMatVec(res1, *QTm, res0, kMaxState, kMaxState);
+		//	cost = mju_dot(res0, res1, 3 * nodenum);
+		//}
+		//else {
+		//	mju_mulMatVec(res1, *Qm, res0, kMaxState, kMaxState);
+		//	cost = mju_dot(res0, res1, 3 * nodenum) + R * mju_dot(d->ctrl, d->ctrl, actuatornum);
+		//}
 	}
 	else if (modelid == 17) {
 		if (step_index >= stepnum) cost = (QT * (1 * (d->qpos[0] - 0.7) * (d->qpos[0] - 0.7) + (d->qpos[1] - 0.7) * (d->qpos[1] - 0.7) + .00 * mju_dot(d->qvel, d->qvel, m->nv)));
 		else cost = (Q * (1 * (d->qpos[0] - 0.7) * (d->qpos[0] - 0.7) + 1 * (d->qpos[1] - 0.7) * (d->qpos[1] - 0.7) + .0000 * mju_dot(d->qvel, d->qvel, m->nv)) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
+	}
+	else if (modelid == 18) {
+		res0[0] = d->qvel[0] - 3;
+		res0[1] = d->qpos[2];
+		if (res0[0] > 0) res0[0] = 0;
+		if (step_index >= stepnum) cost = QT * (res0[0] * res0[0] + res0[1] * res0[1] + 0.0 * d->qvel[1] * d->qvel[1]);
+		else cost = (Q * (res0[0] * res0[0] + res0[1] * res0[1] + 0.0 * d->qvel[1] * d->qvel[1]) + R * mju_dot(d->ctrl, d->ctrl, actuatornum));
 	}
 	return cost;
 }

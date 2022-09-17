@@ -28,7 +28,7 @@ struct MatData {
 extern const int kMaxStep = 3000;   // max step number for one rollout
 extern const int kMaxState = 160;	// max (state dimension, actuator number)
 
-const int kTestNum = 400;	        // number of monte-carlo runs
+const int kTestNum = 200;	        // number of monte-carlo runs
 const int kMaxGeom = 5000;          // preallocated geom array in mjvScene
 const double syncmisalign = 0.1;    // maximum time mis-alignment before re-sync
 const double refreshfactor = 0.5;   // fraction of refresh available for simulation
@@ -63,6 +63,7 @@ mjData* d_openloop = NULL;
 mjtNum* measurement_noise = NULL;
 mjtNum ctrl_max = 0;
 mjtNum perturb_coefficient_std = 0;
+mjtNum state_process_noise_var = 0;
 mjtNum measurement_coefficient_std = 0;
 mjtNum cost_closedloop = 0, cost_openloop = 0;
 mjtNum energy = 0;
@@ -85,6 +86,8 @@ int mqx, mqu;
 bool NFinal = false;
 bool terminal_trigger = false;
 bool loaded = false;
+bool model_selected = false;
+bool feedback = true;
 
 // abstract visualization
 mjvScene scn, scn_openloop, scn_closedloop;
@@ -1830,16 +1833,16 @@ void matReadOpt(const char* filename, const char* varname, MatData* dataptr, Mat
     }
 }
 
-// copy the stepidx slice of dataptr into MAT_sliced
-void matSlice(MatrixXd* MAT_sliced, MatData* dataptr, int stepidx)
-{
-    assert(MAT_sliced->rows() == dataptr->dimension[0]);
-    assert(MAT_sliced->cols() == dataptr->dimension[1]);
-
-    for (int i = 0; i < dataptr->dimension[1]; i++)
-        for (int j = 0; j < dataptr->dimension[0]; j++)
-            (*MAT_sliced)(j, i) = dataptr->data[stepidx * dataptr->dimension[0] * dataptr->dimension[1] + i * dataptr->dimension[0] + j];
-}
+//// copy the stepidx slice of dataptr into MAT_sliced
+//void matSlice(MatrixXd* MAT_sliced, MatData* dataptr, int stepidx)
+//{
+//    assert(MAT_sliced->rows() == dataptr->dimension[0]);
+//    assert(MAT_sliced->cols() == dataptr->dimension[1]);
+//
+//    for (int i = 0; i < dataptr->dimension[1]; i++)
+//        for (int j = 0; j < dataptr->dimension[0]; j++)
+//            (*MAT_sliced)(j, i) = dataptr->data[stepidx * dataptr->dimension[0] * dataptr->dimension[1] + i * dataptr->dimension[0] + j];
+//}
 
 // simulate the nominal trajectory
 void simulateNominal(void)
@@ -1895,21 +1898,30 @@ bool simulateClosedloop(void)
 	{
 		terminalCtrl(m, d_closedloop, step_index_closedloop); 
 		if (_strcmpi(testmode, "policy_compare") == 0 && step_index_closedloop >= stepnum) {
-			cost_closedloop += stepCost(m, d_closedloop, stepnum); 
-			step_index_closedloop = 0; 
+			//cost_closedloop += stepCost(m, d_closedloop, stepnum); 
+            //cost_closedloop = sqrt((d_closedloop->qpos[0] - 0)*(d_closedloop->qpos[0] - 0)+(d_closedloop->qpos[1] - 0.4)*(d_closedloop->qpos[1] - 0.4)+(d_closedloop->qpos[2] - 0.2)*(d_closedloop->qpos[2] - 0.2)); // fish
+            //cost_closedloop = sqrt((d_closedloop->qpos[0] - 0) * (d_closedloop->qpos[0] - 0) + (d_closedloop->qpos[1] - PI) * (d_closedloop->qpos[1] - PI) + (d_closedloop->qpos[2] - 0) * (d_closedloop->qpos[2] - 0) + (d_closedloop->qpos[3] - 0) * (d_closedloop->qpos[3] - 0)); // cartpole
+            //cost_closedloop = sqrt((d_closedloop->qpos[0] - 0) * (d_closedloop->qpos[0] - 0) + (d_closedloop->qpos[1] - 0) * (d_closedloop->qpos[1] - 0)); // pendulum
+            cost_closedloop = sqrt((d_closedloop->qpos[0] - 0.5) * (d_closedloop->qpos[0] - 0.5) + (d_closedloop->qpos[1] + 0.5) * (d_closedloop->qpos[1] + 0.5)); // s3
+			
+            step_index_closedloop = 0; 
 			terminal_trigger = false;
 			return 1;
 		}
 		cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop); 
+        if (step_index_closedloop == stepnum) printf("Closed-loop cost: %.4f\n", cost_closedloop);
 	}
 	else {
-		if (step_index_closedloop >= max(mqx, mqu) + 2)
+		if (step_index_closedloop >= max(mqx, mqu) + 2 && feedback == true)
 		{
-            y_est.col(step_index_closedloop) = MYEM(0, step_index_closedloop-1).block(0, 0, MYE.dimension[0], MYE.dimension[1]) * y_est.col(step_index_closedloop - 1) + MU1M(0, step_index_closedloop - 1).block(0, 0, MU1.dimension[0], MU1.dimension[1]) * u_rcd.col(step_index_closedloop - 1) + MYMM(0, step_index_closedloop - 1).block(0, 0, MYM.dimension[0], MYM.dimension[1]) * y_rcd.col(step_index_closedloop);
+            y_est.col(step_index_closedloop) = MYEM(0, step_index_closedloop-1).block(0, 0, MYE.dimension[0], MYE.dimension[1]) * y_est.col(step_index_closedloop - 1)\
+                + MU1M(0, step_index_closedloop - 1).block(0, 0, MU1.dimension[0], MU1.dimension[1]) * u_rcd.col(step_index_closedloop - 1)\
+                + MYMM(0, step_index_closedloop - 1).block(0, 0, MYM.dimension[0], MYM.dimension[1]) * y_rcd.col(step_index_closedloop);
 			for (int i = 0; i < mqx; i++) x_err_aug.block(i * MCK.dimension[0], 0, MCK.dimension[0], 1) = y_rcd.col(step_index_closedloop - i);
 			for (int i = 0; i < mqu-1; i++) x_err_aug.block(mqx * MCK.dimension[0] + i * MTK.dimension[0], 0, MTK.dimension[0], 1) = u_rcd.col(step_index_closedloop - i - 1);
 
-            u_rcd.col(step_index_closedloop) = -MTKM(0, step_index_closedloop).block(0,0, MTK.dimension[0], MTK.dimension[1]) * y_est.col(step_index_closedloop);
+            u_rcd.col(step_index_closedloop) = -MTKM(0, step_index_closedloop).block(0, 0, MTK.dimension[0], MTK.dimension[1]) * y_est.col(step_index_closedloop); // LQG feedback
+            //u_rcd.col(step_index_closedloop) = -MTKM(0, step_index_closedloop).block(0, 0, MTK.dimension[0], MTK.dimension[1]) * x_err_aug; // LQR feedback
 		}
 		
 		for (int i = 0; i < actuatornum; i++) d_closedloop->ctrl[i] = ctrl_openloop[step_index_closedloop * actuatornum + i] + u_rcd(i, step_index_closedloop);
@@ -1922,12 +1934,11 @@ bool simulateClosedloop(void)
 		cost_closedloop += stepCost(m, d_closedloop, step_index_closedloop);
 	}
 	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_closedloop);
-	mj_forward(m, d_closedloop);
-	step_index_closedloop++;
 	// process noise including state noise
-	//mju_add(d_closedloop->qpos, d_closedloop->qpos, randGauss(0, 0.00023, dof + quatnum), dof + quatnum);
-	//mju_add(d_closedloop->qvel, d_closedloop->qvel, randGauss(0, 0.00023, dof), dof);
-	//mj_forward(m, d_closedloop);
+	//mju_add(d_closedloop->qpos, d_closedloop->qpos, randGauss(0, state_process_noise_var, dof + quatnum), dof + quatnum);
+	//mju_add(d_closedloop->qvel, d_closedloop->qvel, randGauss(0, state_process_noise_var, dof), dof);
+    //mj_forward(m, d_closedloop);
+    step_index_closedloop++;
 	if (modelid == 11 || modelid == 14 || modelid == 16) {
 		mju_sub(state_error, state_nominal[step_index_closedloop], d_closedloop->site_xpos, 3 * nodenum);
 		mju_sub(&state_error[3 * nodenum], &state_nominal[step_index_closedloop][3 * nodenum], d_closedloop->sensordata, 3 * nodenum);
@@ -1945,109 +1956,110 @@ bool simulateClosedloop(void)
 	return 0;
 }
 
-// simulate with LQR control policy under noise
-bool simulateOpenloop(void)
-{
-    static mjtNum state_error[kMaxState], ctrl_temp[kMaxState];
-    static MatrixXd MCK_step(MCK.dimension[0], MCK.dimension[1]);
-    static MatrixXd y_rcd = MatrixXd::Zero(MCK.dimension[0], stepnum + 1);
-    static MatrixXd u_rcd = MatrixXd::Zero(MTK.dimension[0], stepnum);
-    MatrixXd x_err_aug = MatrixXd::Zero(MTK.dimension[1], 1);
-    MatrixXd x_err_temp = MatrixXd::Zero(MCK.dimension[1], 1);
-    MatrixXd u_feedback = MatrixXd::Zero(MTK.dimension[0], 1);
-    MatrixXd MTK_step(MTK.dimension[0], MTK.dimension[1]);
-
-    if (step_index_openloop == 0) {
-        for (int i = 0; i < MCK.dimension[1]; i++)
-            for (int j = 0; j < MCK.dimension[0]; j++)
-                MCK_step(j, i) = MCK.data[i * MCK.dimension[0] + j];
-        modelInit(m, d_openloop, state_nominal[0]);
-        cost_openloop = 0;
-        energy = 0;
-    }
-
-    if (terminal_trigger == false) terminal_trigger = terminalTrigger(m, d_openloop, modelid, step_index_openloop);
-
-    if (terminal_trigger == true)
-    {
-        terminalCtrl(m, d_openloop, step_index_openloop);
-        if (_strcmpi(testmode, "policy_compare") == 0 && step_index_openloop >= stepnum) {
-            cost_openloop += stepCost(m, d_openloop, stepnum);
-            step_index_openloop = 0;
-            terminal_trigger = false;
-            return 1;
-        }
-        cost_openloop += stepCost(m, d_openloop, step_index_openloop);
-    }
-    else {
-        if (step_index_openloop >= max(mqx, mqu) + 2)
-        {
-            for (int i = 0; i < mqx; i++) x_err_aug.block(i * MCK.dimension[0], 0, MCK.dimension[0], 1) = y_rcd.col(step_index_openloop - i);
-            for (int i = 0; i < mqu-1; i++) x_err_aug.block(mqx * MCK.dimension[0] + i * MTK.dimension[0], 0, MTK.dimension[0], 1) = u_rcd.col(step_index_openloop - i - 1);
-
-            matSlice(&MTK_step, &MTK, step_index_openloop);
-            u_rcd.col(step_index_openloop) = -MTK_step * x_err_aug;
-        }
-
-        for (int i = 0; i < actuatornum; i++) d_openloop->ctrl[i] = ctrl_openloop[step_index_openloop * actuatornum + i] + u_rcd(i, step_index_openloop);
-
-        ctrlLimit(d_openloop->ctrl, m->nu);
-        for (int i = 0; i < actuatornum; i++) u_rcd(i, step_index_openloop) = d_openloop->ctrl[i] - ctrl_openloop[step_index_openloop * actuatornum + i];
-        //for (int i = 0; i < actuatornum; i++) ctrl_temp[i] = ctrl_nominal[step_index_openloop * actuatornum + i] + u_rcd(i, step_index_openloop);
-        //ctrlLimit(ctrl_temp, m->nu);
-        //energy += mju_dot(ctrl_temp, ctrl_temp, m->nu);
-        cost_openloop += stepCost(m, d_openloop, step_index_openloop);
-    }
-    for (int i = 0; i < integration_per_step; i++) mj_step(m, d_openloop);
-    mj_forward(m, d_openloop);
-    step_index_openloop++;
-    // process noise including state noise
-    //mju_add(d_compare->qpos, d_compare->qpos, randGauss(0, 0.00023, dof + quatnum), dof + quatnum);
-    //mju_add(d_compare->qvel, d_compare->qvel, randGauss(0, 0.00023, dof), dof);
-    //mj_forward(m, d_compare);
-    if (modelid == 11 || modelid == 14 || modelid == 16) {
-        mju_sub(state_error, state_nominal[step_index_openloop], d_openloop->site_xpos, 3 * nodenum);
-        mju_sub(&state_error[3 * nodenum], &state_nominal[step_index_openloop][3 * nodenum], d_openloop->sensordata, 3 * nodenum);
-    }
-    else {
-        mju_sub(state_error, state_nominal[step_index_openloop], d_openloop->qpos, dof + quatnum);
-        mju_sub(&state_error[dof + quatnum], &state_nominal[step_index_openloop][dof + quatnum], d_openloop->qvel, dof);
-    }
-    if (step_index_openloop <= stepnum) {
-        for (int i = 0; i < MCK.dimension[1]; i++) x_err_temp(i, 0) = -state_error[i] + measurement_noise[i + (step_index_openloop - 1) * MCK.dimension[1]]; // measurement noise
-        y_rcd.col(step_index_openloop) = MCK_step * x_err_temp;
-    }
-
-    return 0;
-}
-
-// simulate with open-loop control policy under noise
+/* simulate with LQR control policy under noise */
 //bool simulateOpenloop(void)
 //{
-//	if (step_index_openloop == 0) {
-//		modelInit(m, d_openloop, state_nominal[0]);
-//		cost_openloop = 0;
-//	}
-//	if (step_index_openloop >= stepnum)
-//	{
-//		terminalCtrl(m, d_openloop, step_index_openloop);
-//		if (_strcmpi(testmode, "policy_compare") == 0) {
-//			cost_openloop += stepCost(m, d_openloop, stepnum);
-//			step_index_openloop = 0;
-//			return 1;
-//		}
-//        cost_openloop += stepCost(m, d_openloop, stepnum);
-//	}
-//	else {
-//		mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index_openloop * actuatornum], m->nu);
-//		ctrlLimit(d_openloop->ctrl, m->nu);
-//		cost_openloop += stepCost(m, d_openloop, step_index_openloop);
-//	}
-//	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_openloop);
-//	mj_forward(m, d_openloop);
-//	step_index_openloop++;
-//	return 0;
+//    static mjtNum state_error[kMaxState], ctrl_temp[kMaxState];
+//    static MatrixXd MCK_step(MCK.dimension[0], MCK.dimension[1]);
+//    static MatrixXd y_rcd = MatrixXd::Zero(MCK.dimension[0], stepnum + 1);
+//    static MatrixXd u_rcd = MatrixXd::Zero(MTK.dimension[0], stepnum);
+//    MatrixXd x_err_aug = MatrixXd::Zero(MTK.dimension[1], 1);
+//    MatrixXd x_err_temp = MatrixXd::Zero(MCK.dimension[1], 1);
+//    MatrixXd u_feedback = MatrixXd::Zero(MTK.dimension[0], 1);
+//    MatrixXd MTK_step(MTK.dimension[0], MTK.dimension[1]);
+//
+//    if (step_index_openloop == 0) {
+//        for (int i = 0; i < MCK.dimension[1]; i++)
+//            for (int j = 0; j < MCK.dimension[0]; j++)
+//                MCK_step(j, i) = MCK.data[i * MCK.dimension[0] + j];
+//        modelInit(m, d_openloop, state_nominal[0]);
+//        cost_openloop = 0;
+//        energy = 0;
+//    }
+//
+//    if (terminal_trigger == false) terminal_trigger = terminalTrigger(m, d_openloop, modelid, step_index_openloop);
+//
+//    if (terminal_trigger == true)
+//    {
+//        terminalCtrl(m, d_openloop, step_index_openloop);
+//        if (_strcmpi(testmode, "policy_compare") == 0 && step_index_openloop >= stepnum) {
+//            cost_openloop += stepCost(m, d_openloop, stepnum);
+//            step_index_openloop = 0;
+//            terminal_trigger = false;
+//            return 1;
+//        }
+//        cost_openloop += stepCost(m, d_openloop, step_index_openloop);
+//    }
+//    else {
+//        if (step_index_openloop >= max(mqx, mqu) + 2)
+//        {
+//            for (int i = 0; i < mqx; i++) x_err_aug.block(i * MCK.dimension[0], 0, MCK.dimension[0], 1) = y_rcd.col(step_index_openloop - i);
+//            for (int i = 0; i < mqu-1; i++) x_err_aug.block(mqx * MCK.dimension[0] + i * MTK.dimension[0], 0, MTK.dimension[0], 1) = u_rcd.col(step_index_openloop - i - 1);
+//
+//            matSlice(&MTK_step, &MTK, step_index_openloop);
+//            u_rcd.col(step_index_openloop) = -MTK_step * x_err_aug;
+//        }
+//
+//        for (int i = 0; i < actuatornum; i++) d_openloop->ctrl[i] = ctrl_openloop[step_index_openloop * actuatornum + i] + u_rcd(i, step_index_openloop);
+//
+//        ctrlLimit(d_openloop->ctrl, m->nu);
+//        for (int i = 0; i < actuatornum; i++) u_rcd(i, step_index_openloop) = d_openloop->ctrl[i] - ctrl_openloop[step_index_openloop * actuatornum + i];
+//        //for (int i = 0; i < actuatornum; i++) ctrl_temp[i] = ctrl_nominal[step_index_openloop * actuatornum + i] + u_rcd(i, step_index_openloop);
+//        //ctrlLimit(ctrl_temp, m->nu);
+//        //energy += mju_dot(ctrl_temp, ctrl_temp, m->nu);
+//        cost_openloop += stepCost(m, d_openloop, step_index_openloop);
+//    }
+//    for (int i = 0; i < integration_per_step; i++) mj_step(m, d_openloop);
+//    mj_forward(m, d_openloop);
+//    step_index_openloop++;
+//    // process noise including state noise
+//    //mju_add(d_compare->qpos, d_compare->qpos, randGauss(0, 0.00023, dof + quatnum), dof + quatnum);
+//    //mju_add(d_compare->qvel, d_compare->qvel, randGauss(0, 0.00023, dof), dof);
+//    //mj_forward(m, d_compare);
+//    if (modelid == 11 || modelid == 14 || modelid == 16) {
+//        mju_sub(state_error, state_nominal[step_index_openloop], d_openloop->site_xpos, 3 * nodenum);
+//        mju_sub(&state_error[3 * nodenum], &state_nominal[step_index_openloop][3 * nodenum], d_openloop->sensordata, 3 * nodenum);
+//    }
+//    else {
+//        mju_sub(state_error, state_nominal[step_index_openloop], d_openloop->qpos, dof + quatnum);
+//        mju_sub(&state_error[dof + quatnum], &state_nominal[step_index_openloop][dof + quatnum], d_openloop->qvel, dof);
+//    }
+//    if (step_index_openloop <= stepnum) {
+//        for (int i = 0; i < MCK.dimension[1]; i++) x_err_temp(i, 0) = -state_error[i] + measurement_noise[i + (step_index_openloop - 1) * MCK.dimension[1]]; // measurement noise
+//        y_rcd.col(step_index_openloop) = MCK_step * x_err_temp;
+//    }
+//
+//    return 0;
 //}
+
+/* simulate with open-loop control policy under noise */
+bool simulateOpenloop(void)
+{
+	if (step_index_openloop == 0) {
+		modelInit(m, d_openloop, state_nominal[0]);
+		cost_openloop = 0;
+	}
+	if (step_index_openloop >= stepnum)
+	{
+		terminalCtrl(m, d_openloop, step_index_openloop);
+		if (_strcmpi(testmode, "policy_compare") == 0) {
+			cost_openloop += stepCost(m, d_openloop, stepnum);
+			step_index_openloop = 0;
+			return 1;
+		}
+        cost_openloop += stepCost(m, d_openloop, stepnum);
+        if (step_index_openloop == stepnum) printf("Open-loop cost: %.4f\n", cost_openloop);
+	}
+	else {
+		mju_copy(d_openloop->ctrl, &ctrl_openloop[step_index_openloop * actuatornum], m->nu);
+		ctrlLimit(d_openloop->ctrl, m->nu);
+		cost_openloop += stepCost(m, d_openloop, step_index_openloop);
+	}
+	for (int i = 0; i < integration_per_step; i++) mj_step(m, d_openloop);
+	mj_forward(m, d_openloop);
+	step_index_openloop++;
+	return 0;
+}
 
 // calculate the distance from the target at the terminal step
 mjtNum terminalError(mjtNum ptb, const char *type)
@@ -2149,6 +2161,7 @@ void policyCompare()
 {
 	double printfraction = 0.1;
     double ptb1 = 0.1;
+    double ptb2 = 0.0;
 	
 	strcpy(datafilename, "clopdata.txt");
 	if ((filestream1 = fopen(datafilename, "wt+")) != NULL)
@@ -2156,30 +2169,33 @@ void policyCompare()
 		//strcpy(datafilename, "energydata.txt");
 		//if ((filestream2 = fopen(datafilename, "wt+")) != NULL)
 		//{
-			for (double ptb2 = 0; ptb2 <= 0.002001; ptb2 += 0.0004)
+			for (double ptb1 = 0; ptb1 <= 0.00100001; ptb1 += 0.0001)
 			{
 				for (int i = 0; i < kTestNum; i++)
 				{
 					for (int e = 0; e < stepnum * actuatornum; e++) ctrl_openloop[e] = ctrl_nominal[e] + ptb1 * ctrl_max * randGauss(0, 1);
                     measurement_noise = randGauss(0, ptb2 * ptb2, stepnum * MCK.dimension[1]);
+                    state_process_noise_var = ptb1* ctrl_max* ptb1* ctrl_max;
                     
-					while (simulateOpenloop() != 1); 
+					//while (simulateOpenloop() != 1); 
                     while (simulateClosedloop() != 1);
 
 					sprintf(data_buff, "%4.8f", cost_closedloop);
 					fwrite(data_buff, 10, 1, filestream1);
-					fputs("\n", filestream1);
-					sprintf(data_buff, "%4.8f", cost_openloop);
-					fwrite(data_buff, 10, 1, filestream1);
-					fputs("\n", filestream1);
+                    fputs(" ", filestream1);
+					//fputs("\n", filestream1);
+
+					//sprintf(data_buff, "%4.8f", cost_openloop);
+					//fwrite(data_buff, 10, 1, filestream1);
+					//fputs("\n", filestream1);
 
 					//sprintf(data_buff, "%4.8f", energy);
 					//fwrite(data_buff, 10, 1, filestream2);
 					//fputs(" ", filestream2);
 				}
-				//fputs("\n", filestream2);
+				fputs("\n", filestream1);
 
-				if (ptb2 >= 0.015 * printfraction)
+				if (ptb1 >= 1 * printfraction)
 				{
 					printf(".");
 					printfraction += 0.1;
@@ -2189,7 +2205,7 @@ void policyCompare()
 		//}
 		//else printf("Could not open file: energydata.txt\n");
 		fclose(filestream1);
-	}else printf("Could not open file: clopdata.txt\n");
+	} else printf("Could not open file: clopdata.txt\n");
 }
 
 // show info for the model
@@ -2581,6 +2597,18 @@ void init(void)
         mj_activate(keyfilename);
     }
 
+    // read state target
+    strcpy(datafilename, "statetarget.txt");
+    if ((filestream1 = fopen(datafilename, "r")) != NULL)
+    {
+        for (int i1 = 0; i1 < 3 * nodenum; i1++) {
+            fscanf(filestream1, "%s", data_buff);
+            state_target[i1] = atof(data_buff);
+        }
+        fclose(filestream1);
+    }
+    else printf("Could not open file: statetarget.txt\n");
+
 	// read nominal control values
 	strcpy(datafilename, "result0.txt");
 	if ((filestream1 = fopen(datafilename, "r")) != NULL)
@@ -2674,7 +2702,11 @@ void init(void)
 	mqx = MQ.data[0];
 	mqu = MQU.data[0];
 
-	if (!(2.0 * dof + quatnum == MCK.dimension[1] || 2 * 3.0 * nodenum == MCK.dimension[1])) printf("Wrong dimension for matrix Ck\n");
+    if (!(2.0 * dof + quatnum == MCK.dimension[1] || 2 * 3.0 * nodenum == MCK.dimension[1])) 
+    { 
+        printf("Wrong dimension for matrix Ck, feedback not effective\n"); 
+        feedback = false;
+    }
 
 	// init GLFW, set timer callback (milliseconds)
 	if (!glfwInit())
@@ -2775,7 +2807,7 @@ int main(int argc, const char** argv)
 {
 	// print help if arguments are missing
 	if (argc < 4 || argc > 8) {
-		printf("\n Usage:  testioid modelfile control_timestep stepnum [modeltype [mode [noiselevel1 [noiselevel2]]]\n");
+		printf("\n Usage:  testioid modelfile control_timestep stepnum [modeltype [mode [pnoiselevel [mnoiselevel]]]\n");
 		return 0;
 	}
 
@@ -2786,8 +2818,8 @@ int main(int argc, const char** argv)
 		strncpy(modelname, modelfilename, strlen(modelfilename) - 4);
 		settings.loadrequest = 1;
 	}
-	if (argc > 4 && modelSelection(argv[4]) == 1);
-	else modelSelection(modelname);
+	if (argc > 4 && (model_selected = modelSelection(argv[4])) == 1);
+	else model_selected = modelSelection(modelname);
 	if (sscanf(argv[2], "%lf", &control_timestep) != 1 || control_timestep <= 0) {
 		printf("Invalid control_timestep argument");
 		return 0;
@@ -2834,10 +2866,12 @@ int main(int argc, const char** argv)
 
     if (argc > 7) sscanf(argv[7], "%lf", &measurement_coefficient_std);
     
+    if (model_selected == false) testModeSelection("modeltest");
 	for (int e = 0; e < stepnum * actuatornum; e++)
 		ctrl_openloop[e] = ctrl_nominal[e] + perturb_coefficient_std * ctrl_max * randGauss(0, 1);
     
     measurement_noise = randGauss(0, measurement_coefficient_std * measurement_coefficient_std, stepnum * MCK.dimension[1]);
+    state_process_noise_var = perturb_coefficient_std * ctrl_max * perturb_coefficient_std * ctrl_max;
 	
     // start simulation thread
     std::thread simthread(simulate);

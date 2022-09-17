@@ -15,8 +15,8 @@ Based on Coulomb's [1] rather than Spong's [2] model.
     <geom type="capsule" mass="1"/>
   </default>
 
-  <option timestep="0.02" integrator="RK4">
-    <flag constraint="disable" energy="enable"/>
+  <option timestep="0.01" integrator="RK4">
+    <flag contact="disable" constraint="disable" energy="enable"/>
   </option>
 
   <worldbody>
@@ -37,6 +37,6 @@ Based on Coulomb's [1] rather than Spong's [2] model.
   </worldbody>
 
    <actuator>
-    <motor name="elbow" joint="elbow" gear="2" ctrllimited="false" ctrlrange="-1 1"/>
+    <motor name="elbow" joint="elbow" gear="1" ctrllimited="false" ctrlrange="-1 1"/>
   </actuator>
 </mujoco>

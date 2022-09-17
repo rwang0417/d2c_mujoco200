@@ -14,24 +14,25 @@ from matplotlib import rcParams
 bmap = brewer2mpl.get_map('Set2','qualitative', 7)
 colors = bmap.mpl_colors
 params = {
-    'axes.labelsize': 20,
-    'axes.titlesize': 20,
+    'axes.labelsize': 22,
     'font.size': 20,
     'legend.fontsize': 20,
     'xtick.labelsize': 20,
     'ytick.labelsize': 20,
-    'figure.figsize': [7, 5.5], # instead of 4.5, 4.5
+    'text.usetex': True ,
+    'figure.figsize': [7, 5.5], # instead of 4.5, 4.5 now[7,5.5]
     'font.weight': 'bold',
     'axes.labelweight': 'bold',
     'ps.useafm' : True,
     'pdf.use14corefonts':True,
-    'text.usetex': True , # this three 'True' enforces the type-1 font
     'pdf.fonttype': 42,
     'ps.fonttype': 42
 }
 rcParams.update(params)
 
-def latexplot(timefactor=8.805,filtered=False):
+# timefactor=8.805
+# ilqr: timefactor=0.03
+def latexplot(timefactor=0.025,filtered=False):
     #plot
     if filtered == True:
         b, a = signal.butter(8  , 0.025)
@@ -42,9 +43,9 @@ def latexplot(timefactor=8.805,filtered=False):
         plt.plot(x, y/y[-1], color=colors[1], alpha=0.9)
         plt.plot(x, signal.filtfilt(b, a, y/y[-1]), color=colors[2], linewidth=3)
         plt.grid(color='.910', linewidth=1.5)
-        
+
         plt.xlabel('Training time (seconds)', fontsize=20)
-        plt.ylabel('Episodic cost fraction', fontsize=20)
+        plt.ylabel('Episodic cost', fontsize=20)
         plt.legend(['Original','Filtered'])
     else:
         with open('cost0.txt') as f:
@@ -53,11 +54,11 @@ def latexplot(timefactor=8.805,filtered=False):
         x=np.linspace(1,y.shape[0],y.shape[0])*timefactor
         plt.plot(x, y/y[-1], color=colors[2], linewidth=3)
         plt.grid(color='.910', linewidth=1.5)
-        
+
         plt.xlabel('Training time (seconds)', fontsize=20)
-        plt.ylabel('Episodic cost fraction', fontsize=20)
-        plt.legend(['Original'])
-    plt.tight_layout()    
+        plt.ylabel('Episodic cost', fontsize=20)
+        # plt.legend(['Original'])
+    plt.tight_layout()
 
 def multicost(timefactor=4.01):
     y=np.loadtxt('costmc.txt')
@@ -71,7 +72,7 @@ def multicost(timefactor=4.01):
     plt.legend(['Mean', 'Standard deviation'])
     plt.tight_layout()
     plt.grid(color='.910', linewidth=1.5)
-    
+
 def showcurve(filename='cost0.txt'):
     with open(filename) as f:
         r=f.readlines()
@@ -81,7 +82,7 @@ def showcurve(filename='cost0.txt'):
     plt.show()
     print("NUM = {value1}".format(value1=y.shape[0]))
     print("MAX = {value1}  MIN = {value2}\nMEAN = {value3}  VAR = {value4}".format(value1=np.max(y),value2=np.min(y),value3=np.mean(y),value4=np.var(y)))
-    
+
 def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
     if type=='cost':
         y=np.array(np.loadtxt('perfcheck.txt'))
@@ -95,7 +96,7 @@ def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
         plt.fill_between(np.arange(sind,(eind-1)*step+1,step),(cost[sind:eind]-cstd[sind:eind]),(cost[sind:eind]+cstd[sind:eind]),alpha=0.3,color='orange')
         plt.xlabel('Std dev of perturbed noise (Percent of max. control)',fontsize=20)
         plt.ylabel('cost per step',fontsize=20)
-        plt.show()  
+        plt.show()
         print('averaged by {value1} rollouts'.format(value1=y.shape[1]))
 
     if type=='error':
@@ -110,18 +111,18 @@ def perfcheck(nstart=0,nend=100,type='error',noisemax=100):
         plt.fill_between(np.arange(sind,(eind-1)*step+1,step),(perf[sind:eind]-cstd[sind:eind]),(perf[sind:eind]+cstd[sind:eind]),alpha=0.3,color='orange')
         plt.xlabel('Std dev of perturbed noise (Percent of max. control)',fontsize=20)
         plt.ylabel('L2-norm of terminal state error',fontsize=20)
-        plt.show()  
+        plt.show()
         print('averaged by {value1} rollouts'.format(value1=y.shape[1]))
-        
-def clopcompare():                   
+
+def clopcompare():
     nstart=0
-    nend=55
-    pointnum=21
-    testnum=400
+    nend=100
+    pointnum=11
+    testnum=200
     y=np.array(np.loadtxt('clopdata.txt'))
     clerr1=[0 for i in range(int(y.shape[0]/2))]
     operr1=[0 for i in range(int(y.shape[0]/2))]
-    
+
     # calculate error value and get the average by each test
     for i in range(int(y.shape[0]/2)):
         clerr1[i]=abs(y[2*i])
@@ -129,7 +130,7 @@ def clopcompare():
     with open('clopbar.txt', 'wt+') as f:
         for k in range(pointnum):
             print(np.mean(clerr1[testnum*k:testnum*(k+1)]), np.std(clerr1[testnum*k:testnum*(k+1)]), np.mean(operr1[testnum*k:testnum*(k+1)]), np.std(operr1[testnum*k:testnum*(k+1)]), k*5, file=f)
-    
+
     # plot performance compare data and success rate
     sind=int(nstart/100*(pointnum-1))
     eind=int(nend/100*(pointnum-1))+1
@@ -138,13 +139,14 @@ def clopcompare():
     f6,=plt.plot(perfdata[4][sind:eind],perfdata[2][sind:eind],'dodgerblue', linewidth=3)
     plt.fill_between(perfdata[4][sind:eind],perfdata[0][sind:eind]-perfdata[1][sind:eind],perfdata[0][sind:eind]+perfdata[1][sind:eind],alpha=0.3,color='orange')
     plt.fill_between(perfdata[4][sind:eind],perfdata[2][sind:eind]-perfdata[3][sind:eind],perfdata[2][sind:eind]+perfdata[3][sind:eind],alpha=0.3,color='dodgerblue')
-    plt.xlabel('Std dev of perturbed noise(Percent of max. control)')
+    # plt.xlabel('Std dev of process noise(Percent of max. control)')
+    plt.xlabel('Std dev of measurement noise(Percent of max. measurement)', fontsize=20)
     plt.ylabel('Episodic cost')
     plt.legend(handles=[f5,f6,],labels=['Closed-loop','Open-loop'],loc='upper left')
     plt.grid(color='.910', linewidth=1.5)
-    plt.show()  
-    
-def mclopcompare():                   
+    plt.show()
+
+def mclopcompare():
     nstart=0
     nend=100
     pointnum=11
@@ -152,7 +154,7 @@ def mclopcompare():
     y=np.array(np.loadtxt('clopdata.txt'))
     clerr1=[0 for i in range(int(y.shape[0]/2))]
     operr1=[0 for i in range(int(y.shape[0]/2))]
-    
+
     # calculate error value and get the average by each test
     for i in range(int(y.shape[0]/2)):
         clerr1[i]=abs(y[2*i])
@@ -160,7 +162,7 @@ def mclopcompare():
     with open('clopbar.txt', 'wt+') as f:
         for k in range(pointnum):
             print(np.mean(clerr1[testnum*k:testnum*(k+1)]), np.std(clerr1[testnum*k:testnum*(k+1)]), np.mean(operr1[testnum*k:testnum*(k+1)]), np.std(operr1[testnum*k:testnum*(k+1)]), k*0.01/0.2*100, file=f)
-    
+
     # plot performance compare data and success rate
     sind=int(nstart/100*(pointnum-1))
     eind=int(nend/100*(pointnum-1))+1
@@ -173,8 +175,8 @@ def mclopcompare():
     plt.ylabel('Episodic cost')
     plt.legend(handles=[f5,f6,],labels=['LQG','LQR'],loc='upper left')
     plt.grid(color='.910', linewidth=1.5)
-    plt.show()  
-    
+    plt.show()
+
 def sysidcheck():
     y=np.array(np.loadtxt('sysidcheck.txt'))
     syserr1=[[0 for i in range(y.shape[1])] for i in range(int(y.shape[0]/2))]
@@ -182,9 +184,9 @@ def sysidcheck():
     for i in range(int(y.shape[0]/2)):
         for j in range(int(y.shape[1])):
             if y[2*i][j] != 0:
-                syserr1[i][j]=abs((y[2*i+1][j]-y[2*i][j])/y[2*i][j]) 
+                syserr1[i][j]=abs((y[2*i+1][j]-y[2*i][j])/y[2*i][j])
     syserr=np.mean(syserr1,axis=1)
-    
+
     x=np.linspace(1,int(y.shape[0]/2),int(y.shape[0]/2))
     plt.figure(figsize=(20,16))
     f1,=plt.plot(x,syserr)

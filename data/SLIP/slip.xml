@@ -1,0 +1,72 @@
+<mujoco model="cheetah">
+  <include file="./common/skybox.xml"/>
+  <include file="./common/visual.xml"/>
+  <include file="./common/materials.xml"/>
+
+  <default>
+    <motor ctrllimited="false" ctrlrange="-100 100" gear="10"/>
+    <tendon stiffness="100" damping="1" width="0.02"/>
+    <default class="free">
+      <joint limited="false" stiffness="0" armature="0"/>
+    </default>
+  </default>
+
+  <option timestep="0.001" integrator="RK4" solver="Newton" gravity="0 0 -9.81" viscosity="0.0" collision="all"/>
+  
+  <size njmax="300" nconmax="50" nstack="1200"/>
+  
+  <worldbody>
+    <geom name="ground" type="plane" conaffinity="1" pos="4 0 0" size="20 .8 .5" condim="4" friction="1 0.005 0.0001" material="grid"/>
+    <body name="torso" pos="0.8 0 0.82">
+      <light name="light" pos="0 0 2"/>
+      <geom name="torso" type="capsule" fromto="0 0 0 2.5 0 0" size="0.04" mass="2" material="self"/>
+      <joint name="rootx" type="slide" class="free" axis="1 0 0"/>
+      <joint name="rootz" type="slide" class="free" axis="0 0 1"/>
+      <joint name="rooty" type="hinge" class="free" axis="0 1 0"/>
+      <body name="rleg1" pos=".3 0 0">
+        <inertial pos="0 0 0" mass="1" diaginertia="1 2 1"/>
+        <geom name="rleg1" type="box" pos="0 0 0" size="0.05 0.05 0.1" mass="1" zaxis="0.2 0 1"/>
+        <joint name="rj1" type="hinge" range="-80 80" limited="true" stiffness="40" damping="2" axis="0 1 0"/>
+        <site name="rleg1" pos="0 0 0" size="0.02"/>
+        <body name="rleg2" pos="0 0 0">
+          <geom name="rleg2" type="capsule" fromto="0.04 0 0.2 -0.16 0 -0.8" size="0.02" mass="0.01" friction="1 0.005 0.0001" material="self"/>
+          <joint name="rj2" type="slide" axis="0.2 0 1" range="-10 10" stiffness="0" damping="5"/>
+          <site name="rleg2" pos="-0.16 0 -0.8" size="0.026"/>
+        </body>
+      </body>
+      <body name="fleg1" pos="2.2 0 0">
+        <inertial pos="0 0 0" mass="1" diaginertia="1 2 1"/>
+        <geom name="fleg1" type="box" pos="0 0 0" size="0.05 0.05 0.1" mass="1"  zaxis="-0.2 0 1"/>
+        <joint name="fj1" type="hinge" range="-80 80" limited="true" stiffness="40" damping="2" axis="0 1 0"/>
+        <site name="fleg1" pos="0 0 0" size="0.02"/>
+        <body name="fleg2" pos="0 0 0">
+          <geom name="fleg2" type="capsule" fromto="-0.04 0 0.2 0.16 0 -0.8" size="0.02" mass="0.01" friction="1 0.005 0.0001" material="self"/>
+          <joint name="fj2" type="slide" axis="-0.2 0 1" range="-10 10" stiffness="0" damping="5"/>
+          <site name="fleg2" pos="0.16 0 -0.8" size="0.026"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <tendon>
+    <spatial name="Sr">
+        <site site="rleg1"/>
+        <site site="rleg2"/>
+    </spatial>
+    <spatial name="Sf">
+        <site site="fleg1"/>
+        <site site="fleg2"/>
+    </spatial>
+  </tendon>   
+
+  <actuator>
+    <motor joint="rj1"/>
+    <motor joint="fj1"/>
+    <motor tendon="Sr"/>
+    <motor tendon="Sf"/>
+  </actuator>
+
+  <sensor>
+    <subtreelinvel name="torso_subtreelinvel" body="torso"/>
+  </sensor>
+</mujoco>

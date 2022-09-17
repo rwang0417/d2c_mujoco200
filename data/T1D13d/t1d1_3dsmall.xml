@@ -102,7 +102,7 @@
 			<site name="fl" pos="-7.794229 4.5 0"/>
 			<site name="fm" pos="0 -9 0"/>
             <site name="fr" pos="7.794229 4.5 0"/>
-			<site name="target" pos="0 0 13" size="0.12" rgba="1 0 0 .3"/>
+			<site name="target" pos="0 0 13.5" size="0.12" rgba="1 0 0 .3"/>
 		</body>
     </worldbody>
 	
